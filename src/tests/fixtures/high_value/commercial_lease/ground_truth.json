@@ -1,0 +1,9 @@
+{
+  "definition_id": "def-commercial-lease",
+  "document_path": "../../../../../sample-data/leases/sample-lease-02-color-image-sec.pdf",
+  "fields": [
+    {"name": "landlord", "value": "Kings Brothers LLC", "bbox": [70, 118, 157, 132], "page": 0},
+    {"name": "premises_address", "value": "4350 Peachtree Industrial Boulevard, Norcross, GA 30071", "bbox": [70, 321, 328, 335], "page": 0},
+    {"name": "renewal_option", "value": true, "bbox": [241, 643, 330, 657], "page": 0}
+  ]
+}

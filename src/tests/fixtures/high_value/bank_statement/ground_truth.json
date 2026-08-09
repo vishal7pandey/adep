@@ -1,0 +1,11 @@
+{
+  "definition_id": "def-bank-statement",
+  "document_path": "../../../../../sample-data/bank-statements/sample-bank-statement-01.pdf",
+  "fields": [
+    {"name": "bank_name", "value": "SampleFile Account Statement", "bbox": [72, 9, 236, 25], "page": 0},
+    {"name": "statement_period_start", "value": "2026-03-01", "bbox": [171, 27, 232, 43], "page": 0},
+    {"name": "statement_period_end", "value": "2026-03-31", "bbox": [249, 27, 310, 43], "page": 0},
+    {"name": "opening_balance", "value": 2450.55, "bbox": [170, 45, 217, 61], "page": 0},
+    {"name": "closing_balance", "value": 3126.8, "bbox": [165, 63, 212, 79], "page": 0}
+  ]
+}

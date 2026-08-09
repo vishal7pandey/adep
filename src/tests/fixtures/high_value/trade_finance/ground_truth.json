@@ -1,0 +1,10 @@
+{
+  "definition_id": "def-trade-finance-scrutiny",
+  "document_path": "../../../../../sample-data/trade-finance/sample-trade-finance-03-draft-mt700-sample.pdf",
+  "fields": [
+    {"name": "lc_number", "value": "XXXXXXX", "bbox": [204, 144, 233, 152], "page": 0},
+    {"name": "currency", "value": "USD", "bbox": [207, 202, 219, 210], "page": 0},
+    {"name": "port_of_loading", "value": "ANY PORT OF [PORT]", "bbox": [204, 243, 277, 251], "page": 0},
+    {"name": "port_of_discharge", "value": "XXX", "bbox": [204, 253, 229, 261], "page": 0}
+  ]
+}

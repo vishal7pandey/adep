@@ -1,0 +1,10 @@
+{
+  "definition_id": "def-packing-list-travel",
+  "document_path": "../../../../../sample-data/packing-list/sample-packing-list-02-travel-packing-checklist.pdf",
+  "fields": [
+    {"name": "checklist_title", "value": "Travel Packing Checklist", "bbox": [0, 0, 10, 10], "page": 0},
+    {"name": "has_documents_money_section", "value": true, "bbox": [0, 0, 10, 10], "page": 0},
+    {"name": "has_toiletries_section", "value": true, "bbox": [0, 0, 10, 10], "page": 0},
+    {"name": "has_extras_section", "value": true, "bbox": [0, 0, 10, 10], "page": 0}
+  ]
+}
