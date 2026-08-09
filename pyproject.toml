@@ -1,0 +1,85 @@
+[project]
+name = "ade"
+version = "0.1.0"
+description = "Agentic Document Extraction Platform"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+    { name = "ADEP Team" },
+]
+
+dependencies = [
+    # Core
+    "pydantic>=2.0,<3.0",
+    "pydantic-settings>=2.0,<3.0",
+
+    # Agent framework
+    "langgraph>=0.2.0,<0.3.0",
+    "langchain>=0.3.0,<0.4.0",
+    "langchain-openai>=0.2.0,<0.3.0",
+
+    # Image processing
+    "Pillow>=10.0.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "PyMuPDF>=1.24.0",
+
+    # OCR providers
+    "pytesseract>=0.3.10",
+    "paddleocr>=2.7.0",
+
+    # VLM / LLM
+    "openai>=1.0.0",
+
+    # Layout reading order (L6)
+    "transformers>=4.40.0",
+
+    # Config / secrets
+    "python-dotenv>=1.0.0",
+
+    # Retry / backoff
+    "tenacity>=8.0.0",
+
+    # API framework (Phase 2)
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+    "python-multipart>=0.0.9",
+
+    # Testing
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest-cov>=4.1.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+markers = [
+    "integration: marks tests as integration tests (require real providers, deselect with '-m \"not integration\"')",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true

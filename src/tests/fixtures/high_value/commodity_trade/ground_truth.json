@@ -1,0 +1,9 @@
+{
+  "definition_id": "def-commodity-trade",
+  "document_path": "../../../../../sample-data/commodity-trade/sample-commodity-trade-06-blco-cif-procedures-2025.pdf",
+  "fields": [
+    {"name": "commodity_type", "value": "BLCO", "bbox": [0, 0, 10, 10], "page": 0},
+    {"name": "loading_port", "value": "ANY PORT OF [PORT]", "bbox": [0, 0, 10, 10], "page": 0},
+    {"name": "discharge_port", "value": "XXX", "bbox": [0, 0, 10, 10], "page": 0}
+  ]
+}

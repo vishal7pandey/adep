@@ -1,0 +1,14 @@
+{
+  "definition_id": "def-purchase-order-sf1449",
+  "document_path": "../../../../../sample-data/purchase-order/sample-purchase-order-02-sf1449.pdf",
+  "fields": [
+    {
+      "name": "form_title",
+      "value": "SOLICITATION/CONTRACT/ORDER FOR COMMERCIAL PRODUCTS AND COMMERCIAL SERVICES",
+      "bbox": [0, 0, 10, 10],
+      "page": 0
+    },
+    {"name": "schedule_table_present", "value": true, "bbox": [0, 0, 10, 10], "page": 0},
+    {"name": "method_of_solicitation_section_present", "value": true, "bbox": [0, 0, 10, 10], "page": 0}
+  ]
+}

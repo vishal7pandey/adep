@@ -1,0 +1,11 @@
+{
+  "definition_id": "def-utility-bill",
+  "document_path": "../../../../../sample-data/utility-bills/sample-utility-bill-01.pdf",
+  "fields": [
+    {"name": "account_number", "value": "0123 4567 890", "bbox": [129, 207, 195, 218], "page": 0},
+    {"name": "service_address", "value": "123 9TH ST NW WASHINGTON DC 20012", "bbox": [151, 219, 219, 230], "page": 0},
+    {"name": "billing_period_start", "value": "2015-04-04", "bbox": [286, 62, 345, 74], "page": 0},
+    {"name": "billing_period_end", "value": "2015-05-05", "bbox": [361, 62, 417, 74], "page": 0},
+    {"name": "amount_due", "value": 176.31, "bbox": [269, 341, 280, 353], "page": 0}
+  ]
+}
