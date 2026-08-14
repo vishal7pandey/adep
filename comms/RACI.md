@@ -1,171 +1,106 @@
-# RACI Matrix — ADEP Project
+# RACI Matrix — ADEP Project (v2.1)
 
-> The authoritative responsibility matrix for the Agentic Document Extraction
-> Platform. Defines who is **R**esponsible, **A**ccountable, **C**onsulted,
-> and **I**nformed for every major deliverable and decision.
-
----
+> The authoritative responsibility matrix for the Agentic Document
+> Extraction Platform. See [PROTOCOL.md](PROTOCOL.md) for the full rules
+> this matrix is subordinate to, especially §7 (guardrails).
+>
+> **v2.1 (2026-08-09, 16:00).** cline's dedicated verification-gate
+> mandate is suspended after it overclaimed a test result (reported
+> 63/63 passing when mgmt independently confirmed 53/63) and stalled on
+> a misdiagnosis without verifying any of the 8 items already queued
+> from devin and antigravity. The **V** column is now satisfied by
+> **cross-team verification** — devin verifies antigravity's work and
+> antigravity verifies devin's — with mgmt spot-checks as a compensating
+> control. Test-code ownership (`src/tests/`, frontend test files)
+> reverted to the implementing teams. See `PROTOCOL.md` v2.1 note and
+> `projectmgmt/STATUS.md` 2026-08-09 16:00 for the full record.
 
 ## Legend
 
-| Code | Role         | Meaning                                                        |
-|------|-------------|----------------------------------------------------------------|
-| **R**| Responsible | Does the work. Owns execution.                                |
-| **A**| Accountable | Final approval. One per row. Signs off on quality/completeness.|
-| **C**| Consulted   | Provides input/expertise before work is finalized. Two-way comms.|
-| **I**| Informed    | Kept in the loop after decisions/work. One-way notification.   |
-
----
+| Code | Role         | Meaning |
+|------|-------------|---------|
+| **R**| Responsible | Does the work. |
+| **A**| Accountable | Final approval. One per row. |
+| **V**| Verifies    | Independently confirms the work is real before it can close — now the *other* implementing team, not a dedicated third party (PROTOCOL §7.1, revised). |
+| **C**| Consulted   | Two-way input before finalizing. |
+| **I**| Informed    | One-way notification after the fact. |
 
 ## Parties
 
-| Party     | Agent Instance  | Scope                                         |
-|----------|-----------------|-----------------------------------------------|
-| **mgmt** | Cascade         | Design, planning, architecture, review, comms |
-| **backend** | Devin        | Python backend: `src/`, `notebooks/`, `tests/` |
-| **frontend**| Antigravity  | Frontend: `frontend/`, UI, client-side code    |
+| Party           | Agent Instance | Scope |
+|-----------------|-----------------|-------|
+| **mgmt**        | Claude          | Planning, architecture, backlog authority, arbitration, comms/backlog ownership, periodic spot-checks |
+| **devin**       | Devin           | `src/**` including `src/tests/`. Verifies antigravity's `verifying`-status items. |
+| **antigravity** | Antigravity     | `frontend/**` including all test files. Verifies devin's `verifying`-status items. |
+| **cline**       | Cline           | **Suspended.** No owned paths, no active queue. `comms/cline/` retained as record. |
+| **opencode**    | opencode        | Docker, CI build/deploy infra, dependency-manager hygiene, repo hygiene, security co-sign |
 
 ---
 
 ## 1. Architecture & Design
 
-| Deliverable / Decision                        | mgmt | backend | frontend |
-|----------------------------------------------|------|---------|----------|
-| Vision & architecture decisions (§9)          | A/R  | C       | C        |
-| RACI matrix (this document)                   | A/R  | I       | I        |
-| Communication protocol (PROTOCOL.md)          | A/R  | I       | I        |
-| API contract specifications                   | A    | R       | C        |
-| Agent Definition data model                   | A    | R       | C        |
-| Tool interface contracts (ToolSpec, Grounding)| A    | R       | I        |
-| Frontend component architecture               | A    | C       | R        |
-| State model design (LangGraph State)          | A    | R       | I        |
-| Definition Store schema (file-based v1)       | A    | R       | I        |
-| Evaluation harness design                     | A    | R       | I        |
+| Deliverable / Decision                    | mgmt | devin | antigravity | opencode |
+|--------------------------------------------|------|-------|-------------|----------|
+| Vision & architecture decisions            | A/R  | C     | C           | C        |
+| Protocol / RACI (this document)            | A/R  | I     | I           | I        |
+| API contract specifications                | A    | R     | C           | I        |
+| Shared status/state-machine contracts (§7.7 lock) | A | R  | C           | I        |
+| Tool interface contracts                   | A    | R     | I           | I        |
+| Frontend component architecture            | A    | C     | R           | I        |
+| Evaluation harness design                  | A    | R     | I           | I        |
 
 ---
 
-## 2. Backend Implementation (Phase 1: Engine)
+## 2. Implementation
 
-| Deliverable                                    | mgmt | backend | frontend |
-|-----------------------------------------------|------|---------|----------|
-| Tool interface contracts (ToolSpec, Grounding) | A    | R       | I        |
-| Package scaffolding (src/ layout)              | A    | R       | I        |
-| LangGraph State + node skeletons              | A    | R       | I        |
-| Tool Registry implementation                  | A    | R       | I        |
-| PaddleOCR provider                             | A    | R       | I        |
-| Tesseract provider                             | A    | R       | I        |
-| Azure GPT-5.4 VLM provider                     | A    | R       | I        |
-| PIL + OpenCV geometry provider                 | A    | R       | I        |
-| ReAct graph (plan/act/observe/reflect/terminate)| A  | R       | I        |
-| Outcome Validator (deterministic gap-report)   | A    | R       | I        |
-| Give-up caps (per-field, per-document)         | A    | R       | I        |
-| InvoiceSkill implementation                    | A    | R       | I        |
-| InvoiceTemplate implementation                 | A    | R       | I        |
-| `run()` entry point                            | A    | R       | I        |
-| Unit tests (pytest, mocked providers)          | A    | R       | I        |
-| Evaluation harness                             | A    | R       | I        |
+| Deliverable                                | mgmt | devin | antigravity | opencode |
+|----------------------------------------------|------|-------|-------------|----------|
+| Backend features/bugfixes (`src/**`)       | A    | R     | V           | C*       |
+| Frontend features/bugfixes (`frontend/**`) | A    | V     | R           | C*       |
+| Backend unit/integration tests             | A    | R     | V           | I        |
+| Frontend unit/component tests              | A    | V     | R           | I        |
+| e2e tests (backend-data fixtures)          | A    | R     | I           | I        |
+| CI test-job configuration                  | A    | C     | C           | R        |
+| Dockerfiles / docker-compose               | A    | C     | C           | R        |
+| CI build/deploy jobs                       | A    | C     | C           | R        |
+| Dependency-manager standards (uv/pnpm)     | A    | C     | C           | R        |
+| Security-tagged items (any region)         | A    | R*    | R*          | **A2**   |
+
+\* C = opencode is consulted on security-relevant implementation choices even outside its owned paths.
+\*\* opencode holds a second, mandatory Accountable-style sign-off specifically for the `security` tag per PROTOCOL §7.4 — this does not remove the implementing party's Responsible role, both sign-offs are required to close.
 
 ---
 
-## 3. Backend Implementation (Phase 2: Platform API)
+## 3. Cross-Team Coordination
 
-| Deliverable                                    | mgmt | backend | frontend |
-|-----------------------------------------------|------|---------|----------|
-| AgentDefinition model (serializable composition)| A  | R       | C        |
-| Definition Store (file-based CRUD)             | A    | R       | I        |
-| FastAPI app scaffold                           | A    | R       | C        |
-| REST: /definitions endpoints                   | A    | R       | C        |
-| REST: /skills endpoints                        | A    | R       | C        |
-| REST: /templates endpoints                     | A    | R       | C        |
-| REST: /runs endpoints                          | A    | R       | C        |
-| WebSocket: streaming run progress              | A    | R       | C        |
-| run(definition, input) wiring through API      | A    | R       | I        |
-| API integration tests                          | A    | R       | I        |
+| Activity                                       | mgmt | devin | antigravity | opencode |
+|-------------------------------------------------|------|-------|-------------|----------|
+| BLK-ID issuance (PROTOCOL §7.3)                | A/R  | I     | I           | I        |
+| Contract proposals (PROTOCOL §7.7)             | A    | R*    | R*          | C        |
+| Item verification before `implemented/`        | A    | V**   | V**         | I        |
+| Backlog item creation                          | A    | R     | R           | R        |
+| Backlog item assignment & prioritization       | A/R  | I     | I           | I        |
+| Blocker escalation                             | A/R  | R     | R           | R        |
+| Definition of Done per item (PROTOCOL §7.2)    | A/R  | C     | C           | C        |
 
----
-
-## 4. Frontend Implementation (Phase 3: UI)
-
-| Deliverable                                    | mgmt | backend | frontend |
-|-----------------------------------------------|------|---------|----------|
-| Frontend project scaffold (React + Tailwind + shadcn) | A | C | R |
-| API client (REST + WebSocket)                  | A    | C       | R        |
-| Chat Interface                                 | A    | C       | R        |
-| Skill Editor (structured form)                 | A    | C       | R        |
-| Template Editor (schema builder UI)            | A    | C       | R        |
-| Agent Definition Builder (wizard)              | A    | C       | R        |
-| Real-time reasoning trace display              | A    | C       | R        |
-| Structured result viewer                       | A    | C       | R        |
-| Frontend tests (unit + e2e)                    | A    | I       | R        |
-
----
-
-## 5. Cross-Team Coordination
-
-| Activity                                       | mgmt | backend | frontend |
-|-----------------------------------------------|------|---------|----------|
-| API contract negotiation                       | A    | R       | R        |
-| Interface contract approval                    | A    | C       | C        |
-| Cross-boundary change requests                 | A    | R*      | R*       |
-| Sprint / phase planning                        | A/R  | C       | C        |
-| Phase gate review & sign-off                   | A/R  | C       | C        |
-| Risk & blocker escalation                      | A/R  | R       | R        |
-| Definition of Done per phase                   | A/R  | C       | C        |
-| comms/ protocol maintenance                    | A/R  | I       | I        |
-
-\* *The requesting party writes the comms message; mgmt approves the cross-boundary work.*
-
----
-
-## 6. Operations & Infrastructure
-
-| Deliverable                                    | mgmt | backend | frontend |
-|-----------------------------------------------|------|---------|----------|
-| pyproject.toml / uv.lock (dependency additions) | A  | R       | I        |
-| pyproject.toml / uv.lock (dependency removals) | A/R  | C       | I        |
-| Tooling standards (uv, npm, etc.)              | A/R  | C       | C        |
-| .env.example maintenance                       | A/R  | C       | I        |
-| .gitignore maintenance                         | A/R  | C       | C        |
-| README.md maintenance                          | A/R  | C       | C        |
-| vision.md maintenance                          | A/R  | C       | C        |
-| Deployment configuration                       | A    | R       | C        |
-| CI/CD pipeline                                 | A    | R       | C        |
-| Backlog item creation                          | A    | R       | R        |
-| Backlog item assignment & prioritization       | A/R  | I       | I        |
-| STATUS.md updates                              | A/R  | I       | I        |
-| Item lifecycle (move backlog → in-progress → implemented) | A | R | R |
-| Phase gate review & sign-off                   | A/R  | C       | C        |
+\* Whichever party is changing the contract initiates; the other implementing party must approve before implementation per §7.7.
+\*\* Each verifies the *other's* items, never its own — see Key Rules below.
 
 ---
 
 ## Key Rules
 
-1. **One Accountable per row.** If a row shows `A` for mgmt only, mgmt is
-   the approver — the Responsible party does the work but mgmt signs off.
-2. **mgmt is Accountable for all architectural decisions.** Backend and
-   frontend are Responsible for implementation within their owned regions,
-   but mgmt reviews and approves design choices.
-3. **Cross-boundary work requires comms.** If backend needs a frontend change
-   (or vice versa), the requesting party sends a comms message to mgmt. Mgmt
-   either performs the change or grants written exception (per PROTOCOL.md §2.3).
-4. **Consulted means two-way communication.** The Responsible party must seek
-   input from Consulted parties before finalizing. Use comms messages, not
-   ad-hoc edits.
-5. **Informed means one-way notification.** The Responsible party sends a
-   comms message to the Informed party after completion. No response required.
-6. **RACI changes require mgmt approval.** Only mgmt may add, remove, or
-   reassign roles in this matrix.
-
----
+1. **One Accountable per row; V is not optional.** An item with no independent verification recorded cannot be `implemented/` — see PROTOCOL §7.1.
+2. **mgmt is Accountable for all architectural and cross-team decisions**, but does not implement inside devin/antigravity/opencode-owned regions.
+3. **RACI changes require mgmt approval.**
+4. **The V column can never be satisfied by the R party on the same row.** devin cannot verify devin's own item — it must go to antigravity, and vice versa. This is the exact failure mode this reorg exists to close, and the exact reason cline's mandate was suspended rather than simply loosened.
+5. **mgmt spot-checks are not optional under this revised model.** Cross-verification between two busy implementing teams is a known-weaker substitute for a dedicated gate — mgmt independently re-running a sample of "verified" claims is the compensating control while that trade-off is in effect.
 
 ## Phase Gate Authority
 
-| Phase  | Gate Criteria Owner | Implementation Reviewer | Sign-off |
-|--------|--------------------|------------------------|----------|
-| Phase 1: Engine       | mgmt | mgmt | mgmt |
-| Phase 2: Platform API | mgmt | mgmt + frontend (C) | mgmt |
-| Phase 3: Frontend     | mgmt | mgmt + backend (C) | mgmt |
-| Phase 4: Polish       | mgmt | mgmt | mgmt |
+| Phase                                  | Gate Criteria Owner | Verification | Sign-off |
+|-----------------------------------------|---------------------|---------------|----------|
+| Remediation (current — see REMEDIATION_PLAN.md) | mgmt        | cross-team (devin↔antigravity) + opencode on security items + mgmt spot-check | mgmt |
+| Phase 5: ADAS / Agentic Builder (frozen per PROTOCOL §7.8) | mgmt | same as above | mgmt |
 
-No phase is considered complete until mgmt signs off in writing via a comms
-message to both backend and frontend inboxes.
+No phase or remediation wave is complete until mgmt signs off in writing via comms, and that sign-off may only cite items that have been cross-verified (and mgmt-spot-checked where sampled).

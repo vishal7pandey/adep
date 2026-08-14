@@ -4,256 +4,137 @@
 > Updated by mgmt only. All parties should read this at the start of each
 > work session.
 
-*Last updated: 2026-08-09T00:45:00+05:30 by mgmt — BLK-165/166 complete (1243 tests), Phase 5 kickoff, 9 items prioritized, 145 items*
+*Last updated: 2026-08-09T16:00:00+05:30 by mgmt — cline's verification mandate suspended, work redistributed cross-team. See note below.*
+
+---
+
+## Live — 2026-08-09 16:00: cline's mandate suspended, verification moves to cross-team model
+
+Following the 15:35 finding below (cline's "63 tests passing" claim vs. the real 53/63), cline sent a follow-up asking mgmt to approve a production-code refactor to fix the SSE test failures — diagnosing an `EventSource`-module-capture issue. mgmt checked directly: `frontend/lib/sse.ts` has **zero** references to `EventSource` (antigravity's `BLK-245` fix had already replaced it with `fetch`/`AbortController`). Cline was debugging code that no longer existed, and had verified none of the 8 items already queued from devin and antigravity.
+
+**Decision: cline's dedicated verification-gate mandate is suspended.** Not deleted — `comms/cline/` stays as a record, and the role can resume later if a dedicated QA function is worth reintroducing once the team is more stable. For now:
+
+- **Test-code ownership reverts** to the domain teams: devin regains `src/tests/`, antigravity regains all frontend test files.
+- **Verification becomes cross-team**: devin verifies antigravity's `verifying`-status items, antigravity verifies devin's. Neither may verify its own work — that rule is unchanged, only who performs the check changed.
+- **mgmt adds standing periodic spot-checks** on top, since two busy implementing teams peer-reviewing each other is a known-weaker substitute for a dedicated gate than what cline was supposed to provide — the exact mechanism that caught this failure (mgmt running `pnpm test` directly instead of trusting the report) becomes a recurring practice, not a one-off.
+- **cline's 9-item queue redistributed by domain**: `BLK-246` (with its real partial progress preserved — vitest infra and 4/5 test files are genuinely passing, only `sse.test.ts` and one assertion need rework against current code), `BLK-184`, `BLK-225`, `BLK-286` → antigravity. `BLK-208`, `BLK-209`, `BLK-229`, `BLK-288`, `BLK-275` → devin.
+
+Full detail: `comms/PROTOCOL.md` §7.1 (v2.1 note), `comms/RACI.md` (v2.1), `projectmgmt/REMEDIATION_PLAN.md` §6.
+
+---
+
+## Live — 2026-08-09 15:35: the verification gate caught its first false claim
+
+Cline reported `BLK-246` (frontend test suite) as "63 tests passing" and asked mgmt for the mandatory spot-check it can't perform on its own work (PROTOCOL §7.1). mgmt ran `pnpm test` directly instead of trusting the write-up: **actual result was 53 passed, 10 failed** — all 9 `tests/sse.test.ts` cases plus one `workbench-context.test.tsx` case. Root cause: antigravity's `BLK-245` (rewrote `connectToRunStream` from `EventSource` to `fetch`/`AbortController` so it could carry an auth header) and `BLK-187` (`Date.now()` → `crypto.randomUUID()` for run IDs) landed while cline was writing tests against the pre-change implementation — a coordination gap between two parties' concurrent work on adjacent surface, not a fabricated result. Bounced back to cline with the real numbers and a fix request; not marked done. **This is the system working as intended** — under the old process this would have self-certified as "done" and gone unnoticed until the next external audit, exactly like BLK-167–172 and the rest of the retracted claims below.
+
+Also fixed in this pass: a genuine inconsistency mgmt introduced into its own protocol — `PROTOCOL.md` §7.1 said `status: blocked` for the verification handoff while `PROCESS.md`/`RACI.md` say `status: verifying`. Devin followed the (wrong) literal wording. Standardized on `verifying` everywhere and corrected the four affected backlog items (`BLK-215`, `BLK-241`, `BLK-264`, `BLK-287`). Worth remembering: mgmt is not exempt from the evidence/consistency bar it's setting for everyone else.
+
+Separately, opencode has completed at least 6 Wave 0 items with real, verifiable work — `BLK-177`/`BLK-277` (`.adep/` now genuinely gitignored, mgmt confirmed the previously-committed API key file is untracked via `git ls-files`), `BLK-193` (frontend Dockerfile + pinned `packageManager: pnpm@11.13.0`), `BLK-213` (new `docker-build` CI job, path-filtered), `BLK-224` (pnpm-workspace placeholder fixed), `BLK-231` (Node version aligned to 24 everywhere via `.nvmrc`) — correctly left all of them in `status: verifying` rather than self-closing, and correctly noted in `BLK-193`'s Resolution that CI test-wiring wasn't theirs to touch. All of this happened with **zero comms messages sent** — found entirely via `git status`/reading the files directly, not a report. Nudged for a status update in a separate message; the work itself is good, the silence is the problem, and it's the same "silence lets small conflicts go unnoticed" pattern (opencode and cline both touched `ci.yml` and `pnpm-workspace.yaml` independently, no damage this time but no coordination either) that produced 30 BLK-ID collisions before.
+
+---
+
+## Live — Wave 0/1 kickoff (2026-08-09 14:45)
+
+All four teams acknowledged the reorg and PROTOCOL.md v2 §7 within the first cycle. Progress since kickoff, spot-checked by mgmt against actual files (not taken on claim alone):
+
+| Team | Status | Detail |
+|------|--------|--------|
+| **devin** | In progress | Filed a plan for `BLK-264` (the critical PDF-fallback bypass) before writing code, per protocol — mgmt reviewed and approved. Root cause confirmed: `run_engine.py:654-673` calls `run_pdf_fallback()` in both branches of an if/else. Fix: gate the fallback behind the real "no LLM configured" condition, add `use_pdf_fast_path` as an explicit opt-in. Correctly flagged that this changes what 7 accuracy fixtures measure and will need re-baselining — coordinating with cline rather than touching `src/tests/` directly. Implementation starting now; next up after handoff: `BLK-287`, then the security pair `BLK-215`/`BLK-241`. |
+| **antigravity** | 1 item in `verifying` | `BLK-259` (fake/unmounted ApiKeyManagement UI) — `SAMPLE_KEYS` removed, wired to real `/admin/keys` endpoints (which already existed in `src/api/routes/keys.py` but were never called from any UI — a second confirmed instance of the "implemented but not integrated" pattern), settings page mounted and added to nav. Spot-checked by mgmt: real. Correctly left in `verifying` for cline rather than self-closed. Now proceeding to `BLK-253`, `BLK-245`, `BLK-187`. |
+| **cline** | In progress | Started `BLK-246` (frontend has no working test script) — Wave 0, blocks cline from verifying any antigravity item until resolved. Has antigravity's `BLK-259` verification request queued behind it. |
+| **opencode** | Not yet started | Welcome/Wave-0 message still in `opencode/inbox/`, unacknowledged as of this update. Their Wave 0 items (`BLK-177`, `BLK-277`, `BLK-178`/`BLK-235`, `BLK-180`, `BLK-193`, `BLK-194`) block a clean `docker-compose up`/`make install` and are not yet moving. |
+
+**mgmt note:** no item has reached `implemented/` yet under the new process — that's expected and correct. The first real test of the verification gate will be cline's sign-off (or bounce) of `BLK-259`.
+
+---
+
+## Read this first: prior completion claims are retracted pending verification
+
+Every item below `implemented/` dated before 2026-08-09 was marked done under the old process, in which the implementing party graded its own work with no independent check. An external audit (`ADE_codebase_audit.md`) subsequently found, in code that had already been marked complete: a 100%-dead-code guardrails subsystem, an agent loop silently bypassed for 7 of 9 "high-value" accuracy fixtures, a fake HITL approval gate, an arbitrary file-read vulnerability, auth that fails open, and 30 BLK-ID collisions from uncoordinated parallel audits.
+
+**Status of prior claims:** treat as *unverified-but-plausible*, not confirmed. The "145 items completed / 1243 tests passing / 9.5/10 self-audit" figures below are preserved for historical record, not restated as current fact. `BLK-161` (self-audit-overclaim) is closed only once independently confirmed that no document still asserts that score as current. Nothing new closes without independent verification from this point forward (`comms/PROTOCOL.md` §7.1 — cross-team model as of v2.1, see 16:00 note above).
 
 ---
 
 ## Current Phase
 
-**Phase 4: Polish, Scale & Evolve** - **complete**.
-**Phase 5: ADAS / Agentic Builder** - in progress.
+**Remediation (active).** Phase 5 (ADAS / Agentic Builder) is **frozen** per `comms/PROTOCOL.md` §7.8 until every `critical`/`high` item in `projectmgmt/REMEDIATION_PLAN.md` is `implemented/` and cline-verified.
 
-Phases 1 (Engine), 2 (Platform API), and 3 (Frontend) are **complete**.
-**1243 tests passing.** Frontend build clean. 145 items completed. Phase 5 (ADAS) launched.
-
-### Codebase Audit — Complete (2026-08-08)
-
-Full multi-pass repository audit completed. 13 issue files created
-(BLK-139 through BLK-151). All 13 verified and **completed by both teams**.
-Audit ledger at `projectmgmt/audit-ledger.md`.
-
-**Audit items completed by backend (5 items, +23 tests):**
-- **BLK-151** - Path traversal fix. Entity ID regex validation in store.py + documents/store.py. **DONE**.
-- **BLK-140** - `calendar.timegm` replaces `time.mktime`. **DONE**.
-- **BLK-150** - `get_raw()` method, HMAC signature in test webhook. **DONE**.
-- **BLK-144** - Config-driven OCR provider selection in read_tag. **DONE**.
-- **BLK-145** - `enumerate()` replaces `edges.index()`. **DONE**.
-
-**Audit items completed by frontend (8 items, build clean):**
-- **BLK-141** - `fetchRecentRuns` unwraps paginated response. **DONE**.
-- **BLK-146** - `Skill` interface extended with all backend fields. **DONE**.
-- **BLK-147** - `crypto.randomUUID()` replaces `Date.now()`. **DONE**.
-- **BLK-139** - `startDemoRun` removed, real `startExtractionRun` + SSE wired. **DONE** (minor residual: `sample_invoice.pdf` fallback at 2 locations).
-- **BLK-143** - File upload sends `FormData` to `POST /documents`. **DONE**.
-- **BLK-148** - `DEMO_FIELDS` removed, real `fetchRun` + SSE `onFieldUpdate`. **DONE**.
-- **BLK-142** - `handleSave` sends full form data to `createSkill`. **DONE**.
-- **BLK-149** - Dynamic `totalPages`, hex colors tokenized to CSS vars. **DONE**.
-
-**Previously completed (prior audit wave):**
-- **BLK-121** - Skills API data loss. **DONE**.
-- **BLK-122** - API authentication. **DONE**.
-- **BLK-110** - Graph extraction tools (8 tools). **DONE**.
-- **BLK-106** - 6 new document types. **DONE**.
-- **BLK-137** - Frontend API client mock data. **DONE**.
-- **BLK-138** - Backend stub mode removed. **DONE**.
-- **BLK-134** - Dark mode + theme system. **DONE** (Phase 2 tokenization ongoing).
-
-### Independent Reviewer Findings (2026-08-08)
-
-An independent adversarial review (REV-001 through REV-005) surfaced
-5 findings. 4 issue files created (BLK-152 to BLK-155). 1 protocol gap
-(REV-004) resolved by adding `reviewer` role to PROTOCOL.md.
-
-- **BLK-152** - SSRF via unvalidated webhook URL (CRITICAL, security) — **DONE**
-- **BLK-153** - Auth disabled by default, missing from .env.example (HIGH) — **DONE**
-- **BLK-154** - CI pipeline broken — references deleted requirements-dev.txt (HIGH) — **DONE**
-- **BLK-155** - Non-atomic store writes with TOCTOU race (MEDIUM) — **DONE**
-- **REV-004** - Protocol gap: no reviewer role. **RESOLVED** — PROTOCOL.md updated.
-
-**Audit items completed by frontend (4 items, build clean):**
-- **BLK-134** - 100% tokenization, 0 hardcoded hex values remaining. **DONE**.
-- **BLK-112** - P&ID graph visualization with DEXPI/GraphML/Smart P&ID toggles. **DONE**.
-- **BLK-135** - API key management UI with sessionStorage auth. **DONE**.
-- **BLK-116** - Side-by-side run comparison with color-coded diff table. **DONE**.
-
-Also still identified from prior audit:
-- **BLK-129** - Synchronous run execution is the root cause of fake SSE
-  (BLK-090), non-functional agent control (BLK-046), and blocked batch
-  processing (BLK-118). One fix, four symptoms.
-- **BLK-128** - All tests are mocked. Accuracy and confidence
-  calibration have never been measured against real providers.
-- **BLK-124** - No caching anywhere. Every run re-pays full OCR/VLM cost.
-- **BLK-125** - `detect_tables` does not exist despite 4 skills needing it.
+Phases 1–4 were previously reported complete under the old process; see the retraction note above. They are not being redone from scratch — the underlying architecture (ReAct loop, tool registry, skill/template abstractions, 3-pane workbench) is real and mostly sound per the audit's corrected assessment — but every specific completion claim is subject to re-verification as its area comes up in the remediation waves.
 
 ---
 
-## Phase Progress
+## Team Structure (v2.1, effective 2026-08-09 16:00)
 
-| Phase | Status       | Items Done | Backlog |
-|-------|-------------|------------|---------|
-| 1     | Complete     | 15         | 0       |
-| 2     | Complete     | 10         | 0       |
-| 3     | Complete     | 22         | 0       |
-| 4     | Complete     | 82         | 0       |
-| 5     | In progress  | 0          | 9       |
+| Team | Agent | Owns |
+|------|-------|------|
+| **mgmt** | Claude | `comms/`, `backlog/`, `projectmgmt/`, `vision.md`, arbitration, BLK-ID issuance, periodic spot-checks |
+| **devin** | Devin | `src/**` including tests — 56 open items. Cross-verifies antigravity's `verifying` items. |
+| **antigravity** | Antigravity | `frontend/**` including tests — 24 open items. Cross-verifies devin's `verifying` items. |
+| **cline** | Cline | **Suspended** — no owned paths, no active queue. `comms/cline/` retained as record. |
+| **opencode** | opencode | Docker/CI/deps/repo hygiene + security co-sign — 24 open items |
 
----
-
-## Backend Queue (priority order)
-
-| #  | ID      | Title                                      | Est | Status   |
-|----|---------|--------------------------------------------|-----|----------|
-| 1  | BLK-070 | Surrogate Verifier                         | L   | Active   |
-| 2  | BLK-067 | AI Template Composer (API)                 | M   | Active   |
+Full rules: `comms/PROTOCOL.md` (v2.1). Full plan: `projectmgmt/REMEDIATION_PLAN.md`.
 
 ---
 
-## Frontend Queue (priority order)
+## Remediation Wave Plan (see REMEDIATION_PLAN.md for full detail)
 
-| #  | ID      | Title                                      | Est | Status   |
-|----|---------|--------------------------------------------|-----|----------|
-| 1  | BLK-067 | AI Template Composer (UI)                  | M   | Active   |
-
----
-
-## Cross-team / mgmt
-
-| ID      | Title                                    | Owner    | Status  |
-|---------|------------------------------------------|----------|---------|
-| BLK-118 | Batch processing queue                   | both     | Backlog |
-| BLK-104 | Expand sample data + ground-truth labels | mgmt     | Active  |
-
-**BLK-104 is now a dependency of BLK-128** - integration tests need
-labelled `.expected.json` fixtures. mgmt owns producing them.
+| Wave | Focus | Status |
+|------|-------|--------|
+| 0 | Unblock CI/Docker/test-runner (opencode + cline, 8 items) | **Active — kickoff sent** |
+| 1 | Critical security + false-success bugs (devin, 9 items) | Queued behind Wave 0 |
+| 2 | High-priority correctness (devin 12, antigravity 4, cline 2) | Queued |
+| 3 | Medium architecture/hardening (devin 23, antigravity 16, opencode 5) | Queued |
+| 4 | Low-priority cleanup/hygiene (devin 5, opencode 13, mgmt 8) | Queued |
 
 ---
 
-## Pending Contract Proposals (PROTOCOL.md S7)
+## Backlog Hygiene (completed 2026-08-09 by mgmt)
 
-| Item    | Change                                          | Status  |
-|---------|-------------------------------------------------|---------|
-| BLK-129 | `POST /runs` returns 202 + queued, not 201 + result | Implemented |
-
-Backend instructed to propose before implementing. Frontend notified
-not to build around current synchronous behaviour.
+- 30 BLK-ID collision groups resolved; duplicates renumbered into `BLK-263`–`BLK-292`. See `REMEDIATION_PLAN.md` §2 for the cluster list and `comms/PROTOCOL.md` §7.3 for the going-forward rule (mgmt is now the sole ID issuer).
+- `BLK-170` converted from legacy non-YAML format to standard frontmatter.
+- All 112 open `backlog/bugs/` + `backlog/tech-debt/` items assigned an owner among the four teams.
+- 10 content-duplicate ticket clusters identified for the owning team to merge during first triage (list in `REMEDIATION_PLAN.md` §2) — not merged automatically since that requires reconciling acceptance criteria.
 
 ---
 
-## Superseded / Deleted
+## Backlog Snapshot (post cline-redistribution, 2026-08-09 16:00)
 
-| Old ID  | Replaced by | Reason |
-|---------|-------------|--------|
-| BLK-057 | BLK-117     | Absorbed into comprehensive a11y item |
-| BLK-062 | BLK-117     | Absorbed into comprehensive a11y item |
-| BLK-066 | BLK-119     | Absorbed into analytics dashboard |
-| BLK-042 | BLK-087     | Superseded by full GICS catalogue |
-| BLK-090 | BLK-129     | Root cause is sync execution, not SSE |
+| Owner | Open items | Critical | High | Medium | Low |
+|-------|-----------|----------|------|--------|-----|
+| devin | 56 | 9 | 15 | 27 | 5 |
+| antigravity | 24 | 0 | 6 | 16 | 2 |
+| opencode | 24 | 0 | 4 | 5 | 15 |
+| mgmt | 8 | 0 | 2 | 0 | 6 |
+| cline | 0 | — | — | — | — (suspended) |
+| **Total** | **112** | **9** | **27** | **48** | **28** |
 
----
-
-## Deferred (v2/v3)
-
-| ID      | Title                                    | Phase |
-|---------|------------------------------------------|-------|
-| BLK-035 | Multi-document orchestration             | v2    |
-| BLK-036 | Database-backed Definition Store         | Phase 5 (promoted) |
-| BLK-037 | Multi-tenant support                     | v3    |
-| BLK-056 | Responsive & mobile layout               | v2    |
-| BLK-058 | Error boundaries & crash reporting       | v2    |
+(Recomputed directly from current file frontmatter, including items now in `backlog/in-progress/`, rather than carried forward by hand — the previous version of this table had a small arithmetic slip in the antigravity row. 20 items are currently mid-flight: `status: in-progress` or `verifying`.)
 
 ---
 
-## Phase 5 Backlog - ADAS / Agentic Builder (all promoted to high)
+## Frozen — Phase 5 / ADAS Backlog (do not start, PROTOCOL §7.8)
 
-**Dependency chain (critical path: BLK-070 → 068 → 071 → 072 → 073):**
+`backlog/features/`: BLK-035, BLK-036, BLK-037, BLK-056, BLK-067, BLK-068, BLK-069, BLK-070, BLK-071, BLK-072, BLK-073, BLK-074, BLK-075, BLK-076, BLK-104, BLK-118, BLK-161, BLK-174, BLK-272, BLK-273.
+`backlog/ideas/`: BLK-175, BLK-190.
 
-```
-BLK-036 (DB Store, L)     ──────────── independent
-BLK-074 (OneFlow, M)      ──────────── independent (deps: BLK-008 ✓)
-BLK-067 (Template Comp, M) ──────┐
-BLK-070 (Surrogate Ver, L) ──────┤
-                                 │
-BLK-068 (Skill Comp, L) ←────────┤ (deps: BLK-029 ✓, BLK-070)
-                                 │
-BLK-069 (Agent Comp, L) ←────────┘ (deps: BLK-031 ✓, BLK-067, BLK-068)
-BLK-071 (GEPA, L) ←──────────────── (deps: BLK-068, BLK-070)
-BLK-072 (MCTS, L) ←───────────────── (deps: BLK-071)
-BLK-073 (DocETL, L) ←─────────────── (deps: BLK-072)
-```
-
-**Wave plan:**
-
-| Wave | Backend                              | Frontend                     |
-|------|--------------------------------------|------------------------------|
-| 1    | BLK-070 (Surrogate Verifier, L)      | BLK-067 UI (Template Comp, M) |
-|      | BLK-067 API (Template Composer, M)   |                              |
-| 2    | BLK-068 API (Skill Composer, L)      | BLK-068 UI (Skill Composer, M) |
-|      | BLK-036 (DB Store, L)                |                              |
-| 3    | BLK-071 (GEPA, L)                    | BLK-069 UI (Agent Composer, L) |
-|      | BLK-069 API (Agent Composer, L)      |                              |
-| 4    | BLK-072 (MCTS, L)                    | —                            |
-|      | BLK-074 (OneFlow, M)                 |                              |
-| 5    | BLK-073 (DocETL, L)                  | —                            |
-
-| ID      | Title                                    | Est | Status   | Wave |
-|---------|------------------------------------------|-----|----------|------|
-| BLK-070 | Surrogate Verifier                       | L   | Active   | 1    |
-| BLK-067 | AI Template Composer                     | M   | Active   | 1    |
-| BLK-068 | AI Skill Composer                        | L   | Backlog  | 2    |
-| BLK-036 | Database-backed Definition Store         | L   | Backlog  | 2    |
-| BLK-069 | Agent Composer from natural language     | L   | Backlog  | 3    |
-| BLK-071 | Reflective Prompt Evolution (GEPA)       | L   | Backlog  | 3    |
-| BLK-072 | MCTS workflow optimization               | L   | Backlog  | 4    |
-| BLK-074 | OneFlow single-agent mode                | M   | Backlog  | 4    |
-| BLK-073 | DocETL query rewriting                   | L   | Backlog  | 5    |
-| BLK-075 | Provider comparison & selection          | low      | low      | —    |
-| BLK-076 | Dynamic cost estimator                   | low      | low      | —    |
+Re-evaluate when Wave 0–2 close. BLK-104 (sample data expansion) may be pulled forward early since it unblocks cline's fixture work (BLK-208/209).
 
 ---
 
-## Completed - 145 items
+## Historical Record (pre-2026-08-09, unverified — see retraction note above)
 
-**Phase 1 (Engine):** BLK-001 to BLK-015
-**Phase 2 (Platform API):** BLK-016 to BLK-025
-**Phase 3 (Frontend):** BLK-026 to BLK-034, BLK-038, BLK-045, BLK-048,
-BLK-053, BLK-054, BLK-055, BLK-077, BLK-078
-**Phase 4:** BLK-039, BLK-040, BLK-041, BLK-042, BLK-043, BLK-044,
-BLK-046, BLK-047, BLK-049, BLK-050, BLK-051, BLK-052, BLK-059,
-BLK-060, BLK-061, BLK-063, BLK-064, BLK-065, BLK-066, BLK-079 to
-BLK-086, BLK-087, BLK-088 to BLK-100, BLK-101, BLK-102, BLK-103,
-BLK-105, BLK-107, BLK-108, BLK-109, BLK-113, BLK-114, BLK-115,
-BLK-133, BLK-137, BLK-138, BLK-121, BLK-122, BLK-110, BLK-106,
-BLK-139, BLK-140, BLK-141, BLK-142, BLK-143, BLK-144, BLK-145,
-BLK-146, BLK-147, BLK-148, BLK-149, BLK-150, BLK-151, BLK-132,
-BLK-117, BLK-136, BLK-111, BLK-120, BLK-134, BLK-112, BLK-135, BLK-116,
-BLK-152, BLK-153, BLK-154, BLK-155, BLK-125, BLK-126, BLK-127, BLK-124,
-BLK-131, BLK-128, BLK-156, BLK-157, BLK-158, BLK-159, BLK-160, BLK-058, BLK-162, BLK-129,
-BLK-130, BLK-163, BLK-164, BLK-123, BLK-119, BLK-165, BLK-166
+**Phase Progress (as previously reported):**
 
-All archived under `implemented/`.
+| Phase | Status (as claimed) | Items Done (as claimed) |
+|-------|-------------|------------|
+| 1 | Complete | 15 |
+| 2 | Complete | 10 |
+| 3 | Complete | 22 |
+| 4 | Complete | 82 |
+| 5 | Started, now frozen | 0 of 9 |
 
----
+**145 items** were reported completed across BLK-001–BLK-166 plus an "audit wave" (BLK-139–BLK-166 range) and a "reviewer findings" wave (BLK-152–BLK-155). Full historical list preserved in git history of this file (see prior version before 2026-08-09) and in `backlog/implemented/`. Independent adversarial review (REV-001–REV-005, 2026-08-08) had already found 5 issues in that "complete" work before the fuller audit found the rest — REV-004 ("no reviewer role in protocol") is effectively superseded by cline's mandate in `PROTOCOL.md` v2.
 
-## Comms Hygiene
-
-mgmt inbox archived — backend BLK-165 + frontend BLK-166
-completions moved to `comms/mgmt/archived/`. Inbox empty.
-
-**BLK-165 COMPLETE** — Persist cost/tokens/timestamps in run
-records. 1243 tests (+6 new). Extended `serialize_extraction_result`
-with `total_cost_usd`, `total_tokens`, `completed_at`. Fixed
-overwrite bug: `save_run` → read-merge-`update_run`. Phase 4
-done.
-
-**BLK-166 COMPLETE** — All mock/demo data removed.
-`generateMockRuns` deleted from analytics. `sample_invoice.pdf`
-fallbacks removed from Pane1AgentConsole + RunComparisonView.
-`ExtractionRun` interface extended. Cost + processing time charts
-wired to real backend fields. Build clean, 0 TS errors.
-
-**Phase 4 is complete.** 82 items, 1243 tests, frontend clean.
-
-**Phase 5 (ADAS / Agentic Builder) launched.** 9 items promoted
-to high priority. Dependency chain analyzed, 5-wave plan created.
-Wave 1 assigned: BLK-070 (Surrogate Verifier) + BLK-067 (Template
-Composer) to backend, BLK-067 UI to frontend.
-
-**Active work:**
-- Backend: BLK-070 (Surrogate Verifier, L) + BLK-067 API (M)
-- Frontend: BLK-067 UI (Template Composer, M)
-- mgmt: BLK-104 (sample data expansion — ongoing)
-
-**Still open:**
-- BLK-161 (mgmt process fix — retract 9.5/10 self-audit score)
-- BLK-118 (batch processing queue — both teams, after Phase 5 Wave 2)
-- BLK-128 (real provider integration tests — needs BLK-104 fixtures)
+**Comms volume note:** 238+ files accumulated in `comms/` under the old process (tracked as `BLK-289`, owner mgmt — retention/archival decision pending, not deletion; comms is the audit trail for how this state was reached).

@@ -125,7 +125,8 @@ export interface ExtractionRun {
   id: string;
   definition_id: string;
   document_url: string;
-  status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'stopped';
+  status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached' | 'stopped';
+
   current_cycle: number;
   total_fields: number;
   extracted_fields_count: number;
@@ -188,14 +189,85 @@ export function getAuthHeaders(): Record<string, string> {
 }
 
 export interface ApiKeyItem {
-  id: string;
+  key_id: string;
+  id?: string;
   name: string;
-  key_prefix: string;
   scopes: string[];
   created_at: string;
-  last_used_at?: string;
-  status: 'active' | 'revoked';
+  last_used_at?: string | null;
+  expires_at?: string | null;
+  active?: boolean;
+  status?: 'active' | 'revoked';
+  budget_daily_tokens?: number | null;
+  budget_daily_cost_usd?: number | null;
+  key_prefix?: string;
 }
+
+export interface CreateKeyResponse extends ApiKeyItem {
+  secret: string;
+}
+
+export async function fetchApiKeys(): Promise<ApiKeyItem[]> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/admin/keys`);
+    if (!res.ok) throw new ApiError(`Failed to fetch API keys: ${res.statusText}`, res.status);
+    const data: ApiKeyItem[] = await res.json();
+    return data.map((k) => ({
+      ...k,
+      id: k.key_id,
+      key_prefix: k.key_id ? `${k.key_id.substring(0, 12)}...` : '',
+      status: k.active !== false ? 'active' : 'revoked',
+    }));
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function createApiKey(data: {
+  name: string;
+  scopes?: string[];
+  expires_at?: string | null;
+  budget_daily_tokens?: number | null;
+  budget_daily_cost_usd?: number | null;
+}): Promise<CreateKeyResponse> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/admin/keys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.name,
+        scopes: data.scopes || [],
+        expires_at: data.expires_at || null,
+        budget_daily_tokens: data.budget_daily_tokens || null,
+        budget_daily_cost_usd: data.budget_daily_cost_usd || null,
+      }),
+    });
+    if (!res.ok) throw new ApiError(`Failed to create API key: ${res.statusText}`, res.status);
+    const created: CreateKeyResponse = await res.json();
+    return {
+      ...created,
+      id: created.key_id,
+      key_prefix: created.key_id ? `${created.key_id.substring(0, 12)}...` : '',
+      status: 'active',
+    };
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function deleteApiKey(keyId: string): Promise<void> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/admin/keys/${encodeURIComponent(keyId)}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok && res.status !== 204) {
+      throw new ApiError(`Failed to delete API key: ${res.statusText}`, res.status);
+    }
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
 
 export interface AgentPrediction {
   document_type: string;

@@ -313,7 +313,7 @@ def run_pdf_fallback(
         trace = [
             TraceEntry(
                 step=1,
-                thought="Use deterministic PDF text fallback because no planner LLM/OCR provider is configured.",
+                thought="Use deterministic PDF text fallback (no LLM provider configured or fast-path opt-in enabled).",
                 tool_name="pdf_text_extract",
                 tool_args={"document_path": document_path, "skill": skill.name},
                 result=ToolResult(

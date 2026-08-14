@@ -1,34 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Key, Plus, Trash2, Copy, Check, Shield, AlertTriangle, Eye, EyeOff, Lock, Sparkles } from 'lucide-react';
-import { ApiKeyItem, getAuthHeaders } from '@/lib/api';
+import { Key, Plus, Trash2, Copy, Check, Shield, AlertTriangle, Eye, EyeOff, Lock, Sparkles, RefreshCw } from 'lucide-react';
+import { ApiKeyItem, fetchApiKeys, createApiKey, deleteApiKey, ApiError } from '@/lib/api';
 import { LttsButton } from '@/components/ui/LttsButton';
 import { LttsBadge } from '@/components/ui/LttsBadge';
 
-const SAMPLE_KEYS: ApiKeyItem[] = [
-  {
-    id: 'key_01',
-    name: 'Production AP Automation Integration',
-    key_prefix: 'adep_live_8f3a...',
-    scopes: ['admin', 'extraction:write'],
-    created_at: '2026-08-01T10:00:00Z',
-    last_used_at: '2026-08-08T05:30:00Z',
-    status: 'active',
-  },
-  {
-    id: 'key_02',
-    name: 'Staging Pipeline Read-Only',
-    key_prefix: 'adep_live_1c9b...',
-    scopes: ['read_only'],
-    created_at: '2026-08-05T14:20:00Z',
-    last_used_at: '2026-08-07T18:12:00Z',
-    status: 'active',
-  },
-];
-
 export const ApiKeyManagement: React.FC = () => {
-  const [keys, setKeys] = useState<ApiKeyItem[]>(SAMPLE_KEYS);
+  const [keys, setKeys] = useState<ApiKeyItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRevealModal, setShowRevealModal] = useState(false);
   const [createdRawKey, setCreatedRawKey] = useState<string | null>(null);
@@ -36,17 +18,32 @@ export const ApiKeyManagement: React.FC = () => {
 
   // Form State
   const [keyName, setKeyName] = useState('');
-  const [selectedScopes, setSelectedScopes] = useState<string[]>(['extraction:write']);
+  const [selectedScopes, setSelectedScopes] = useState<string[]>(['admin']);
 
   // Session Key Connector State
   const [sessionKey, setSessionKey] = useState('');
   const [activeConnectedKey, setActiveConnectedKey] = useState<string | null>(null);
+
+  const loadKeys = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchApiKeys();
+      setKeys(data);
+    } catch (err) {
+      setKeys([]);
+      setError(err instanceof ApiError ? `API Error ${err.status}: ${err.message}` : String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = sessionStorage.getItem('adep_api_key');
       if (stored) setActiveConnectedKey(stored);
     }
+    loadKeys();
   }, []);
 
   const handleConnectSessionKey = (e: React.FormEvent) => {
@@ -55,35 +52,45 @@ export const ApiKeyManagement: React.FC = () => {
     sessionStorage.setItem('adep_api_key', sessionKey.trim());
     setActiveConnectedKey(sessionKey.trim());
     setSessionKey('');
+    loadKeys();
   };
 
   const handleDisconnectSessionKey = () => {
     sessionStorage.removeItem('adep_api_key');
     setActiveConnectedKey(null);
+    loadKeys();
   };
 
-  const handleCreateKey = () => {
+  const handleCreateKey = async () => {
     if (!keyName.trim()) return;
+    setError(null);
 
-    const rawKey = `adep_live_${crypto.randomUUID().replace(/-/g, '')}`;
-    const newKeyItem: ApiKeyItem = {
-      id: `key_${Date.now()}`,
-      name: keyName.trim(),
-      key_prefix: `${rawKey.substring(0, 14)}...`,
-      scopes: selectedScopes,
-      created_at: new Date().toISOString(),
-      status: 'active',
-    };
+    try {
+      const resp = await createApiKey({
+        name: keyName.trim(),
+        scopes: selectedScopes,
+      });
 
-    setKeys((prev) => [newKeyItem, ...prev]);
-    setCreatedRawKey(rawKey);
-    setShowCreateModal(false);
-    setShowRevealModal(true);
-    setKeyName('');
+      setKeys((prev) => [resp, ...prev]);
+      setCreatedRawKey(resp.secret);
+      setShowCreateModal(false);
+      setShowRevealModal(true);
+      setKeyName('');
+    } catch (err) {
+      setError(`Failed to create API key: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
 
-  const handleRevokeKey = (id: string) => {
-    setKeys((prev) => prev.map((k) => (k.id === id ? { ...k, status: 'revoked' } : k)));
+  const handleRevokeKey = async (keyId: string) => {
+    if (!window.confirm('Are you sure you want to revoke this API key?')) return;
+    setError(null);
+
+    try {
+      await deleteApiKey(keyId);
+      setKeys((prev) => prev.map((k) => ((k.key_id || k.id) === keyId ? { ...k, active: false, status: 'revoked' } : k)));
+    } catch (err) {
+      setError(`Failed to revoke API key: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
 
   const handleCopyRawKey = () => {
@@ -106,10 +113,22 @@ export const ApiKeyManagement: React.FC = () => {
           </p>
         </div>
 
-        <LttsButton variant="primary" onClick={() => setShowCreateModal(true)}>
-          <Plus className="w-4 h-4" /> Create API Key
-        </LttsButton>
+        <div className="flex items-center gap-2">
+          <LttsButton variant="tertiary" size="sm" onClick={loadKeys} disabled={isLoading}>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          </LttsButton>
+          <LttsButton variant="primary" onClick={() => setShowCreateModal(true)}>
+            <Plus className="w-4 h-4" /> Create API Key
+          </LttsButton>
+        </div>
       </div>
+
+      {error && (
+        <div className="p-3 rounded-lg border border-[var(--status-error)] bg-[var(--status-error-subtle)] text-xs text-[var(--status-error)] flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="font-bold underline ml-2">Dismiss</button>
+        </div>
+      )}
 
       {/* Active Session Connector Banner */}
       <div className="p-4 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-primary-subtle)] space-y-3">
@@ -154,55 +173,69 @@ export const ApiKeyManagement: React.FC = () => {
       {/* API Key List */}
       <div className="flex-1 overflow-y-auto space-y-3">
         <h2 className="font-bold text-sm text-[var(--primary-text)]">Active & Revoked API Keys</h2>
-        {keys.map((k) => (
-          <div
-            key={k.id}
-            className="p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] flex items-center justify-between shadow-2xs text-xs space-y-0"
-          >
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-sm text-[var(--primary-text)]">{k.name}</span>
-                <LttsBadge variant={k.status === 'active' ? 'verified' : 'failed'}>
-                  {k.status === 'active' ? 'Active' : 'Revoked'}
-                </LttsBadge>
-              </div>
+        {isLoading ? (
+          <div className="py-8 text-center text-xs text-muted">Loading API keys...</div>
+        ) : keys.length === 0 ? (
+          <div className="py-8 text-center text-xs text-muted border border-dashed border-[var(--pane-border)] rounded-xl">
+            No API keys found on server. Click "Create API Key" above to generate one.
+          </div>
+        ) : (
+          keys.map((k) => {
+            const keyId = k.key_id || k.id || '';
+            const isActive = k.active !== false && k.status !== 'revoked';
 
-              <div className="flex items-center gap-3 text-muted text-[11px]">
-                <span className="font-mono">{k.key_prefix}</span>
-                <span>•</span>
-                <span>Created {new Date(k.created_at).toLocaleDateString()}</span>
-                {k.last_used_at && (
-                  <>
+            return (
+              <div
+                key={keyId}
+                className="p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] flex items-center justify-between shadow-2xs text-xs space-y-0"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-[var(--primary-text)]">{k.name}</span>
+                    <LttsBadge variant={isActive ? 'verified' : 'failed'}>
+                      {isActive ? 'Active' : 'Revoked'}
+                    </LttsBadge>
+                  </div>
+
+                  <div className="flex items-center gap-3 text-muted text-[11px]">
+                    <span className="font-mono">{k.key_prefix || (keyId ? `${keyId.substring(0, 12)}...` : '')}</span>
                     <span>•</span>
-                    <span>Last used {new Date(k.last_used_at).toLocaleTimeString()}</span>
-                  </>
+                    <span>Created {new Date(k.created_at).toLocaleDateString()}</span>
+                    {k.last_used_at && (
+                      <>
+                        <span>•</span>
+                        <span>Last used {new Date(k.last_used_at).toLocaleTimeString()}</span>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 pt-1">
+                    {k.scopes.map((scope) => (
+                      <span
+                        key={scope}
+                        className="px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono font-semibold text-muted"
+                      >
+                        {scope}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {isActive && (
+                  <button
+                    onClick={() => handleRevokeKey(keyId)}
+                    className="p-2 text-muted hover:text-[var(--status-error)] hover:bg-red-500/10 rounded-lg transition-colors"
+                    title="Revoke Key"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
               </div>
-
-              <div className="flex items-center gap-1.5 pt-1">
-                {k.scopes.map((scope) => (
-                  <span
-                    key={scope}
-                    className="px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 text-[10px] font-mono font-semibold text-muted"
-                  >
-                    {scope}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {k.status === 'active' && (
-              <button
-                onClick={() => handleRevokeKey(k.id)}
-                className="p-2 text-muted hover:text-[var(--status-error)] hover:bg-red-500/10 rounded-lg transition-colors"
-                title="Revoke Key"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        ))}
+            );
+          })
+        )}
       </div>
+
 
       {/* Create Key Modal */}
       {showCreateModal && (

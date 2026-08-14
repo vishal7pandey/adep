@@ -117,6 +117,16 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
             detail=f"Definition '{definition_id}' not found",
         )
 
+    # BLK-241: Validate document_path against allowed document roots
+    doc_path_resolved = Path(req.document_path).resolve()
+    allowed_roots = [r.resolve() for r in [Path.cwd() / ".adep", Path.cwd() / "sample-data"]]
+    if not any(doc_path_resolved.is_relative_to(root) for root in allowed_roots):
+        logger.warning("Run creation denied — document_path outside allowed roots: %s", req.document_path)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="document_url must point to a file within the document store (.adep/) or sample-data/.",
+        )
+
     # Pre-run budget check [BLK-051]
     def_status, global_status = check_pre_run_budget()
     if def_status.is_exceeded:
@@ -173,15 +183,32 @@ async def preview_run_document(run_id: str, page_number: int = 1) -> Response:
 
     Supports image paths directly and rasterizes PDFs to PNG on demand.
     This enables UI preview when older run records store filesystem paths.
+
+    BLK-241: Path is confined to allowed document roots (.adep/ and sample-data/)
+    to prevent arbitrary file read via attacker-controlled document_url.
     """
     run_data = _get_run_or_404(run_id)
     document_path = run_data.get("document_url") or run_data.get("document_path")
     if not document_path:
         raise HTTPException(status_code=404, detail="Run has no source document path")
 
-    path = Path(document_path)
+    path = Path(document_path).resolve()
+
+    # BLK-241: Confine to allowed document roots only
+    allowed_roots = [
+        Path.cwd() / ".adep",
+        Path.cwd() / "sample-data",
+    ]
+    allowed_roots = [r.resolve() for r in allowed_roots]
+    if not any(path.is_relative_to(root) for root in allowed_roots):
+        logger.warning("Preview denied — path outside allowed roots: %s", document_path)
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Document path is outside the allowed document store.",
+        )
+
     if not path.exists() or not path.is_file():
-        raise HTTPException(status_code=404, detail=f"Document not found: {document_path}")
+        raise HTTPException(status_code=404, detail=f"Document not found")
 
     ext = path.suffix.lower()
     image_types = {
