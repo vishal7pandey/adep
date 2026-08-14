@@ -138,11 +138,14 @@ export const Pane2ExtractedData: React.FC = () => {
     setEditValue(field.value !== null ? String(field.value) : '');
   };
 
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+
   const handleSaveEdit = (fieldId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // BLK-253: Preserve model confidence on manual edit; do NOT fabricate confidence: 1.0
     setFields((prev) =>
       prev.map((f) =>
-        f.id === fieldId ? { ...f, value: editValue, status: 'verified', confidence: 1.0 } : f
+        f.id === fieldId ? { ...f, value: editValue, status: 'verified' } : f
       )
     );
     setEditingFieldId(null);
@@ -150,6 +153,7 @@ export const Pane2ExtractedData: React.FC = () => {
 
   const handleExportJSON = async () => {
     setShowExportMenu(false);
+    setExportNotice(null);
     // Try real API first, fall back to client-side export
     if (runId) {
       try {
@@ -163,8 +167,8 @@ export const Pane2ExtractedData: React.FC = () => {
         a.remove();
         URL.revokeObjectURL(url);
         return;
-      } catch {
-        // Fall through to client-side export
+      } catch (err) {
+        setExportNotice(`Backend API export failed (${err instanceof Error ? err.message : 'error'}); downloaded client-side JSON export.`);
       }
     }
     // Client-side fallback (partial/failed runs still exportable)
@@ -179,6 +183,7 @@ export const Pane2ExtractedData: React.FC = () => {
 
   const handleExportCSV = async () => {
     setShowExportMenu(false);
+    setExportNotice(null);
     // Try real API first, fall back to client-side export
     if (runId) {
       try {
@@ -192,8 +197,8 @@ export const Pane2ExtractedData: React.FC = () => {
         a.remove();
         URL.revokeObjectURL(url);
         return;
-      } catch {
-        // Fall through to client-side export
+      } catch (err) {
+        setExportNotice(`Backend API export failed (${err instanceof Error ? err.message : 'error'}); downloaded client-side CSV export.`);
       }
     }
     // Client-side fallback (partial/failed runs still exportable)
@@ -214,6 +219,7 @@ export const Pane2ExtractedData: React.FC = () => {
     downloadAnchor.click();
     downloadAnchor.remove();
   };
+
 
   // BLK-133: Copy single field value to clipboard
   const handleCopyField = (field: ExtractedField, e: React.MouseEvent) => {
@@ -246,7 +252,14 @@ export const Pane2ExtractedData: React.FC = () => {
     <div className="h-full flex flex-col border-r border-[var(--pane-border)] bg-[var(--pane-bg)] overflow-hidden">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-[var(--pane-bg)] border-b border-[var(--pane-border)] shadow-2xs">
+        {exportNotice && (
+          <div className="px-4 py-2 bg-[var(--status-warning-subtle)] border-b border-[var(--status-warning)] text-[11px] text-[var(--status-warning)] flex items-center justify-between font-medium">
+            <span>⚠️ {exportNotice}</span>
+            <button onClick={() => setExportNotice(null)} className="font-bold underline ml-2">Dismiss</button>
+          </div>
+        )}
         <div className="px-4 py-2.5 flex items-center justify-between bg-black/5 dark:bg-white/5">
+
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-xs text-[var(--primary-text)]">Extracted Data</h2>
             <AdeBadge variant="verified">{verifiedCount}/{fields.length || 6} Verified</AdeBadge>
@@ -506,11 +519,12 @@ export const Pane2ExtractedData: React.FC = () => {
             })}
           </div>
         ) : (
-          <div className="h-full flex flex-col">
+          <div className="h-full flex flex-col space-y-2">
+            <div className="text-[11px] text-muted font-mono italic">JSON View (Read-Only)</div>
             <textarea
               value={jsonText}
-              onChange={(e) => setJsonText(e.target.value)}
-              className="flex-1 w-full p-4 font-mono text-xs bg-black/10 dark:bg-black/40 border border-[var(--pane-border)] rounded-lg focus:outline-none"
+              readOnly
+              className="flex-1 w-full p-4 font-mono text-xs bg-black/10 dark:bg-black/40 border border-[var(--pane-border)] rounded-lg focus:outline-none cursor-default"
             />
           </div>
         )}

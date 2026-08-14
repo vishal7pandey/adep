@@ -21,8 +21,10 @@ import {
   Copy,
   Edit2,
   ChevronDown,
-  BarChart3
+  BarChart3,
+  Key
 } from 'lucide-react';
+
 import { useTheme } from '@/context/ThemeContext';
 import { useWorkbench } from '@/context/WorkbenchContext';
 import { ExtractionRun, fetchRecentRuns, deleteRun, duplicateRun, renameRun } from '@/lib/api';
@@ -74,13 +76,12 @@ export const Sidebar: React.FC = () => {
       const docName = docUrl.includes('\\') ? docUrl.split('\\').pop() || docUrl : docUrl;
       setDocument(docName || 'document', docUrl || null);
       startRun(id);
-      if (session.status === 'paused') setRunStatus('paused');
-      else if (session.status === 'running') setRunStatus('running');
-      else if (session.status === 'completed') setRunStatus('completed');
+      if (session.status) setRunStatus(session.status);
       else setRunStatus('stopped');
     }
     router.push(`/?run=${id}`);
   };
+
 
   const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -270,6 +271,7 @@ export const Sidebar: React.FC = () => {
             { href: '/skills', label: 'Skills', icon: Sparkles },
             { href: '/templates', label: 'Templates', icon: Database },
             { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+            { href: '/settings', label: 'API Keys & Auth', icon: Key },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;

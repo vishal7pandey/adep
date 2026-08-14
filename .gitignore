@@ -36,3 +36,12 @@ Thumbs.db
 
 # Models / data caches
 .paddlex/
+
+# ADEP runtime data store — NEVER commit. Contains API keys, uploaded
+# documents, run traces (PII), OCR/VLM cache, and reports (BLK-177, BLK-277).
+# Reproducible runtime output; the working-tree files are disposable.
+.adep/
+
+# pnpm is the only allowed frontend package manager (PROTOCOL §11.2).
+# package-lock.json is npm's lockfile and must not be created or committed.
+frontend/package-lock.json

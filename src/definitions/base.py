@@ -17,11 +17,15 @@ class AgentConfig(BaseModel):
         max_cycles_per_field: Override for per-field cycle cap [§2.6].
         max_cycles_per_document: Override for per-document cycle cap [§2.6].
         confidence_threshold: Override for default confidence threshold.
+        use_pdf_fast_path: Opt-in to use the deterministic PDF regex fallback
+            instead of the ReAct agent loop, even when an LLM provider is
+            configured. Defaults to False — the agent loop is the default path.
     """
 
     max_cycles_per_field: int | None = None
     max_cycles_per_document: int | None = None
     confidence_threshold: float | None = None
+    use_pdf_fast_path: bool = False
 
 
 class AgentDefinition(BaseModel):

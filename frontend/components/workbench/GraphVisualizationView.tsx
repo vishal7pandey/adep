@@ -110,14 +110,12 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
   }
 
   const dexpiContent =
-    serializedOutput?.dexpi_xml || '<!-- No DEXPI XML data available for this run -->';
+    serializedOutput?.dexpi_xml || '<!-- No DEXPI XML data returned by backend for this run -->';
   const smartPidContent =
     serializedOutput?.smart_pid_json ||
-    (nodes.length > 0
-      ? JSON.stringify({ nodes, edges, topology_rules: topologyRules }, null, 2)
-      : '{\n  "message": "No Smart P&ID JSON data available"\n}');
+    '{\n  "message": "No Smart P&ID JSON data returned by backend for this run"\n}';
   const graphmlContent =
-    serializedOutput?.graphml || '<!-- No GraphML data available for this run -->';
+    serializedOutput?.graphml || '<!-- No GraphML data returned by backend for this run -->';
 
   const passedRulesCount = topologyRules.filter((r) => r.status === 'pass').length;
 
@@ -128,10 +126,15 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
         <div className="flex items-center gap-2">
           <Network className="w-4 h-4 text-[var(--brand-primary)]" />
           <h3 className="font-bold text-xs text-[var(--primary-text)]">P&amp;ID Topology Graph</h3>
-          <AdeBadge variant="verified">
-            {nodes.length} Nodes · {edges.length} Edges
-          </AdeBadge>
+          {nodes.length > 0 ? (
+            <AdeBadge variant="verified">
+              {nodes.length} Nodes · {edges.length} Edges (Backend P&ID)
+            </AdeBadge>
+          ) : (
+            <AdeBadge variant="neutral">No Nodes Extracted</AdeBadge>
+          )}
         </div>
+
 
         {/* View Toggles */}
         <div className="flex items-center bg-black/10 dark:bg-white/10 p-0.5 rounded-lg text-[11px] font-medium">

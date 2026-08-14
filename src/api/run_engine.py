@@ -442,6 +442,7 @@ def serialize_extraction_result(
             "extraction": _serialize_extraction_payload(result.field_values),
         },
         "task_type": state.get("task_type", "extraction"),
+        "execution_mode": "agent",
         "completed_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -488,6 +489,7 @@ def _serialize_graph_result(
             "extraction": {},
         },
         "task_type": "graph_extraction",
+        "execution_mode": "agent",
         "graph": {
             "nodes": nodes,
             "edges": edges,
@@ -651,28 +653,29 @@ async def _execute_run_inner(
     agent_config = def_data.get("agent_config", {})
     max_cycles = agent_config.get("max_cycles_per_document")
 
-    # BLK-171: Fail fast if LLM provider is not configured (unless PDF fallback can handle it)
-    if not settings.azure_api_key and not settings.azure_chat_endpoint:
+    # BLK-264: PDF fallback only runs when (a) no LLM provider is configured, or
+    # (b) the definition explicitly opts in via use_pdf_fast_path. Previously
+    # both branches of an if/else called run_pdf_fallback unconditionally,
+    # silently bypassing the ReAct agent for 9 of 22 skills even with Azure configured.
+    use_fast_path = agent_config.get("use_pdf_fast_path", False)
+    llm_configured = bool(settings.azure_api_key and settings.azure_chat_endpoint)
+    fallback_result = None
+    if not llm_configured or use_fast_path:
         fallback_result = run_pdf_fallback(
             document_path,
             template_cls=template_cls,
             skill=skill,
             validator_config=validator_config,
         )
-        if fallback_result is None:
+        if fallback_result is None and not llm_configured:
             raise RuntimeError(
                 "No LLM provider configured. Set AZURE_API_KEY and "
                 "AZURE_CHAT_ENDPOINT to run agent-based extraction."
             )
-    else:
-        fallback_result = run_pdf_fallback(
-            document_path,
-            template_cls=template_cls,
-            skill=skill,
-            validator_config=validator_config,
-        )
     if fallback_result is not None:
+        logger.info("Run %s using PDF fallback (execution_mode=fallback)", run_id, extra={"run_id": run_id, "execution_mode": "fallback"})
         serialized = serialize_extraction_result(run_id, definition_id, document_path, fallback_result, {"trace": fallback_result.trace})
+        serialized["execution_mode"] = "fallback"
         try:
             existing = store.get_run(run_id)
             existing.update(serialized)
@@ -726,6 +729,7 @@ async def _execute_run_inner(
             "extracted_fields_count": 0,
             "fields": [],
             "error": str(e),
+            "execution_mode": "agent",
         }
 
     # Build result
@@ -796,6 +800,7 @@ async def _execute_run_inner(
                 run_id=run_id,
             )
 
+    logger.info("Run %s completed via ReAct agent (execution_mode=agent)", run_id, extra={"run_id": run_id, "execution_mode": "agent"})
     # Serialize and persist [BLK-165]
     serialized = serialize_extraction_result(run_id, definition_id, document_path, result, final_state)
     # Merge with existing record to preserve created_at/started_at from executor

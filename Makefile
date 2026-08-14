@@ -17,20 +17,19 @@ help:
 	@echo "  make clean      Remove __pycache__ and .pyc files"
 
 install:
-	pip install -r requirements.txt
-	pip install -r requirements-dev.txt
+	uv sync --all-extras
 
 dev:
-	uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
+	uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	python -m pytest src/tests/ -v
+	uv run pytest src/tests/ -v
 
 test-cov:
-	python -m pytest src/tests/ --cov=src --cov-report=term-missing --cov-fail-under=80
+	uv run pytest src/tests/ --cov=src --cov-report=term-missing --cov-fail-under=80
 
 seed:
-	python -m scripts.seed
+	uv run python -m scripts.seed
 
 reset:
 	rm -rf .adep/

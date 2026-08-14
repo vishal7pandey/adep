@@ -44,16 +44,49 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version-file: .nvmrc
+
+      - name: Enable pnpm via corepack
+        run: corepack enable
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Lint (eslint)
         working-directory: frontend
-        run: npm run lint
+        run: pnpm run lint
+
+      - name: Tests (vitest)
+        working-directory: frontend
+        run: pnpm test
 
       - name: Build
         working-directory: frontend
-        run: npm run build
+        run: pnpm run build
+
+  docker-build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Path filter (docker files)
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            docker:
+              - 'Dockerfile'
+              - 'docker-compose.yml'
+              - 'frontend/Dockerfile'
+              - '.dockerignore'
+              - 'frontend/.dockerignore'
+              - '.github/workflows/ci.yml'
+      - name: Docker build (backend)
+        if: steps.filter.outputs.docker == 'true'
+        run: docker build -f Dockerfile -t adep-backend:ci .
+      - name: Docker compose build
+        if: steps.filter.outputs.docker == 'true'
+        run: docker compose build

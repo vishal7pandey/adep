@@ -65,9 +65,11 @@ PUBLIC_PATHS = {
 # Route prefix → required scope mapping
 # (method, path_prefix) → required_scope
 ROUTE_SCOPES: list[tuple[str, str, str]] = [
-    # Runs
+    # Runs — all methods covered (BLK-215: added DELETE, PATCH)
     ("GET", "/api/v1/runs", SCOPE_RUNS_READ),
     ("POST", "/api/v1/runs", SCOPE_RUNS_WRITE),
+    ("DELETE", "/api/v1/runs", SCOPE_RUNS_WRITE),
+    ("PATCH", "/api/v1/runs", SCOPE_RUNS_WRITE),
     # Definitions
     ("GET", "/api/v1/definitions", SCOPE_DEFINITIONS_READ),
     ("POST", "/api/v1/definitions", SCOPE_DEFINITIONS_WRITE),
@@ -86,16 +88,17 @@ ROUTE_SCOPES: list[tuple[str, str, str]] = [
     # Documents
     ("GET", "/api/v1/documents", SCOPE_DOCUMENTS_READ),
     ("POST", "/api/v1/documents", SCOPE_DOCUMENTS_WRITE),
-    # Admin
+    # Admin (keys route is under /api/v1/admin/keys)
     ("GET", "/api/v1/admin", SCOPE_ADMIN),
     ("POST", "/api/v1/admin", SCOPE_ADMIN),
     ("PUT", "/api/v1/admin", SCOPE_ADMIN),
     ("DELETE", "/api/v1/admin", SCOPE_ADMIN),
     # Budget
     ("GET", "/api/v1/budget", SCOPE_ADMIN),
-    # Webhooks
+    # Webhooks — all methods covered (BLK-215: added PUT)
     ("GET", "/api/v1/webhooks", SCOPE_ADMIN),
     ("POST", "/api/v1/webhooks", SCOPE_ADMIN),
+    ("PUT", "/api/v1/webhooks", SCOPE_ADMIN),
     ("DELETE", "/api/v1/webhooks", SCOPE_ADMIN),
 ]
 
@@ -103,11 +106,20 @@ ROUTE_SCOPES: list[tuple[str, str, str]] = [
 def _required_scope(method: str, path: str) -> str | None:
     """Determine the required scope for a given method + path.
 
-    Returns None if no scope is required (public endpoint).
+    Returns None if the path is a public endpoint (in PUBLIC_PATHS).
+    Returns a sentinel "__deny__" scope for any /api/v1/ path that has no
+    matching ROUTE_SCOPES entry — this makes the middleware fail closed
+    for unknown routes instead of silently passing them through (BLK-215).
+
+    For non-api paths (e.g. /docs, /health), returns None to let FastAPI
+    handle them normally.
     """
     for req_method, prefix, scope in ROUTE_SCOPES:
         if method == req_method and path.startswith(prefix):
             return scope
+    # Fail closed: any /api/v1/ path without a matching scope entry is denied
+    if path.startswith("/api/v1/"):
+        return "__deny__"
     return None
 
 
@@ -344,8 +356,15 @@ def install_auth_middleware(app: FastAPI) -> None:
         # Determine required scope
         required_scope = _required_scope(request.method, path)
         if required_scope is None:
-            # Unknown route — let FastAPI handle 404
+            # Public path or non-api path — no auth required
             return await call_next(request)
+        if required_scope == "__deny__":
+            # BLK-215: fail closed for any /api/v1/ path without a matching scope
+            logger.warning("Auth fail-closed: no scope entry for %s %s", request.method, path)
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": f"Authentication required for {request.method} {path}"},
+            )
 
         # Extract Bearer token
         auth_header = request.headers.get("Authorization", "")

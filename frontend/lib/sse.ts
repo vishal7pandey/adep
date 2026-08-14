@@ -1,4 +1,4 @@
-import { BBoxModel, ExtractedField } from './api';
+import { BBoxModel, ExtractedField, getAuthHeaders } from './api';
 
 export interface SSEThoughtEvent {
   type: 'thought';
@@ -127,6 +127,53 @@ export interface SSEClientCallbacks {
   onReconnectFailed?: () => void;
 }
 
+function dispatchSSEEvent(data: SSEEvent, callbacks: SSEClientCallbacks) {
+  switch (data.type) {
+    case 'thought':
+      callbacks.onThought?.(data);
+      break;
+    case 'tool_call':
+      callbacks.onToolCall?.(data);
+      break;
+    case 'tool_result':
+      callbacks.onToolResult?.(data);
+      break;
+    case 'progress':
+      callbacks.onProgress?.(data);
+      break;
+    case 'field_update':
+      callbacks.onFieldUpdate?.(data);
+      break;
+    case 'compaction':
+      callbacks.onCompaction?.(data);
+      break;
+    case 'paused':
+      callbacks.onPaused?.(data);
+      break;
+    case 'resumed':
+      callbacks.onResumed?.(data);
+      break;
+    case 'stopped':
+      callbacks.onStopped?.(data);
+      break;
+    case 'rolled_back':
+      callbacks.onRolledBack?.(data);
+      break;
+    case 'trajectory_warning':
+      callbacks.onTrajectoryWarning?.(data);
+      break;
+    case 'trajectory_critical':
+      callbacks.onTrajectoryCritical?.(data);
+      break;
+    case 'gate_triggered':
+      callbacks.onGateTriggered?.(data);
+      break;
+    case 'complete':
+      callbacks.onComplete?.(data);
+      break;
+  }
+}
+
 export function connectToRunStream(
   runId: string,
   callbacks: SSEClientCallbacks
@@ -134,83 +181,72 @@ export function connectToRunStream(
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
   const url = `${API_BASE_URL}/runs/${runId}/stream`;
 
-  let eventSource: EventSource | null = null;
   let isClosedManually = false;
   let retryCount = 0;
   let retryTimeout: NodeJS.Timeout | null = null;
+  let currentController: AbortController | null = null;
 
-  const connect = () => {
+  const connect = async () => {
     if (isClosedManually) return;
 
-    eventSource = new EventSource(url);
+    currentController = new AbortController();
+    const headers = { ...getAuthHeaders(), Accept: 'text/event-stream' };
 
-    eventSource.onopen = () => {
-      retryCount = 0;
-    };
+    try {
+      const response = await fetch(url, {
+        headers,
+        signal: currentController.signal,
+      });
 
-    eventSource.onmessage = (e) => {
-      try {
-        const data: SSEEvent = JSON.parse(e.data);
-        switch (data.type) {
-          case 'thought':
-            callbacks.onThought?.(data);
-            break;
-          case 'tool_call':
-            callbacks.onToolCall?.(data);
-            break;
-          case 'tool_result':
-            callbacks.onToolResult?.(data);
-            break;
-          case 'progress':
-            callbacks.onProgress?.(data);
-            break;
-          case 'field_update':
-            callbacks.onFieldUpdate?.(data);
-            break;
-          case 'compaction':
-            callbacks.onCompaction?.(data);
-            break;
-          case 'paused':
-            callbacks.onPaused?.(data);
-            break;
-          case 'resumed':
-            callbacks.onResumed?.(data);
-            break;
-          case 'stopped':
-            callbacks.onStopped?.(data);
-            break;
-          case 'rolled_back':
-            callbacks.onRolledBack?.(data);
-            break;
-          case 'trajectory_warning':
-            callbacks.onTrajectoryWarning?.(data);
-            break;
-          case 'trajectory_critical':
-            callbacks.onTrajectoryCritical?.(data);
-            break;
-          case 'gate_triggered':
-            callbacks.onGateTriggered?.(data);
-            break;
-          case 'complete':
-            callbacks.onComplete?.(data);
-            isClosedManually = true;
-            eventSource?.close();
-            break;
-        }
-      } catch (err) {
-        console.error('[ADEP SSE Parse Error]', err);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-    };
 
-    eventSource.onerror = (err) => {
-      callbacks.onError?.(err);
-      if (isClosedManually) return;
+      if (!response.body) {
+        throw new Error('No response body received for SSE stream');
+      }
 
-      eventSource?.close();
+      retryCount = 0;
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (!isClosedManually) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop() || '';
+
+        for (const block of blocks) {
+          const lines = block.split('\n');
+          const dataLine = lines.find((l) => l.startsWith('data: '));
+          if (!dataLine) continue;
+          const jsonStr = dataLine.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const data: SSEEvent = JSON.parse(jsonStr);
+            dispatchSSEEvent(data, callbacks);
+            if (data.type === 'complete') {
+              isClosedManually = true;
+              currentController.abort();
+            }
+          } catch (err) {
+            console.error('[ADEP SSE Parse Error]', err);
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (isClosedManually || (err instanceof Error && err.name === 'AbortError')) {
+        return;
+      }
+      callbacks.onError?.(err as Event);
 
       if (retryCount < 4) {
         retryCount++;
-        const backoffMs = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s, 16s
+        const backoffMs = Math.pow(2, retryCount) * 1000;
         callbacks.onReconnecting?.(retryCount, backoffMs);
         retryTimeout = setTimeout(() => {
           connect();
@@ -218,7 +254,7 @@ export function connectToRunStream(
       } else {
         callbacks.onReconnectFailed?.();
       }
-    };
+    }
   };
 
   connect();
@@ -226,6 +262,7 @@ export function connectToRunStream(
   return () => {
     isClosedManually = true;
     if (retryTimeout) clearTimeout(retryTimeout);
-    eventSource?.close();
+    if (currentController) currentController.abort();
   };
 }
+

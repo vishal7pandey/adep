@@ -1,0 +1,6 @@
+# Frontend Docker build context exclusions
+node_modules/
+.next/
+tsconfig.tsbuildinfo
+*.log
+.git/

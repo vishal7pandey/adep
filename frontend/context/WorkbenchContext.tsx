@@ -2,19 +2,27 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
-export type WorkbenchPhase = 'chat' | 'document' | 'extraction';
+export type RunStatusType =
+  | 'idle'
+  | 'running'
+  | 'paused'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'max_iterations_reached'
+  | 'stopped';
 
 interface WorkbenchContextType {
   phase: WorkbenchPhase;
   documentFileName: string | null;
   documentUrl: string | null;
   runId: string | null;
-  runStatus: 'idle' | 'running' | 'paused' | 'completed' | 'stopped';
+  runStatus: RunStatusType;
   setDocument: (fileName: string, url?: string | null) => void;
   startRun: (runId?: string) => void;
   completeRun: () => void;
   reset: () => void;
-  setRunStatus: (status: 'idle' | 'running' | 'paused' | 'completed' | 'stopped') => void;
+  setRunStatus: (status: RunStatusType) => void;
 }
 
 const WorkbenchContext = createContext<WorkbenchContextType | undefined>(undefined);
@@ -24,7 +32,7 @@ export const WorkbenchProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [documentFileName, setDocumentFileName] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
-  const [runStatus, setRunStatus] = useState<'idle' | 'running' | 'paused' | 'completed' | 'stopped'>('idle');
+  const [runStatus, setRunStatus] = useState<RunStatusType>('idle');
 
   const setDocument = (fileName: string, url: string | null = null) => {
     setDocumentFileName(fileName);
@@ -32,11 +40,13 @@ export const WorkbenchProvider: React.FC<{ children: ReactNode }> = ({ children 
     setPhase('document');
   };
 
-  const startRun = (id = `run-${Date.now()}`) => {
-    setRunId(id);
+  const startRun = (id?: string) => {
+    const effectiveId = id || `run_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`;
+    setRunId(effectiveId);
     setRunStatus('running');
     setPhase('extraction');
   };
+
 
   const completeRun = () => {
     setRunStatus('completed');

@@ -45,7 +45,7 @@ import {
 import { connectToRunStream, SSEThoughtEvent, SSEToolCallEvent, SSEToolResultEvent } from '@/lib/sse';
 import { AdeButton } from '@/components/ui/AdeButton';
 import { AdeBadge } from '@/components/ui/AdeBadge';
-import { useWorkbench } from '@/context/WorkbenchContext';
+import { useWorkbench, RunStatusType } from '@/context/WorkbenchContext';
 
 export interface ConsoleTraceCycle {
   cycleNumber: number;
@@ -77,7 +77,8 @@ function dedupeDefinitions(defs: AgentDefinition[]): AgentDefinition[] {
 
 export const Pane1AgentConsole: React.FC = () => {
   const [cycles, setCycles] = useState<ConsoleTraceCycle[]>([]);
-  const [runState, setRunState] = useState<'idle' | 'running' | 'paused' | 'completed' | 'stopped'>('idle');
+  const [runState, setRunState] = useState<RunStatusType>('idle');
+
   const [isCompacting, setIsCompacting] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -230,6 +231,17 @@ export const Pane1AgentConsole: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const streamCleanupRef = useRef<(() => void) | null>(null);
 
+  // BLK-245: Cleanup active SSE stream on component unmount
+  useEffect(() => {
+    return () => {
+      if (streamCleanupRef.current) {
+        streamCleanupRef.current();
+        streamCleanupRef.current = null;
+      }
+    };
+  }, []);
+
+
   const handleApproveGate = async () => {
     if (!activeRunId) return;
     try {
@@ -338,14 +350,28 @@ export const Pane1AgentConsole: React.FC = () => {
           setNotification(`🚨 Trajectory Critical Alert (Cycle ${evt.cycle}): ${evt.message}`);
         },
         onComplete: (evt) => {
-          if (evt.status === 'success' || evt.status === 'max_iterations_reached') {
+          if (evt.status === 'success' || evt.status === 'completed') {
             setRunState('completed');
-            completeRun();
+            setRunStatus('completed');
+          } else if (evt.status === 'max_iterations_reached') {
+            setRunState('max_iterations_reached');
+            setRunStatus('max_iterations_reached');
+            setNotification('Extraction halted: Maximum iterations limit reached.');
+          } else if (evt.status === 'cancelled') {
+            setRunState('cancelled');
+            setRunStatus('cancelled');
+            setNotification('Extraction cancelled by user.');
+          } else if (evt.status === 'failed') {
+            setRunState('failed');
+            setRunStatus('failed');
+            setNotification(evt.summary || 'Extraction failed during execution.');
           } else {
             setRunState('stopped');
+            setRunStatus('stopped');
             setNotification(evt.summary || `Run ended with status: ${evt.status}`);
           }
         },
+
         onStopped: () => {
           setRunState('stopped');
         },
@@ -447,8 +473,12 @@ export const Pane1AgentConsole: React.FC = () => {
               {runState === 'running' && <AdeBadge variant="info">Running</AdeBadge>}
               {runState === 'paused' && <AdeBadge variant="medium">Paused</AdeBadge>}
               {runState === 'completed' && <AdeBadge variant="verified">Completed</AdeBadge>}
-              {runState === 'stopped' && <AdeBadge variant="failed">Stopped</AdeBadge>}
+              {runState === 'failed' && <AdeBadge variant="failed">Failed</AdeBadge>}
+              {runState === 'cancelled' && <AdeBadge variant="neutral">Cancelled</AdeBadge>}
+              {runState === 'max_iterations_reached' && <AdeBadge variant="medium">Max Iterations Reached</AdeBadge>}
+              {runState === 'stopped' && <AdeBadge variant="neutral">Stopped</AdeBadge>}
               {runState === 'idle' && <AdeBadge variant="neutral">Idle</AdeBadge>}
+
             </div>
           </div>
 
