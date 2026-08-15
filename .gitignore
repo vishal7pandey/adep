@@ -22,6 +22,11 @@ env/
 *.swp
 *.swo
 
+# Node
+node_modules/
+frontend/.next/
+*.tsbuildinfo
+
 # Testing
 .pytest_cache/
 .coverage
