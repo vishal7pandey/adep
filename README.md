@@ -5,7 +5,6 @@
 > instantiate them via a chat interface to solve real extraction tasks.
 > Document extraction is the first domain; the platform is the product.
 
-See [vision.md](vision.md) for the full architectural vision.
 
 ## Quick Start
 
@@ -30,7 +29,6 @@ print(result.is_complete, result.gap_report.missing_fields())
 
 ```
 adep/                        # Project root
-  vision.md                 # Architectural vision
   pyproject.toml
   uv.lock
   src/                      # Backend Python package
@@ -44,10 +42,8 @@ adep/                        # Project root
     run.py                  # run(template, skill, document) -> ExtractedResult
   frontend/                 # Next.js + TailwindCSS + shadcn/ui (Phase 3)
   notebooks/                # Reference labs (L2, L4, L6, L8, L9)
-  comms/                    # Inter-team messaging protocol
-  backlog/                  # Pending work items (features, bugs, ideas, tech-debt)
-  implemented/              # Completed work items
-  projectmgmt/              # PM process docs, status board, item template
+  scripts/                  # Pipeline and eval scripts
+  sample-data/              # Test fixtures and sample documents
 ```
 
 ## Architecture
