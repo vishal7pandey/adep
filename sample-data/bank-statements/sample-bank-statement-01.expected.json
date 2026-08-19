@@ -1,0 +1,32 @@
+{
+  "document": "sample-bank-statement-01.pdf",
+  "definition_id": "def-bank-statement",
+  "expected": {
+    "bank_name": "First National Bank",
+    "account_number": "****4521",
+    "account_holder": "John Smith",
+    "statement_period_start": "2024-01-01",
+    "statement_period_end": "2024-01-31",
+    "opening_balance": 5420.50,
+    "closing_balance": 6185.75,
+    "total_credits": 1250.00,
+    "total_debits": 484.75
+  },
+  "tolerances": {
+    "opening_balance": 0.01,
+    "closing_balance": 0.01,
+    "total_credits": 0.01,
+    "total_debits": 0.01
+  },
+  "min_confidence": {
+    "bank_name": 0.85,
+    "account_number": 0.80,
+    "account_holder": 0.85,
+    "statement_period_start": 0.85,
+    "statement_period_end": 0.85,
+    "opening_balance": 0.85,
+    "closing_balance": 0.85,
+    "total_credits": 0.85,
+    "total_debits": 0.85
+  }
+}

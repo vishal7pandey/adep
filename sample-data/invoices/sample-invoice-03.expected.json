@@ -1,0 +1,27 @@
+{
+  "document": "sample-invoice-03.jpg",
+  "definition_id": "def-invoice",
+  "expected": {
+    "invoice_number": "ANN-INT-2024-0587",
+    "invoice_date": "2024-01-10",
+    "due_date": "2024-02-09",
+    "vendor": "Annie International Inc",
+    "subtotal": 18750.00,
+    "tax": 0.00,
+    "total": 18750.00
+  },
+  "tolerances": {
+    "subtotal": 1.00,
+    "tax": 0.01,
+    "total": 1.00
+  },
+  "min_confidence": {
+    "invoice_number": 0.80,
+    "invoice_date": 0.80,
+    "due_date": 0.80,
+    "vendor": 0.80,
+    "subtotal": 0.80,
+    "tax": 0.80,
+    "total": 0.80
+  }
+}

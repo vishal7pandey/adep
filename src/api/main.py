@@ -121,6 +121,8 @@ def create_app() -> FastAPI:
     from src.api.routes.skills import router as skills_router
     from src.api.routes.templates import router as templates_router
     from src.api.routes.webhooks import router as webhooks_router
+    from src.api.routes.benchmarks import router as benchmarks_router
+    from src.api.routes.batches import router as batches_router
 
     app.include_router(definitions_router, prefix="/api/v1")
     app.include_router(documents_router, prefix="/api/v1")
@@ -129,6 +131,8 @@ def create_app() -> FastAPI:
     app.include_router(templates_router, prefix="/api/v1")
     app.include_router(runs_router, prefix="/api/v1")
     app.include_router(webhooks_router, prefix="/api/v1")
+    app.include_router(benchmarks_router, prefix="/api/v1")
+    app.include_router(batches_router, prefix="/api/v1")
 
     @app.get("/", response_class=HTMLResponse, include_in_schema=False)
     async def landing_page() -> str:
@@ -229,6 +233,31 @@ def create_app() -> FastAPI:
         from src.tools.cache import get_cache
         cleared = get_cache().clear()
         return {"cleared": cleared}
+
+    # Store management endpoints [BLK-036]
+    @app.get("/api/v1/admin/store/info")
+    async def store_info() -> dict[str, Any]:
+        """Get current store backend information [BLK-036]."""
+        return {
+            "backend": settings.store_backend,
+            "db_path": settings.store_db_path if settings.store_backend == "sqlite" else None,
+        }
+
+    @app.post("/api/v1/admin/store/migrate")
+    async def migrate_store() -> dict[str, Any]:
+        """Migrate file-based store to SQLite [BLK-036].
+
+        Reads all entities from the current file-based store and inserts
+        them into the SQLite store. Existing entities in the target store
+        are preserved (not overwritten).
+        """
+        from src.definitions.store import DefinitionStore
+        from src.definitions.db_store import DatabaseDefinitionStore
+
+        file_store = DefinitionStore()
+        db_store = DatabaseDefinitionStore(db_path=settings.store_db_path)
+        count = db_store.migrate_from_file_store(file_store)
+        return {"migrated_count": count, "db_path": settings.store_db_path}
 
     # Queue admin endpoint [BLK-129]
     @app.get("/api/v1/admin/queue")

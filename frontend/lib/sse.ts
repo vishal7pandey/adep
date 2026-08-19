@@ -79,14 +79,24 @@ export interface SSETrajectoryCriticalEvent {
 
 export interface SSEGateTriggeredEvent {
   type: 'gate_triggered';
-  cycle: number;
+  field: string;
+  risk_tier: string;
+  confidence: number;
   reason: string;
+  cycle: number;
   required_action: string;
+}
+
+export interface SSEStatusChangeEvent {
+  type: 'status_change';
+  status: 'queued' | 'running' | 'paused' | 'completed' | 'max_iterations_reached' | 'failed' | 'cancelled';
+  cycle: number;
+  previous_status?: string | null;
 }
 
 export interface SSECompleteEvent {
   type: 'complete';
-  status: 'success' | 'failed' | 'cancelled' | 'max_iterations_reached';
+  status: 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached' | 'paused';
   summary?: string;
   run_id?: string;
 }
@@ -105,6 +115,7 @@ export type SSEEvent =
   | SSETrajectoryWarningEvent
   | SSETrajectoryCriticalEvent
   | SSEGateTriggeredEvent
+  | SSEStatusChangeEvent
   | SSECompleteEvent;
 
 export interface SSEClientCallbacks {
@@ -121,6 +132,7 @@ export interface SSEClientCallbacks {
   onTrajectoryWarning?: (event: SSETrajectoryWarningEvent) => void;
   onTrajectoryCritical?: (event: SSETrajectoryCriticalEvent) => void;
   onGateTriggered?: (event: SSEGateTriggeredEvent) => void;
+  onStatusChange?: (event: SSEStatusChangeEvent) => void;
   onComplete?: (event: SSECompleteEvent) => void;
   onError?: (error: Event) => void;
   onReconnecting?: (attempt: number, delayMs: number) => void;
@@ -167,6 +179,9 @@ function dispatchSSEEvent(data: SSEEvent, callbacks: SSEClientCallbacks) {
       break;
     case 'gate_triggered':
       callbacks.onGateTriggered?.(data);
+      break;
+    case 'status_change':
+      callbacks.onStatusChange?.(data);
       break;
     case 'complete':
       callbacks.onComplete?.(data);

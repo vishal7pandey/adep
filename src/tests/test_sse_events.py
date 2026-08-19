@@ -1,9 +1,9 @@
-"""Tests for SSE field_update and status_change events [Wave 4/5, BLK-047].
+"""Tests for SSE field_update and status_change events [Wave 4/5, BLK-047, SCRUM-484].
 
 Tests cover:
 - field_update event includes extracted_fields_count, total_fields, risk_tier
 - status_change event emitted on status transitions
-- field_update flat format (field as string, not nested object)
+- field_update nested field object format (SCRUM-484 fix)
 - status_change includes previous_status
 """
 
@@ -63,8 +63,8 @@ class TestFieldUpdateEvent:
         events = _collect_events(emitter)
         assert events[0]["risk_tier"] == "high"
 
-    def test_field_update_flat_format(self):
-        """field should be a string (field name), not a nested object [Wave 4/5]."""
+    def test_field_update_nested_format(self):
+        """field should be a nested ExtractedField object, not a flat string [SCRUM-484]."""
         emitter = SSEEventEmitter()
         emitter.emit_field_update(
             field_id="vendor",
@@ -73,8 +73,11 @@ class TestFieldUpdateEvent:
             confidence=0.9,
         )
         events = _collect_events(emitter)
-        assert events[0]["field"] == "vendor"
-        assert isinstance(events[0]["field"], str)
+        assert events[0]["field"]["id"] == "vendor"
+        assert events[0]["field"]["name"] == "vendor"
+        assert events[0]["field"]["value"] == "ACME Corp"
+        assert events[0]["field"]["confidence"] == 0.9
+        assert isinstance(events[0]["field"], dict)
 
     def test_field_update_includes_bbox_and_page(self):
         emitter = SSEEventEmitter()
@@ -88,8 +91,8 @@ class TestFieldUpdateEvent:
             page=2,
         )
         events = _collect_events(emitter)
-        assert events[0]["bbox"] == bbox
-        assert events[0]["page"] == 2
+        assert events[0]["field"]["bbox"] == bbox
+        assert events[0]["field"]["page"] == 2
 
     def test_field_update_defaults(self):
         """Default risk_tier should be 'low', counts should be 0."""
@@ -156,3 +159,42 @@ class TestStatusChangeEvent:
         assert events[1]["status"] == "paused"
         assert events[2]["status"] == "running"
         assert events[3]["status"] == "completed"
+
+
+class TestMultiConsumerFanout:
+    """Verify SSE emitter supports multiple concurrent subscribers [SCRUM-484]."""
+
+    def test_two_subscribers_each_receive_all_events(self):
+        """Both subscribers should receive all events independently."""
+        emitter = SSEEventEmitter()
+        emitter.emit_thought(cycle=1, text="thinking")
+        emitter.emit_status_change(status="running", cycle=1)
+
+        loop = asyncio.new_event_loop()
+        events_a: list[str] = []
+        events_b: list[str] = []
+        try:
+            async def collect_both():
+                # Subscribe both before consuming
+                qa = emitter.subscribe()
+                qb = emitter.subscribe()
+                emitter.close()  # Signal end of stream
+
+                async def drain(q, out):
+                    while True:
+                        event = await q.get()
+                        if event is None:
+                            break
+                        out.append(json.dumps(event))
+
+                import asyncio as aio
+                await aio.gather(drain(qa, events_a), drain(qb, events_b))
+
+            loop.run_until_complete(collect_both())
+        finally:
+            loop.close()
+
+        # Both subscribers should have received the same 2 events
+        assert len(events_a) == 2
+        assert len(events_b) == 2
+        assert events_a == events_b

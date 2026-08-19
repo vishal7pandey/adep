@@ -54,3 +54,25 @@ Point ADEP agent definitions at these files to test extraction:
 ```python
 run(definition="def-invoice-v1", document_path="sample-data/invoices/sample-invoice-01.pdf")
 ```
+
+## Labeled Fixtures (.expected.json)
+
+Each `.expected.json` file pairs a sample document with ground-truth field values,
+tolerances, and minimum confidence thresholds for the benchmark suite
+(`src/eval/benchmark_suite.py`) and evaluation harness (`src/eval/harness.py`).
+
+Current labeled fixtures (10 files across 5 types):
+
+| Folder | Fixtures | Definition ID | Template Fields |
+|--------|----------|---------------|-----------------|
+| `invoices/` | 4 | `def-invoice` | invoice_number, invoice_date, due_date, vendor, subtotal, tax, total |
+| `bank-statements/` | 2 | `def-bank-statement` | bank_name, account_number, account_holder, statement_period, balances, totals |
+| `utility-bills/` | 2 | `def-utility-bill` | account_number, service_address, billing_period, utility_type, usage, amount_due |
+| `purchase-order/` | 2 | `def-purchase-order` / `def-purchase-order-sf1449` | po_number, po_date, buyer, vendor, total |
+| `pay-stub/` | 2 | `def-pay-stub` | employee_name, employer_name, pay dates, gross/net pay, taxes |
+
+Load fixtures programmatically:
+```python
+from src.eval.fixtures import load_expected_fixtures
+fixtures = load_expected_fixtures("sample-data/invoices/")
+```

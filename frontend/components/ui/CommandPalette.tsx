@@ -81,12 +81,12 @@ export const CommandPalette: React.FC = () => {
     },
     {
       id: 'nav-agents',
-      label: 'Choose Agent',
-      description: 'Browse and select extraction agents',
+      label: 'Agent Definition Registry',
+      description: 'Browse, create, edit, and delete Agent Definitions',
       icon: <Layers className="w-4 h-4 text-[var(--brand-primary)]" />,
       category: 'navigation',
       action: () => router.push('/definitions'),
-      keywords: ['agent', 'definition', 'choose', 'select', 'browse'],
+      keywords: ['agent', 'definition', 'registry', 'manage', 'edit', 'delete', 'browse'],
     },
     {
       id: 'nav-skills',
@@ -105,6 +105,15 @@ export const CommandPalette: React.FC = () => {
       category: 'navigation',
       action: () => router.push('/templates'),
       keywords: ['template', 'schema', 'field', 'structure'],
+    },
+    {
+      id: 'nav-batch',
+      label: 'Batch Processing Queue',
+      description: 'Upload and process hundreds of documents in batch',
+      icon: <Layers className="w-4 h-4 text-[var(--brand-primary)]" />,
+      category: 'navigation',
+      action: () => router.push('/batch'),
+      keywords: ['batch', 'queue', 'bulk', 'upload', 'enterprise', 'process'],
     },
     {
       id: 'toggle-theme',

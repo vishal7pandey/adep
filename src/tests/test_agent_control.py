@@ -159,7 +159,7 @@ class TestStopEndpoint:
         assert data["cancelled"] is True
 
     def test_stop_already_stopped(self, client: TestClient):
-        _save_run("run-3", status="stopped")
+        _save_run("run-3", status="cancelled")
         resp = client.post("/api/v1/runs/run-3/stop")
         assert resp.status_code == 200  # [BLK-129] no-op returns 200
         data = resp.json()
@@ -228,7 +228,7 @@ class TestRollbackEndpoint:
         client.post("/api/v1/runs/run-5/rollback", json={"to_cycle": 2})
         import src.definitions.store as store_module
         updated = store_module._store.get_run("run-5")
-        assert updated["status"] == "rolled_back"
+        assert updated["status"] == "paused"
         assert updated["rolled_back_from"] == 8
         assert updated["rolled_back_to"] == 2
 
@@ -324,3 +324,216 @@ class TestSSEControlEvents:
         assert events[0]["type"] == "rolled_back"
         assert events[0]["from_cycle"] == 10
         assert events[0]["to_cycle"] == 3
+
+
+class TestCompactEndpoint:
+    """POST /runs/{id}/compact [BLK-244]"""
+
+    def test_compact_completed_run_returns_false(self, client: TestClient):
+        _save_run("compact-1", status="completed", current_cycle=5)
+        resp = client.post("/api/v1/runs/compact-1/compact")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["compaction_triggered"] is False
+        assert "already completed" in data["message"].lower()
+
+    def test_compact_running_run_signals_executor(self, client: TestClient):
+        _save_run("compact-2", status="running", current_cycle=3)
+        # Reset executor singleton so we get a fresh instance
+        from src.api.run_executor import reset_executor, get_executor
+        reset_executor()
+        executor = get_executor()
+
+        # Manually register a run context so the executor knows about it
+        from src.api.run_executor import RunContext
+        ctx = RunContext("compact-2", "def-test", "test.png")
+        ctx.status = "running"
+        executor._runs["compact-2"] = ctx
+
+        resp = client.post("/api/v1/runs/compact-2/compact")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["compaction_triggered"] is True
+        assert ctx.control.compact_requested is True
+
+        # Cleanup
+        reset_executor()
+
+    def test_compact_missing_run_404(self, client: TestClient):
+        resp = client.post("/api/v1/runs/nonexistent/compact")
+        assert resp.status_code == 404
+
+    def test_compact_run_not_in_executor_returns_false(self, client: TestClient):
+        """Run exists in store but not in executor (e.g. sync run) — should return false."""
+        from src.api.run_executor import reset_executor
+        reset_executor()
+        _save_run("compact-3", status="running", current_cycle=3)
+        resp = client.post("/api/v1/runs/compact-3/compact")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["compaction_triggered"] is False
+        reset_executor()
+
+
+class TestRollbackLiveIntegration:
+    """Rollback endpoint integration with executor [BLK-244]"""
+
+    def test_rollback_running_run_signals_executor(self, client: TestClient):
+        _save_run("rb-live-1", status="running", current_cycle=10)
+        from src.api.run_executor import reset_executor, get_executor, RunContext
+        reset_executor()
+        executor = get_executor()
+        ctx = RunContext("rb-live-1", "def-test", "test.png")
+        ctx.status = "running"
+        executor._runs["rb-live-1"] = ctx
+
+        resp = client.post("/api/v1/runs/rb-live-1/rollback", json={"to_cycle": 3})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["rolled_back"] is True
+        assert data["live_rollback"] is True
+        assert ctx.control.rollback_requested is True
+        assert ctx.control.rollback_to_cycle == 3
+        reset_executor()
+
+    def test_rollback_run_not_in_executor(self, client: TestClient):
+        """Run exists in store but not in executor — live_rollback should be false."""
+        from src.api.run_executor import reset_executor
+        reset_executor()
+        _save_run("rb-live-2", status="running", current_cycle=8)
+        resp = client.post("/api/v1/runs/rb-live-2/rollback", json={"to_cycle": 2})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["rolled_back"] is True
+        assert data["live_rollback"] is False
+        reset_executor()
+
+    def test_rollback_response_has_live_rollback_field(self, client: TestClient):
+        """Every rollback response should include the live_rollback field [BLK-244]."""
+        from src.api.run_executor import reset_executor
+        reset_executor()
+        _save_run("rb-live-3", status="running", current_cycle=5)
+        resp = client.post("/api/v1/runs/rb-live-3/rollback", json={"to_cycle": 1})
+        data = resp.json()
+        assert "live_rollback" in data
+        reset_executor()
+
+
+class TestRollbackStateRestoration:
+    """Verify that rollback_requested is consumed and state is actually restored [SCRUM-396, SCRUM-407].
+
+    Calls the real should_continue_with_control function — not a copy of the logic.
+    A regression in the actual rollback branch will be caught by this test.
+    """
+
+    def test_rollback_consumer_restores_state(self):
+        """When should_continue_with_control sees rollback_requested, it must
+        truncate trace, reset total_cycles, prune extraction, and clear the flag."""
+        from src.api.run_executor import RunControl
+        from src.agent.graph import should_continue_with_control
+        from src.agent.state import AgentState, TraceEntry, RunStatus
+        from src.tools.base import FieldValue, ToolResult
+
+        control = RunControl()
+        control.request_rollback(to_cycle=2)
+
+        # Build a minimal state with 5 cycles of trace and extraction
+        trace = []
+        for i in range(1, 6):
+            trace.append(TraceEntry(
+                step=i,
+                thought=f"Step {i}",
+                tool_name="ocr",
+                tool_args={},
+                result=ToolResult(ok=True, data=f"result-{i}"),
+            ))
+
+        extraction = {
+            "field_1": FieldValue(name="field_1", value="v1", confidence=0.9, grounding=None),
+            "field_2": FieldValue(name="field_2", value="v2", confidence=0.8, grounding=None),
+            "field_3": FieldValue(name="field_3", value="v3", confidence=0.7, grounding=None),
+        }
+        # Simulate step tracking on extraction values
+        extraction["field_1"]._step = 1  # type: ignore[attr-defined]
+        extraction["field_2"]._step = 2  # type: ignore[attr-defined]
+        extraction["field_3"]._step = 4  # type: ignore[attr-defined]
+
+        state: AgentState = {
+            "trace": trace,
+            "total_cycles": 5,
+            "extraction": extraction,
+            "compaction_summary": "some summary",
+            "status": RunStatus.PLANNING,
+        }
+
+        # Exercise the real code path [SCRUM-407]
+        assert control.rollback_requested is True
+        assert control.rollback_to_cycle == 2
+
+        result = should_continue_with_control(state, control)
+
+        # Assertions that would have caught the original bug
+        assert control.rollback_requested is False, "Flag was not cleared after rollback"
+        assert control.rollback_to_cycle == -1, "Cycle was not reset after rollback"
+        assert state["total_cycles"] == 2, "total_cycles was not restored to rollback_to_cycle"
+        assert len(state["trace"]) == 2, "Trace was not truncated to rollback_to_cycle"
+        assert all(e.step <= 2 for e in state["trace"]), "Trace contains entries past rollback point"
+        assert "field_3" not in state["extraction"], "Extraction was not pruned past rollback point"
+        assert "field_1" in state["extraction"], "Extraction before rollback point was incorrectly pruned"
+        assert "field_2" in state["extraction"], "Extraction at rollback point was incorrectly pruned"
+        assert state["compaction_summary"] == "", "Compaction summary was not cleared"
+
+    def test_rollback_with_no_control_returns_should_continue(self):
+        """should_continue_with_control with no control delegates to should_continue."""
+        from src.agent.graph import should_continue_with_control
+        from src.agent.state import AgentState, RunStatus
+
+        state: AgentState = {
+            "trace": [],
+            "total_cycles": 0,
+            "extraction": {},
+            "compaction_summary": "",
+            "status": RunStatus.PLANNING,
+        }
+        result = should_continue_with_control(state, None)
+        assert result in ("plan", "compact", "terminate")
+
+    def test_cancel_requested_terminates(self):
+        """should_continue_with_control returns terminate when cancel is requested."""
+        from src.api.run_executor import RunControl
+        from src.agent.graph import should_continue_with_control
+        from src.agent.state import AgentState, RunStatus
+
+        control = RunControl()
+        control.cancel_requested = True
+
+        state: AgentState = {
+            "trace": [],
+            "total_cycles": 0,
+            "extraction": {},
+            "compaction_summary": "",
+            "status": RunStatus.PLANNING,
+        }
+        result = should_continue_with_control(state, control)
+        assert result == "terminate"
+        assert state["status"] == RunStatus.CANCELLED
+
+    def test_compact_requested_sets_flag(self):
+        """should_continue_with_control consumes compact_requested and sets _compact_requested."""
+        from src.api.run_executor import RunControl
+        from src.agent.graph import should_continue_with_control
+        from src.agent.state import AgentState, RunStatus
+
+        control = RunControl()
+        control.compact_requested = True
+
+        state: AgentState = {
+            "trace": [],
+            "total_cycles": 0,
+            "extraction": {},
+            "compaction_summary": "",
+            "status": RunStatus.PLANNING,
+        }
+        result = should_continue_with_control(state, control)
+        assert state.get("_compact_requested") is True
+        assert control.compact_requested is False

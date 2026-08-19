@@ -1,0 +1,27 @@
+{
+  "document": "sample-invoice-01.pdf",
+  "definition_id": "def-invoice",
+  "expected": {
+    "invoice_number": "INV-2024-0042",
+    "invoice_date": "2024-03-15",
+    "due_date": "2024-04-14",
+    "vendor": "Contoso Ltd",
+    "subtotal": 1250.00,
+    "tax": 106.25,
+    "total": 1356.25
+  },
+  "tolerances": {
+    "subtotal": 0.01,
+    "tax": 0.01,
+    "total": 0.01
+  },
+  "min_confidence": {
+    "invoice_number": 0.85,
+    "invoice_date": 0.85,
+    "due_date": 0.85,
+    "vendor": 0.85,
+    "subtotal": 0.85,
+    "tax": 0.85,
+    "total": 0.85
+  }
+}

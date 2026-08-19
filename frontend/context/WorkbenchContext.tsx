@@ -4,13 +4,15 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export type RunStatusType =
   | 'idle'
+  | 'queued'
   | 'running'
   | 'paused'
   | 'completed'
   | 'failed'
   | 'cancelled'
-  | 'max_iterations_reached'
-  | 'stopped';
+  | 'max_iterations_reached';
+
+export type WorkbenchPhase = 'chat' | 'document' | 'extraction';
 
 interface WorkbenchContextType {
   phase: WorkbenchPhase;

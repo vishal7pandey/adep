@@ -16,6 +16,15 @@ export const metadata: Metadata = {
   description: 'Local-first 3-pane workbench for intelligent agentic document extraction',
 };
 
+const themeInitScript = `(() => {
+  try {
+    const saved = localStorage.getItem('ltts_theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = saved === 'dark' || (!saved && prefersDark);
+    if (isDark) document.documentElement.classList.add('dark');
+  } catch (e) { console.warn('Theme init failed:', e); }
+})();`;
+
 export default function RootLayout({
   children,
 }: {
@@ -23,6 +32,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="h-full flex overflow-hidden" suppressHydrationWarning>
         <ErrorBoundary>
           <ThemeProvider>

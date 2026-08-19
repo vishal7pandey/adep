@@ -13,7 +13,6 @@ from src.agent.webhooks import (
     WebhookEvent,
     WebhookStore,
     dispatch_webhook,
-    emit_webhook_event,
     get_webhook_store,
 )
 
@@ -134,5 +133,7 @@ async def test_webhook(webhook_id: str) -> dict[str, Any]:
         "message": "This is a test webhook delivery from ADEP",
     }
 
-    result = dispatch_webhook(config, "run.completed", test_payload)
+    import asyncio
+
+    result = await asyncio.to_thread(dispatch_webhook, config, "run.completed", test_payload)
     return {"webhook_id": webhook_id, "delivery": result}

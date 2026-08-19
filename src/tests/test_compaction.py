@@ -25,9 +25,12 @@ from src.agent.graph import (
     build_react_graph,
     compact_node,
     should_continue,
+    should_continue_with_control,
+    should_act_with_control,
 )
 from src.agent.state import AgentState, RunStatus, TraceEntry
 from src.agent.validator import GapReport
+from src.api.run_executor import RunControl
 from src.config import settings
 from src.definitions.store import DefinitionStore
 from src.templates.invoice import InvoiceTemplate
@@ -205,8 +208,9 @@ class TestShouldContinueCompaction:
     """Verify should_continue routes to compact correctly."""
 
     def test_routes_to_compact_on_threshold(self):
-        trace = [_make_trace_entry(i) for i in range(settings.compaction_threshold)]
-        state = _build_compaction_state(trace=trace)
+        # Compaction triggers on total_cycles, not len(trace), because
+        # observe_node prunes trace to a rolling window [SCRUM-499]
+        state = _build_compaction_state(total_cycles=settings.compaction_threshold)
         assert should_continue(state) == "compact"
 
     def test_routes_to_compact_on_manual_request(self):
@@ -377,3 +381,113 @@ class TestSSECompactionEvent:
 
         config_module.settings.auth_enabled = old_auth
         store_module._store = old_store
+
+
+class TestPauseSuspension:
+    """Verify pause suspends (not terminates) and restores status on resume [SCRUM-499]."""
+
+    def test_pause_sets_paused_status_during_block(self):
+        """should_continue_with_control sets PAUSED while waiting for resume."""
+        import threading
+
+        control = RunControl()
+        control.request_pause()
+        state = _build_compaction_state(status=RunStatus.REFLECTING)
+
+        # Run should_continue_with_control in a thread so we can observe state
+        result_holder: dict[str, Any] = {}
+
+        def run_edge():
+            result_holder["result"] = should_continue_with_control(state, control)
+
+        t = threading.Thread(target=run_edge)
+        t.start()
+
+        # Give it a moment to block on wait_for_resume
+        import time
+        time.sleep(0.1)
+
+        # While blocked, status should be PAUSED
+        assert state["status"] == RunStatus.PAUSED
+
+        # Resume the run
+        control.request_resume()
+        t.join(timeout=5)
+
+        # After resume, status should be restored to original (REFLECTING)
+        assert state["status"] == RunStatus.REFLECTING
+        assert result_holder["result"] == "plan"
+
+    def test_pause_does_not_terminate(self):
+        """should_continue_with_control must not return 'terminate' on pause."""
+        import threading
+
+        control = RunControl()
+        control.request_pause()
+        state = _build_compaction_state(status=RunStatus.REFLECTING)
+
+        result_holder: dict[str, Any] = {}
+
+        def run_edge():
+            result_holder["result"] = should_act_with_control(state, control)
+
+        t = threading.Thread(target=run_edge)
+        t.start()
+
+        import time
+        time.sleep(0.1)
+
+        assert state["status"] == RunStatus.PAUSED
+
+        control.request_resume()
+        t.join(timeout=5)
+
+        # Should route to "act", not "terminate"
+        assert result_holder["result"] != "terminate"
+
+    def test_cancel_during_pause_terminates(self):
+        """Cancel during pause should set CANCELLED and terminate."""
+        import threading
+
+        control = RunControl()
+        control.request_pause()
+        state = _build_compaction_state(status=RunStatus.REFLECTING)
+
+        result_holder: dict[str, Any] = {}
+
+        def run_edge():
+            result_holder["result"] = should_continue_with_control(state, control)
+
+        t = threading.Thread(target=run_edge)
+        t.start()
+
+        import time
+        time.sleep(0.1)
+
+        assert state["status"] == RunStatus.PAUSED
+
+        control.request_cancel()
+        t.join(timeout=5)
+
+        assert state["status"] == RunStatus.CANCELLED
+        assert result_holder["result"] == "terminate"
+
+
+class TestCompactionTotalCycles:
+    """Verify compaction triggers on total_cycles, not trace length [SCRUM-499]."""
+
+    def test_compaction_triggers_with_short_trace_but_high_cycles(self):
+        """Even if trace is short (rolling window), high total_cycles triggers compaction."""
+        state = _build_compaction_state(
+            trace=[_make_trace_entry(1)],  # Only 1 entry in rolling window
+            total_cycles=settings.compaction_threshold,
+        )
+        assert should_continue(state) == "compact"
+
+    def test_no_compaction_with_low_cycles(self):
+        """Low total_cycles should not trigger compaction."""
+        state = _build_compaction_state(
+            trace=[_make_trace_entry(i) for i in range(20)],  # Long trace but
+            total_cycles=3,  # low cycles
+        )
+        assert should_continue(state) == "plan"

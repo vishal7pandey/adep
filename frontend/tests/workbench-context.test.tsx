@@ -59,14 +59,14 @@ describe('WorkbenchContext', () => {
 
   it('startRun generates an id when none provided', () => {
     const { result } = renderWorkbenchHook();
-    // Mock Date.now for deterministic id
-    const now = vi.spyOn(Date, 'now').mockReturnValue(1234567890);
+    // Mock crypto.randomUUID for deterministic id
+    const uuid = vi.spyOn(crypto, 'randomUUID').mockReturnValue('a1b2c3d4-e5f6-7890-abcd-ef1234567890');
     act(() => {
       result.current.startRun();
     });
-    expect(result.current.runId).toBe('run-1234567890');
+    expect(result.current.runId).toBe('run_a1b2c3d4e5f6');
     expect(result.current.runStatus).toBe('running');
-    now.mockRestore();
+    uuid.mockRestore();
   });
 
   it('completeRun sets run status to completed', () => {

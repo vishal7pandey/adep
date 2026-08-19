@@ -276,7 +276,7 @@ class TestMaxCyclesOverride:
         }
 
         re_module.get_store = lambda: mock_store
-        re_module.build_tool_registry = lambda: MagicMock()
+        re_module.build_tool_registry = lambda **kw: MagicMock()
         re_module.build_validator_config = lambda s: MagicMock()
         re_module.build_initial_state = lambda *a, **kw: {"template_schema": None}
         re_module.build_react_graph = lambda **kw: mock_graph

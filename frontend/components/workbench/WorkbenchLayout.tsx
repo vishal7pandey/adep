@@ -30,7 +30,7 @@ export const WorkbenchLayout: React.FC = () => {
       {/* Phase 1: Chat Phase (Pane 1 only, Full Width) */}
       {phase === 'chat' && (
         <div className="h-full w-full max-w-4xl mx-auto p-4 transition-all duration-300">
-          <ErrorBoundary paneName="Agent Console (Pane 1)">
+          <ErrorBoundary paneName="Agent Definition Console (Pane 1)">
             <Pane1AgentConsole />
           </ErrorBoundary>
         </div>
@@ -40,7 +40,7 @@ export const WorkbenchLayout: React.FC = () => {
       {phase === 'document' && (
         <div className="grid grid-cols-2 h-full w-full transition-all duration-300">
           <div className="h-full overflow-hidden">
-            <ErrorBoundary paneName="Agent Console (Pane 1)">
+            <ErrorBoundary paneName="Agent Definition Console (Pane 1)">
               <Pane1AgentConsole />
             </ErrorBoundary>
           </div>
@@ -56,7 +56,7 @@ export const WorkbenchLayout: React.FC = () => {
       {phase === 'extraction' && (
         <div className="grid grid-cols-3 h-full w-full transition-all duration-300">
           <div className="h-full overflow-hidden">
-            <ErrorBoundary paneName="Agent Console (Pane 1)">
+            <ErrorBoundary paneName="Agent Definition Console (Pane 1)">
               <Pane1AgentConsole />
             </ErrorBoundary>
           </div>

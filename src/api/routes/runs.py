@@ -321,7 +321,7 @@ async def patch_run(run_id: str, req: PatchRunRequest) -> dict[str, Any]:
 async def duplicate_run(run_id: str) -> dict[str, Any]:
     """Create a new run with the same definition and document [BLK-077].
 
-    The new run starts in `idle` status with no extracted fields.
+    The new run starts in `queued` status with no extracted fields.
     """
     source = _get_run_or_404(run_id)
 
@@ -330,8 +330,8 @@ async def duplicate_run(run_id: str) -> dict[str, Any]:
     new_run = {
         "id": new_id,
         "definition_id": source.get("definition_id"),
-        "document_path": source.get("document_path"),
-        "status": "idle",
+        "document_url": source.get("document_url") or source.get("document_path"),
+        "status": "queued",
         "current_cycle": 0,
         "total_fields": source.get("total_fields", 0),
         "extracted_fields_count": 0,
@@ -371,7 +371,7 @@ async def list_runs(
         runs = [
             r for r in runs
             if q_lower in r.get("id", "").lower()
-            or q_lower in r.get("document_path", "").lower()
+            or q_lower in (r.get("document_url") or r.get("document_path") or "").lower()
         ]
 
     if status:
@@ -446,14 +446,14 @@ async def stream_run(run_id: str, request: Request) -> StreamingResponse:
             try:
                 # Replay buffered events for late subscribers [BLK-129]
                 for event in ctx.event_buffer:
-                    yield f"data: {json.dumps(event)}\\n\\n"
+                    yield f"data: {json.dumps(event)}\n\n"
 
                 # Stream live events from the emitter
                 async for event in ctx.emitter.async_iter():
                     yield event
 
                 # If emitter is closed but run hasn't finished, emit from stored data
-                if ctx.status in ("completed", "failed", "cancelled"):
+                if ctx.status in ("completed", "failed", "cancelled", "max_iterations_reached"):
                     return
             finally:
                 # Release SSE slot on disconnect [BLK-123]
@@ -503,15 +503,10 @@ async def stream_run(run_id: str, request: Request) -> StreamingResponse:
                 )
 
             # Emit complete with run_id [BLK-129]
+            # Map persisted store status → SSE complete status [BLK-280]
+            from src.api.status import map_store_status_to_sse
             status_str = run_data.get("status", "failed")
-            if status_str == "completed":
-                complete_status = "success"
-            elif status_str == "cancelled":
-                complete_status = "cancelled"
-            elif status_str == "failed":
-                complete_status = "failed"
-            else:
-                complete_status = "max_iterations_reached"
+            complete_status = map_store_status_to_sse(status_str)
             emitter.emit_complete(complete_status, run_id=run_id)
 
             # Yield all events
@@ -535,14 +530,14 @@ async def stream_run(run_id: str, request: Request) -> StreamingResponse:
 
 @router.post("/runs/{run_id}/compact")
 async def compact_run(run_id: str) -> dict[str, Any]:
-    """Trigger manual context compaction for a run [§12.4, BLK-039].
+    """Trigger manual context compaction for a run [§12.4, BLK-039, BLK-244].
 
-    Sets ``_compact_requested=True`` on the run state. The next
-    reflect→plan transition will route through the compact node.
+    For running/paused runs, signals the graph via RunControl so the next
+    reflect→plan transition routes through the compact node.
 
-    In v1 (synchronous runs), the run is typically already complete by
-    the time this is called. The endpoint returns 200 with a note.
-    Auto-compaction at threshold still works during execution.
+    For completed runs, returns a message indicating compaction is only
+    meaningful during live execution. Auto-compaction at threshold still
+    works during execution.
     """
     try:
         run_data = get_store().get_run(run_id)
@@ -550,7 +545,7 @@ async def compact_run(run_id: str) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found")
 
     run_status = run_data.get("status", "unknown")
-    if run_status in ("completed", "failed"):
+    if run_status in ("completed", "failed", "max_iterations_reached", "cancelled"):
         return {
             "run_id": run_id,
             "compaction_triggered": False,
@@ -561,10 +556,18 @@ async def compact_run(run_id: str) -> dict[str, Any]:
             ),
         }
 
+    # Signal the running graph to compact on next cycle [BLK-244]
+    executor = get_executor()
+    triggered = executor.compact_run(run_id)
+
     return {
         "run_id": run_id,
-        "compaction_triggered": True,
-        "message": "Compaction requested — will trigger on next cycle.",
+        "compaction_triggered": triggered,
+        "message": (
+            "Compaction requested — will trigger on next cycle."
+            if triggered
+            else "Run is not active in the executor — compaction not triggered."
+        ),
     }
 
 
@@ -597,7 +600,7 @@ async def pause_run(run_id: str, response: Response) -> dict[str, Any]:
     run_data = _get_run_or_404(run_id)
     current_status = run_data.get("status", "unknown")
 
-    if current_status in ("completed", "failed", "cancelled", "stopped"):
+    if current_status in ("completed", "failed", "cancelled", "max_iterations_reached"):
         response.status_code = status.HTTP_200_OK
         return {
             "run_id": run_id,
@@ -613,11 +616,12 @@ async def pause_run(run_id: str, response: Response) -> dict[str, Any]:
             "message": "Run is already paused.",
         }
 
-    # Request cooperative pause via executor [BLK-129]
+    # Request cooperative pause via executor [BLK-129, BLK-270]
     response.status_code = status.HTTP_202_ACCEPTED
     executor = get_executor()
-    executor.pause_run(run_id)
-    _update_run_status(run_id, "paused")
+    if not executor.pause_run(run_id):
+        # Run not in executor (e.g. sync run) — update store directly [BLK-244]
+        _update_run_status(run_id, "paused")
     return {
         "run_id": run_id,
         "paused": True,
@@ -639,10 +643,11 @@ async def resume_run(run_id: str) -> dict[str, Any]:
             "message": f"Cannot resume — run status is '{current_status}', not 'paused'.",
         }
 
-    # Signal cooperative resume via executor [BLK-129]
+    # Signal cooperative resume via executor [BLK-129, BLK-270]
     executor = get_executor()
-    executor.resume_run(run_id)
-    _update_run_status(run_id, "running")
+    if not executor.resume_run(run_id):
+        # Run not in executor (e.g. sync run) — update store directly [BLK-244]
+        _update_run_status(run_id, "running")
     return {
         "run_id": run_id,
         "resumed": True,
@@ -661,7 +666,7 @@ async def stop_run(run_id: str, response: Response) -> dict[str, Any]:
     run_data = _get_run_or_404(run_id)
     current_status = run_data.get("status", "unknown")
 
-    if current_status in ("completed", "failed", "cancelled", "stopped"):
+    if current_status in ("completed", "failed", "cancelled", "max_iterations_reached"):
         response.status_code = status.HTTP_200_OK
         return {
             "run_id": run_id,
@@ -685,15 +690,14 @@ async def stop_run(run_id: str, response: Response) -> dict[str, Any]:
 
 @router.post("/runs/{run_id}/rollback")
 async def rollback_run(run_id: str, body: RollbackRequest) -> dict[str, Any]:
-    """Rollback run state to a previous cycle [BLK-046].
+    """Rollback run state to a previous cycle [BLK-046, BLK-244].
 
-    Restores the LangGraph checkpoint for the specified cycle. The
-    ``attempted`` set is preserved across rollback — retry-loop
-    prevention is non-negotiable [§12.3].
+    For running/paused runs, signals the graph via RunControl to rollback
+    at the next cycle boundary. The ``attempted`` set is preserved across
+    rollback — retry-loop prevention is non-negotiable [§12.3].
 
-    In v1 (synchronous runs with in-memory checkpoints), this endpoint
-    records the rollback request. Full checkpoint restoration requires
-    async runs (v2).
+    For completed runs, records the rollback request metadata in the store.
+    Full checkpoint restoration requires async runs with checkpointing (v2).
     """
     run_data = _get_run_or_404(run_id)
     current_cycle = run_data.get("current_cycle", 0)
@@ -709,10 +713,14 @@ async def rollback_run(run_id: str, body: RollbackRequest) -> dict[str, Any]:
             "message": f"Cannot rollback to cycle {target_cycle} — current cycle is {current_cycle}.",
         }
 
-    # Record rollback in run data
+    # Try to signal a running graph via the executor [BLK-244]
+    executor = get_executor()
+    live_rollback = executor.rollback_run(run_id, target_cycle)
+
+    # Record rollback metadata in the store
     run_data["rolled_back_from"] = current_cycle
     run_data["rolled_back_to"] = target_cycle
-    run_data["status"] = "rolled_back"
+    run_data["status"] = "paused"
     get_store().update_run(run_id, run_data)
 
     return {
@@ -721,9 +729,11 @@ async def rollback_run(run_id: str, body: RollbackRequest) -> dict[str, Any]:
         "from_cycle": current_cycle,
         "to_cycle": target_cycle,
         "attempted_preserved": True,
+        "live_rollback": live_rollback,
         "message": (
             f"Rolled back from cycle {current_cycle} to {target_cycle}. "
             "attempted set preserved [§12.3]."
+            + (" Live graph signaled." if live_rollback else " Run not active in executor — metadata recorded.")
         ),
     }
 
@@ -734,29 +744,29 @@ async def rollback_run(run_id: str, body: RollbackRequest) -> dict[str, Any]:
 
 class ApprovalRequest(BaseModel):
     """Request body for HITL gate approval [BLK-047]."""
-    field: str = Field(description="Field path being approved or rejected")
-    action: str = Field(description="Approval action: 'accept' or 'reject'")
+    field: str = Field(default="", description="Field path being approved or rejected")
+    action: str = Field(default="accept", description="Approval action: 'accept' or 'reject'")
 
 
 @router.post("/runs/{run_id}/approve")
-def approve_field(run_id: str, body: ApprovalRequest) -> dict[str, Any]:
-    """Approve or reject a gated field value [BLK-047].
+def approve_field(run_id: str, body: ApprovalRequest | None = None) -> dict[str, Any]:
+    """Approve a gated field value [BLK-047].
 
     Accept: value is locked, agent continues.
-    Reject: agent retries with a different tool/approach.
+    The agent thread, blocked in observe_node on gate_approval_event,
+    is unblocked via RunControl.signal_gate_decision.
     """
-    if body.action not in ("accept", "reject"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid action '{body.action}' — must be 'accept' or 'reject'",
-        )
-
+    field = body.field if body else ""
     run_data = _get_run_or_404(run_id)
 
     # Record the approval decision
     approvals = run_data.get("gate_approvals", {})
-    approvals[body.field] = body.action
+    approvals[field or "_global"] = "accept"
     run_data["gate_approvals"] = approvals
+
+    # Signal the blocked agent thread via RunControl [BLK-047]
+    executor = get_executor()
+    delivered = executor.signal_gate(run_id, "accept", field)
 
     # If agent was paused for gate, resume
     if run_data.get("status") == "paused":
@@ -766,9 +776,45 @@ def approve_field(run_id: str, body: ApprovalRequest) -> dict[str, Any]:
 
     return {
         "run_id": run_id,
-        "field": body.field,
-        "action": body.action,
-        "message": f"Field '{body.field}' {body.action}ed by user [BLK-047].",
+        "field": field,
+        "action": "accept",
+        "delivered": delivered,
+        "message": f"Field '{field or '_global'}' accepted by user [BLK-047].",
+    }
+
+
+@router.post("/runs/{run_id}/reject")
+def reject_field(run_id: str, body: ApprovalRequest | None = None) -> dict[str, Any]:
+    """Reject a gated field value [BLK-047].
+
+    Reject: agent retries with a different tool/approach.
+    The agent thread, blocked in observe_node on gate_approval_event,
+    is unblocked via RunControl.signal_gate_decision.
+    """
+    field = body.field if body else ""
+    run_data = _get_run_or_404(run_id)
+
+    # Record the rejection decision
+    approvals = run_data.get("gate_approvals", {})
+    approvals[field or "_global"] = "reject"
+    run_data["gate_approvals"] = approvals
+
+    # Signal the blocked agent thread via RunControl [BLK-047]
+    executor = get_executor()
+    delivered = executor.signal_gate(run_id, "reject", field)
+
+    # If agent was paused for gate, resume so it can process the rejection
+    if run_data.get("status") == "paused":
+        run_data["status"] = "running"
+
+    get_store().update_run(run_id, run_data)
+
+    return {
+        "run_id": run_id,
+        "field": field,
+        "action": "reject",
+        "delivered": delivered,
+        "message": f"Field '{field or '_global'}' rejected by user [BLK-047].",
     }
 
 
@@ -788,7 +834,7 @@ async def export_run_json(run_id: str) -> dict[str, Any]:
     export: dict[str, Any] = {
         "run_id": run_id,
         "definition_id": run_data.get("definition_id"),
-        "document_path": run_data.get("document_path"),
+        "document_url": run_data.get("document_url") or run_data.get("document_path"),
         "status": run_data.get("status"),
         "created_at": run_data.get("created_at"),
         "fields": run_data.get("fields", []),

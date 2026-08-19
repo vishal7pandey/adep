@@ -23,10 +23,10 @@ dev:
 	uv run uvicorn src.api.main:app --reload --host 0.0.0.0 --port 8000
 
 test:
-	uv run pytest src/tests/ -v
+	uv run pytest src/tests/ -v -m "not integration"
 
 test-cov:
-	uv run pytest src/tests/ --cov=src --cov-report=term-missing --cov-fail-under=80
+	uv run pytest src/tests/ -m "not integration" --cov=src --cov-report=term-missing --cov-fail-under=80
 
 seed:
 	uv run python -m scripts.seed

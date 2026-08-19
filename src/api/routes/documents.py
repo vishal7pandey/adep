@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import shutil
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -12,6 +11,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 
 from src.documents.store import get_document_store, MAX_FILE_SIZE_BYTES, SUPPORTED_FORMATS
+from src.documents.validation import validate_magic_bytes, MAGIC_BYTE_READ_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +36,42 @@ async def upload_document(file: UploadFile = File(...)) -> dict[str, Any]:
             detail=f"Unsupported format '{ext}'. Supported: {', '.join(sorted(SUPPORTED_FORMATS))}",
         )
 
-    # Save to temp file
-    with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
-        shutil.copyfileobj(file.file, tmp)
-        tmp_path = Path(tmp.name)
+    # BLK-256: Stream to temp file with size cap to prevent disk exhaustion
+    # before the file is fully written. Read in chunks and abort early if
+    # the streamed size exceeds MAX_FILE_SIZE_BYTES.
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp_path = Path(tmp.name)
+            total = 0
+            while True:
+                chunk = file.file.read(1024 * 1024)  # 1MB chunks
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_FILE_SIZE_BYTES:
+                    tmp.close()
+                    tmp_path.unlink(missing_ok=True)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"File size exceeds {MAX_FILE_SIZE_BYTES // 1024 // 1024}MB limit",
+                    )
+                tmp.write(chunk)
+    except HTTPException:
+        raise
+    except Exception:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+        raise
 
-    # Check file size
-    if tmp_path.stat().st_size > MAX_FILE_SIZE_BYTES:
+    # BLK-256: Validate magic bytes to prevent content-type spoofing
+    with open(tmp_path, "rb") as f:
+        header = f.read(MAGIC_BYTE_READ_SIZE)
+    if not validate_magic_bytes(header, ext):
         tmp_path.unlink(missing_ok=True)
         raise HTTPException(
-            status_code=413,
-            detail=f"File size exceeds {MAX_FILE_SIZE_BYTES // 1024 // 1024}MB limit",
+            status_code=415,
+            detail=f"File content does not match extension '{ext}'. Possible content-type spoofing.",
         )
 
     # Import and pre-process

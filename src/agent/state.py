@@ -329,6 +329,7 @@ class AgentState(TypedDict, total=False):
     total_tokens: int
     total_cost_usd: float
     task_type: str
+    confidence_threshold: float
 
 
 # ---------------------------------------------------------------------------

@@ -355,14 +355,25 @@ class DefinitionStore:
 
 
 # Singleton store instance
-_store: DefinitionStore | None = None
+_store: DefinitionStore | Any = None
 
 
-def get_store() -> DefinitionStore:
-    """Get the singleton DefinitionStore instance."""
+def get_store() -> DefinitionStore | Any:
+    """Get the singleton store instance.
+
+    Returns a file-based DefinitionStore or a DatabaseDefinitionStore
+    depending on the ADE_STORE_BACKEND config setting [BLK-036].
+    """
     global _store
     if _store is None:
-        _store = DefinitionStore()
+        from src.config import settings
+        backend = settings.store_backend.lower()
+        if backend == "sqlite":
+            from src.definitions.db_store import DatabaseDefinitionStore
+            _store = DatabaseDefinitionStore(db_path=settings.store_db_path)
+            logger.info("Using SQLite-backed store at %s", settings.store_db_path)
+        else:
+            _store = DefinitionStore()
     return _store
 
 

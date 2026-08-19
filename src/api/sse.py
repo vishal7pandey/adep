@@ -28,14 +28,43 @@ class SSEEventEmitter:
     The graph nodes call ``emit_*`` methods to push events. The SSE
     endpoint consumes them via ``async_iter()``.
 
+    Supports multiple concurrent subscribers via a fanout list — each
+    subscriber gets its own queue so events are not stolen by one
+    consumer [SCRUM-484].
+
     Attributes:
-        _queue: Async queue of event dicts.
+        _subscribers: List of per-subscriber async queues.
         _closed: Whether the emitter is closed (complete event sent).
     """
 
     def __init__(self) -> None:
-        self._queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        self._subscribers: list[asyncio.Queue[dict[str, Any] | None]] = []
         self._closed = False
+        self._event_buffer: list[dict[str, Any]] = []
+
+    def subscribe(self) -> asyncio.Queue[dict[str, Any] | None]:
+        """Create a new subscriber queue for fanout support [SCRUM-484].
+
+        Replays all buffered events to the new subscriber so late
+        subscribers don't miss earlier events.
+
+        Returns:
+            A queue that will receive all future events.
+        """
+        q: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        # Replay buffered events to this new subscriber
+        for event in self._event_buffer:
+            q.put_nowait(event)
+        # If emitter is already closed, signal end of stream
+        if self._closed:
+            q.put_nowait(None)
+        self._subscribers.append(q)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue[dict[str, Any] | None]) -> None:
+        """Remove a subscriber queue [SCRUM-484]."""
+        if q in self._subscribers:
+            self._subscribers.remove(q)
 
     def _timestamp(self) -> str:
         """ISO 8601 UTC timestamp."""
@@ -125,17 +154,20 @@ class SSEEventEmitter:
     ) -> None:
         """Emit a field_update event [Wave 4/5].
 
-        Includes extraction progress counts and risk tier for HITL gating.
+        The frontend expects ``{ type: 'field_update', field: ExtractedField }``
+        where ``field`` is a nested object [SCRUM-484].
         """
         self._emit({
             "type": "field_update",
-            "field": field_id,
-            "name": name,
-            "value": value,
-            "confidence": confidence,
-            "bbox": bbox,
-            "page": page,
-            "status": status,
+            "field": {
+                "id": field_id,
+                "name": name,
+                "value": value,
+                "confidence": confidence,
+                "bbox": bbox,
+                "page": page,
+                "status": status,
+            },
             "extracted_fields_count": extracted_fields_count,
             "total_fields": total_fields,
             "risk_tier": risk_tier,
@@ -217,7 +249,15 @@ class SSEEventEmitter:
             "consecutive_non_improving": consecutive_non_improving,
         })
 
-    def emit_gate_triggered(self, field: str, risk_tier: str, confidence: float, reason: str) -> None:
+    def emit_gate_triggered(
+        self,
+        field: str,
+        risk_tier: str,
+        confidence: float,
+        reason: str,
+        cycle: int = 0,
+        required_action: str = "approve or reject this field",
+    ) -> None:
         """Emit a gate_triggered event — HITL gate requires user action [BLK-047].
 
         Fired when a high-risk or critical action needs user approval.
@@ -228,6 +268,8 @@ class SSEEventEmitter:
             "risk_tier": risk_tier,
             "confidence": confidence,
             "reason": reason,
+            "cycle": cycle,
+            "required_action": required_action,
         })
 
     def emit_token_usage(
@@ -322,10 +364,13 @@ class SSEEventEmitter:
         })
 
     def emit_complete(self, status: str, summary: str | None = None,
-                      run_id: str | None = None) -> None:
+                      run_id: str | None = None,
+                      execution_mode: str | None = None) -> None:
         """Emit the complete event and close the stream [BLK-129].
 
         Includes run_id for multi-tab client disambiguation (frontend addition).
+        Includes execution_mode when the run did not use the ReAct agent
+        (e.g. "fallback") so the frontend can surface this to the user [BLK-287].
         """
         payload: dict[str, Any] = {
             "type": "complete",
@@ -334,30 +379,43 @@ class SSEEventEmitter:
         }
         if run_id:
             payload["run_id"] = run_id
+        if execution_mode:
+            payload["execution_mode"] = execution_mode
         self._emit(payload)
         self.close()
 
     def close(self) -> None:
-        """Close the emitter — sends None to signal end of stream."""
+        """Close the emitter — sends None to all subscribers to signal end of stream."""
         self._closed = True
-        self._queue.put_nowait(None)
+        for q in self._subscribers:
+            q.put_nowait(None)
+        self._subscribers.clear()
 
     def _emit(self, event: dict[str, Any]) -> None:
-        """Push an event to the queue."""
+        """Push an event to all subscriber queues and buffer it [SCRUM-484]."""
         if not self._closed:
-            self._queue.put_nowait(event)
+            self._event_buffer.append(event)
+            for q in self._subscribers:
+                q.put_nowait(event)
 
     async def async_iter(self):
         """Async generator yielding SSE-formatted strings.
 
+        Subscribes to the emitter's fanout list so multiple consumers
+        can each receive all events [SCRUM-484].
+
         Yields:
             ``data: {json}\n\n`` strings for each event.
         """
-        while True:
-            event = await self._queue.get()
-            if event is None:
-                break
-            yield f"data: {json.dumps(event)}\n\n"
+        q = self.subscribe()
+        try:
+            while True:
+                event = await q.get()
+                if event is None:
+                    break
+                yield f"data: {json.dumps(event)}\n\n"
+        finally:
+            self.unsubscribe(q)
 
     @staticmethod
     def encode_crop_thumbnail(image_path: str) -> str | None:

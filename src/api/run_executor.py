@@ -14,6 +14,7 @@ import asyncio
 import json
 import logging
 import signal
+import threading
 import uuid
 from datetime import datetime, timezone
 from typing import Any
@@ -34,26 +35,90 @@ class RunControl:
     Attributes:
         cancel_requested: If True, agent terminates at next cycle boundary.
         pause_requested: If True, agent pauses at next cycle boundary.
-        resume_event: Set when resume is called; agent waits on this when paused.
+        resume_event: Thread-safe event — set when resume is called; the agent
+            blocks on this when paused [BLK-270].
+        gate_approval_event: Thread-safe event set by /approve or /reject to
+            unblock a HITL gate in observe_node [BLK-047].
+        gate_decision: The user's gate decision ("accept" or "reject") [BLK-047].
+        gate_field: The field name currently awaiting gate approval [BLK-047].
     """
 
     def __init__(self) -> None:
         self.cancel_requested: bool = False
         self.pause_requested: bool = False
-        self.resume_event: asyncio.Event = asyncio.Event()
+        self.resume_event: threading.Event = threading.Event()
+        self.gate_approval_event: threading.Event = threading.Event()
+        self.gate_decision: str = ""
+        self.gate_field: str = ""
+        self.compact_requested: bool = False
+        self.rollback_requested: bool = False
+        self.rollback_to_cycle: int = -1
 
     def request_pause(self) -> None:
-        """Request the agent to pause at the next cycle boundary."""
+        """Request the agent to pause at the next cycle boundary [BLK-270].
+
+        Clears the resume_event so the graph will block when it reaches
+        the next cycle boundary.
+        """
         self.pause_requested = True
+        self.resume_event.clear()
 
     def request_resume(self) -> None:
-        """Clear pause and signal the agent to continue."""
+        """Clear pause and signal the agent to continue [BLK-270]."""
         self.pause_requested = False
         self.resume_event.set()
 
+    def wait_for_resume(self, timeout: float | None = None) -> bool:
+        """Block until resume is signaled or timeout expires [BLK-270].
+
+        Called from the graph thread (runs via asyncio.to_thread).
+        Returns True if the event was set, False on timeout.
+        """
+        return self.resume_event.wait(timeout)
+
+    def reset_gate(self) -> None:
+        """Reset gate state for the next HITL gate [BLK-047]."""
+        self.gate_approval_event.clear()
+        self.gate_decision = ""
+        self.gate_field = ""
+
+    def signal_gate_decision(self, decision: str, field: str = "") -> None:
+        """Signal a HITL gate decision from the API layer [BLK-047].
+
+        Args:
+            decision: "accept" or "reject".
+            field: The field name being approved/rejected.
+        """
+        self.gate_decision = decision
+        self.gate_field = field
+        self.gate_approval_event.set()
+
     def request_cancel(self) -> None:
-        """Request the agent to cancel at the next cycle boundary."""
+        """Request the agent to cancel at the next cycle boundary.
+
+        Also unblocks any thread waiting in a HITL gate or pause so the
+        worker doesn't leak forever [SCRUM-483].
+        """
         self.cancel_requested = True
+        self.gate_approval_event.set()
+        self.resume_event.set()
+
+    def request_compact(self) -> None:
+        """Request manual trace compaction at the next cycle boundary [BLK-244].
+
+        Sets ``compact_requested`` so ``should_continue`` routes through
+        the compact node on the next reflect→plan transition.
+        """
+        self.compact_requested = True
+
+    def request_rollback(self, to_cycle: int) -> None:
+        """Request a rollback to a previous cycle [BLK-244].
+
+        Args:
+            to_cycle: The cycle number to rollback to.
+        """
+        self.rollback_requested = True
+        self.rollback_to_cycle = to_cycle
 
     def check_cancelled(self) -> bool:
         """Check if cancellation was requested."""
@@ -67,7 +132,7 @@ class RunContext:
         run_id: Unique run identifier.
         definition_id: Agent definition ID.
         document_path: Path to the document.
-        status: Current run status (queued, running, paused, completed, failed, cancelled).
+        status: Current run status (queued, running, paused, completed, max_iterations_reached, failed, cancelled).
         emitter: SSE event emitter for this run.
         control: Cooperative control flags.
         event_buffer: Buffered events for late SSE subscribers.
@@ -239,7 +304,10 @@ class RunExecutor:
         return self._runs.get(run_id)
 
     def pause_run(self, run_id: str) -> bool:
-        """Request a running run to pause at the next cycle boundary [BLK-129].
+        """Request a running run to pause at the next cycle boundary [BLK-129, BLK-270].
+
+        Updates ctx.status to "paused" and persists to store so the API
+        layer doesn't need to update the store separately.
 
         Returns:
             True if pause was requested, False if run not found or not running.
@@ -248,10 +316,15 @@ class RunExecutor:
         if ctx is None or ctx.status not in ("running",):
             return False
         ctx.control.request_pause()
+        ctx.status = "paused"
+        self._persist_run(ctx)
         return True
 
     def resume_run(self, run_id: str) -> bool:
-        """Resume a paused run [BLK-129].
+        """Resume a paused run [BLK-129, BLK-270].
+
+        Signals the graph thread to unblock via resume_event and updates
+        ctx.status back to "running". Persists to store.
 
         Returns:
             True if resume was signaled, False if run not found or not paused.
@@ -260,6 +333,8 @@ class RunExecutor:
         if ctx is None or ctx.status != "paused":
             return False
         ctx.control.request_resume()
+        ctx.status = "running"
+        self._persist_run(ctx)
         return True
 
     def cancel_run(self, run_id: str) -> bool:
@@ -275,6 +350,54 @@ class RunExecutor:
         # If paused, also resume so the worker can see the cancel flag
         if ctx.status == "paused":
             ctx.control.request_resume()
+        return True
+
+    def signal_gate(self, run_id: str, decision: str, field: str = "") -> bool:
+        """Signal a HITL gate decision to a blocked agent [BLK-047].
+
+        Args:
+            run_id: The run ID.
+            decision: "accept" or "reject".
+            field: The field name being approved/rejected.
+
+        Returns:
+            True if the signal was delivered, False if run not found.
+        """
+        ctx = self._runs.get(run_id)
+        if ctx is None:
+            return False
+        ctx.control.signal_gate_decision(decision, field)
+        return True
+
+    def compact_run(self, run_id: str) -> bool:
+        """Request manual compaction for a running run [BLK-244].
+
+        Args:
+            run_id: The run ID.
+
+        Returns:
+            True if compaction was requested, False if run not found or not running.
+        """
+        ctx = self._runs.get(run_id)
+        if ctx is None or ctx.status not in ("running", "paused"):
+            return False
+        ctx.control.request_compact()
+        return True
+
+    def rollback_run(self, run_id: str, to_cycle: int) -> bool:
+        """Request rollback for a running run [BLK-244].
+
+        Args:
+            run_id: The run ID.
+            to_cycle: The cycle to rollback to.
+
+        Returns:
+            True if rollback was requested, False if run not found or not running.
+        """
+        ctx = self._runs.get(run_id)
+        if ctx is None or ctx.status not in ("running", "paused"):
+            return False
+        ctx.control.request_rollback(to_cycle)
         return True
 
     def get_queue_status(self) -> dict[str, Any]:
@@ -344,11 +467,11 @@ class RunExecutor:
         logger.debug("Worker loop exiting [BLK-129]")
 
     async def _execute_run(self, ctx: RunContext) -> None:
-        """Execute a single run in a background thread [BLK-129].
+        """Execute a single run [BLK-129].
 
-        The LangGraph invoke is synchronous, so we run it in a thread via
-        asyncio.to_thread(). SSE events are emitted live via the emitter
-        wired into the graph nodes.
+        Delegates to execute_run_async which runs the synchronous LangGraph
+        invoke in a thread via asyncio.to_thread() [BLK-240]. SSE events
+        are emitted live via the emitter wired into the graph nodes.
         """
         ctx.status = "running"
         ctx.started_at = datetime.now(timezone.utc).isoformat()

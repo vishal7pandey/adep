@@ -74,7 +74,7 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
     setSelectedNodeId(node.id);
     if (node.bbox) {
       setActiveFieldId(node.id);
-      setActiveBBox(node.bbox);
+      setActiveBBox(node.bbox, node.bbox.page);
     }
   };
 
@@ -112,8 +112,7 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
   const dexpiContent =
     serializedOutput?.dexpi_xml || '<!-- No DEXPI XML data returned by backend for this run -->';
   const smartPidContent =
-    serializedOutput?.smart_pid_json ||
-    '{\n  "message": "No Smart P&ID JSON data returned by backend for this run"\n}';
+    serializedOutput?.smart_pid_json || '';
   const graphmlContent =
     serializedOutput?.graphml || '<!-- No GraphML data returned by backend for this run -->';
 
@@ -289,11 +288,18 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
       ) : (
         /* Code View Tabs (DEXPI, Smart P&ID, GraphML) */
         <div className="flex-1 rounded-xl border border-[var(--card-border)] bg-black/10 dark:bg-black/50 p-3 overflow-auto font-mono text-xs text-[var(--primary-text)]">
-          <pre className="p-2 whitespace-pre-wrap">
-            {activeTab === 'dexpi' && dexpiContent}
-            {activeTab === 'smart_pid' && smartPidContent}
-            {activeTab === 'graphml' && graphmlContent}
-          </pre>
+          {activeTab === 'smart_pid' && !smartPidContent ? (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-2">
+              <Info className="w-5 h-5 text-muted" />
+              <p className="text-muted">No Smart P&amp;ID JSON data returned by backend for this run.</p>
+            </div>
+          ) : (
+            <pre className="p-2 whitespace-pre-wrap">
+              {activeTab === 'dexpi' && dexpiContent}
+              {activeTab === 'smart_pid' && smartPidContent}
+              {activeTab === 'graphml' && graphmlContent}
+            </pre>
+          )}
         </div>
       )}
     </div>

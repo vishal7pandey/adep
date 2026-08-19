@@ -33,6 +33,11 @@ SUPPORTED_FORMATS = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
 TARGET_DPI = 150
 THUMBNAIL_WIDTH = 300
 
+# BLK-256: Decompression-bomb guard — reject images that expand to more than
+# 100 million pixels (~400MB uncompressed RGB). PIL raises DecompressionBombError
+# when this limit is exceeded, preventing memory exhaustion from malicious uploads.
+_MAX_IMAGE_PIXELS = 100_000_000
+
 _DOC_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
 
@@ -244,6 +249,9 @@ class DocumentStore:
         """Convert single image to PNG."""
         from PIL import Image
 
+        # BLK-256: Decompression-bomb guard
+        Image.MAX_IMAGE_PIXELS = _MAX_IMAGE_PIXELS
+
         img = Image.open(file_path)
 
         # Convert to RGB if necessary (e.g., RGBA, P mode)
@@ -287,6 +295,9 @@ class DocumentStore:
     def _generate_thumbnail(self, source_path: Path, doc_dir: Path) -> str:
         """Generate a 300px-wide thumbnail JPEG."""
         from PIL import Image
+
+        # BLK-256: Decompression-bomb guard
+        Image.MAX_IMAGE_PIXELS = _MAX_IMAGE_PIXELS
 
         img = Image.open(source_path)
         if img.mode not in ("RGB", "L"):

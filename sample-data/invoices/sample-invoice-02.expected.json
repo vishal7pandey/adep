@@ -1,0 +1,27 @@
+{
+  "document": "sample-invoice-02.pdf",
+  "definition_id": "def-invoice",
+  "expected": {
+    "invoice_number": "INV-2023-1001",
+    "invoice_date": "2023-11-20",
+    "due_date": "2023-12-20",
+    "vendor": "Northwind Traders",
+    "subtotal": 450.00,
+    "tax": 38.25,
+    "total": 488.25
+  },
+  "tolerances": {
+    "subtotal": 0.01,
+    "tax": 0.01,
+    "total": 0.01
+  },
+  "min_confidence": {
+    "invoice_number": 0.85,
+    "invoice_date": 0.85,
+    "due_date": 0.85,
+    "vendor": 0.85,
+    "subtotal": 0.85,
+    "tax": 0.85,
+    "total": 0.85
+  }
+}
