@@ -103,6 +103,10 @@ class Settings(BaseSettings):
     # Async run execution [BLK-129]
     max_concurrent_runs: int = 3
 
+    # Definition store backend [BLK-036]
+    store_backend: str = "file"  # "file" or "sqlite"
+    store_db_path: str = ".adep/store.db"  # SQLite DB path (relative to cwd)
+
     # Rate limiting [BLK-123]
     rate_limit_enabled: bool = False  # disabled by default for tests
     rate_limit_post_runs_per_min: int = 10
@@ -112,9 +116,45 @@ class Settings(BaseSettings):
     rate_limit_sse_concurrent_per_key: int = 5
     rate_limit_eviction_interval_seconds: int = 300  # 5 minutes
 
+    def validate_provider_config(self) -> None:
+        """Fail fast on empty or partially configured provider credentials [BLK-173].
+
+        Detects:
+          - API key set but endpoint missing (or vice versa) — partial config
+            that would silently produce zero-output runs.
+          - Both key and endpoint missing — no LLM provider at all.
+
+        Raises:
+            ValueError: If provider credentials are partially or fully missing
+                and no PDF fallback is available.
+        """
+        azure_fields = {
+            "AZURE_API_KEY": self.azure_api_key,
+            "AZURE_CHAT_ENDPOINT": self.azure_chat_endpoint,
+        }
+        set_fields = {k: v for k, v in azure_fields.items() if v.strip()}
+        unset_fields = [k for k, v in azure_fields.items() if not v.strip()]
+
+        if unset_fields and set_fields:
+            # Partial configuration — some fields set, some empty
+            raise ValueError(
+                f"Partial Azure OpenAI configuration detected [BLK-173]. "
+                f"Set: {list(set_fields.keys())}, Missing: {unset_fields}. "
+                f"Either provide ALL required Azure credentials "
+                f"(AZURE_API_KEY, AZURE_CHAT_ENDPOINT) or leave ALL empty "
+                f"to use PDF fallback. Partial config causes silent zero-output runs."
+            )
+
+    def is_llm_configured(self) -> bool:
+        """Return True if all required Azure OpenAI credentials are set [BLK-173]."""
+        return bool(self.azure_api_key.strip() and self.azure_chat_endpoint.strip())
+
 
 # Module-level singleton — import as `from src.config import settings`.
 settings = Settings()
+
+# BLK-173: Validate provider config at startup — fail fast on partial credentials
+settings.validate_provider_config()
 
 # BLK-153: Warn when auth is disabled
 if not settings.auth_enabled:

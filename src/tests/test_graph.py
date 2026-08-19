@@ -216,7 +216,39 @@ class TestActNode:
         )
         result = act_node(state, registry=registry, breaker=CircuitBreaker())
         assert result["_tool_result"].ok is False
-        assert "Unknown tool" in result["_tool_result"].error
+        assert "not registered" in result["_tool_result"].error or "Unknown tool" in result["_tool_result"].error
+
+    def test_skips_already_attempted_with_region_id(self):
+        """plan_node should skip a tool call that already failed on a specific region [BLK-243]."""
+        registry = _build_registry_with_mock_tools()
+        import json as _json
+        action = {"tool": "ocr", "args": {"image_path": "test.png", "region_id": "r1"}, "thought": "read", "field": "total"}
+        attempt_key = f"ocr:{_json.dumps(action['args'], sort_keys=True)}"
+        state = _build_test_state(
+            attempted={"r1": {attempt_key}},
+        )
+        llm = MockLLMClient([action])
+        result = plan_node(state, llm_client=llm, skill=InvoiceSkill, registry=registry)
+        assert result["status"] == RunStatus.PLANNING
+        assert result["_planned_action"] is None
+
+    def test_skips_already_attempted_page_level_tool(self):
+        """plan_node should skip a page-level tool (no region_id) that already failed [BLK-243].
+
+        The observe_node records failures under "_global" when region_id is absent.
+        The plan_node must use the same default to find the recorded failure.
+        """
+        registry = _build_registry_with_mock_tools()
+        import json as _json
+        action = {"tool": "ocr", "args": {"image_path": "page1.png"}, "thought": "read", "field": "total"}
+        attempt_key = f"ocr:{_json.dumps(action['args'], sort_keys=True)}"
+        state = _build_test_state(
+            attempted={"_global": {attempt_key}},
+        )
+        llm = MockLLMClient([action])
+        result = plan_node(state, llm_client=llm, skill=InvoiceSkill, registry=registry)
+        assert result["status"] == RunStatus.PLANNING
+        assert result["_planned_action"] is None
 
 
 class TestObserveNode:
@@ -368,9 +400,9 @@ class TestGraphIntegration:
         state = _build_test_state()
         final = graph.invoke(state, config={"recursion_limit": 40})
 
-        # Should terminate with partial status due to cap exhaustion
+        # Should terminate with partial/paused status due to cap exhaustion or auto-pause [BLK-049, BLK-243]
         status = final.get("status")
-        assert status in (RunStatus.PARTIAL, RunStatus.COMPLETE)
+        assert status in (RunStatus.PARTIAL, RunStatus.COMPLETE, RunStatus.PAUSED)
 
 
 class TestEmptyRegistryCheck:
@@ -389,3 +421,173 @@ class TestEmptyRegistryCheck:
                     "Tool registry is empty. Check provider configuration. "
                     "Ensure required packages are installed."
                 )
+
+
+# ---------------------------------------------------------------------------
+# Graph-specific validation in the live loop [BLK-218]
+# ---------------------------------------------------------------------------
+
+class TestGraphValidationInLiveLoop:
+    """Verify graph extraction uses graph-specific validation during the live loop [BLK-218]."""
+
+    def test_reflect_node_dispatches_graph_validation(self):
+        """reflect_node should call _validate_graph_state for graph_extraction tasks [BLK-218]."""
+        import inspect
+        from src.agent.graph import reflect_node
+        source = inspect.getsource(reflect_node)
+        assert "task_type" in source, (
+            "reflect_node must check task_type to dispatch validation [BLK-218]"
+        )
+        assert "graph_extraction" in source, (
+            "reflect_node must handle graph_extraction task type [BLK-218]"
+        )
+        assert "_validate_graph_state" in source, (
+            "reflect_node must call _validate_graph_state for graph tasks [BLK-218]"
+        )
+
+    def test_validate_graph_state_exists(self):
+        """_validate_graph_state helper should exist in graph.py [BLK-218]."""
+        from src.agent.graph import _validate_graph_state
+        assert callable(_validate_graph_state)
+
+    def test_validate_graph_state_produces_graph_gap_types(self):
+        """_validate_graph_state should produce graph-specific GapTypes [BLK-218]."""
+        from src.agent.graph import _validate_graph_state
+        from src.agent.state import AgentState, RunStatus
+        from src.agent.validator import GapType
+        from src.skills.pid_diagram import PnIDSkill
+        from src.templates.pid_diagram import PnIDContract
+
+        skill = PnIDSkill  # PnIDSkill is already a Skill instance
+        template = PnIDContract
+
+        # Empty state — no graph built yet
+        state: AgentState = {
+            "task_type": "graph_extraction",
+            "trace": [],
+            "total_cycles": 1,
+            "status": RunStatus.PLANNING,
+            "provider_errors": [],
+            "token_usage": [],
+            "extraction": {},
+            "template_schema": template,
+        }  # type: ignore
+
+        gap_report = _validate_graph_state(state, template, skill)
+        # Should have graph-specific gaps (no nodes, no edges)
+        gap_types = {g.gap_type for g in gap_report.gaps}
+        assert GapType.NODE_MISSING in gap_types, (
+            "Graph validation should report NODE_MISSING when no nodes [BLK-218]"
+        )
+        assert GapType.EDGE_MISSING in gap_types, (
+            "Graph validation should report EDGE_MISSING when no edges [BLK-218]"
+        )
+
+    def test_validate_graph_state_passes_with_complete_graph(self):
+        """_validate_graph_state should return is_complete when graph is valid [BLK-218]."""
+        from src.agent.graph import _validate_graph_state
+        from src.agent.state import AgentState, RunStatus
+        from src.skills.pid_diagram import PnIDSkill
+        from src.templates.pid_diagram import PnIDContract
+        from src.tools.base import ToolResult
+        from src.agent.state import TraceEntry
+
+        skill = PnIDSkill  # PnIDSkill is already a Skill instance
+        template = PnIDContract
+
+        # Build a trace with build_graph + serialize_graph results
+        trace = [
+            TraceEntry(
+                step=1,
+                thought="build graph",
+                tool_name="build_graph",
+                tool_args={},
+                result=ToolResult(
+                    ok=True,
+                    data={
+                        "nodes": [
+                            {"id": "n1", "type": "equipment", "bbox": [10, 10, 50, 50]},
+                            {"id": "n2", "type": "valve", "bbox": [60, 10, 80, 30]},
+                        ],
+                        "edges": [
+                            {"id": "e1", "source": "n1", "target": "n2"},
+                        ],
+                    },
+                ),
+            ),
+            TraceEntry(
+                step=2,
+                thought="serialize dexpi",
+                tool_name="serialize_graph",
+                tool_args={},
+                result=ToolResult(
+                    ok=True,
+                    data={"format": "dexpi_xml", "content": "<dexpi>...</dexpi>"},
+                ),
+            ),
+            TraceEntry(
+                step=2,
+                thought="serialize smart_pid",
+                tool_name="serialize_graph",
+                tool_args={},
+                result=ToolResult(
+                    ok=True,
+                    data={"format": "smart_pid_json", "content": "{}"},
+                ),
+            ),
+            TraceEntry(
+                step=2,
+                thought="serialize graphml",
+                tool_name="serialize_graph",
+                tool_args={},
+                result=ToolResult(
+                    ok=True,
+                    data={"format": "graphml", "content": "<graphml>...</graphml>"},
+                ),
+            ),
+        ]
+
+        state: AgentState = {
+            "task_type": "graph_extraction",
+            "trace": trace,
+            "total_cycles": 2,
+            "status": RunStatus.PLANNING,
+            "provider_errors": [],
+            "token_usage": [],
+            "extraction": {},
+            "template_schema": template,
+        }  # type: ignore
+
+        gap_report = _validate_graph_state(state, template, skill)
+        assert gap_report.is_complete, (
+            f"Graph validation should be complete with valid graph, gaps: {gap_report.gaps} [BLK-218]"
+        )
+
+    def test_result_gap_count_handles_graph_tasks(self):
+        """result_gap_count should count node_types + edge_types + output_formats for graph tasks [BLK-218]."""
+        from src.api.run_engine import result_gap_count
+        from src.templates.pid_diagram import PnIDContract
+
+        state = {
+            "template_schema": PnIDContract(),  # Instantiate to get default_factory values
+            "task_type": "graph_extraction",
+        }
+        count = result_gap_count(state)
+        # PnIDContract has 5 node_types + 4 edge_types + 3 output_formats = 12
+        assert count == 12, (
+            f"result_gap_count should return 12 for PnIDContract graph task, got {count} [BLK-218]"
+        )
+
+    def test_result_gap_count_handles_field_tasks(self):
+        """result_gap_count should still work for field extraction tasks [BLK-218]."""
+        from src.api.run_engine import result_gap_count
+        from src.templates.invoice import InvoiceTemplate
+
+        state = {
+            "template_schema": InvoiceTemplate,
+            "task_type": "extraction",
+        }
+        count = result_gap_count(state)
+        assert count > 0, (
+            "result_gap_count should return >0 for InvoiceTemplate [BLK-218]"
+        )

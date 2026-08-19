@@ -30,9 +30,8 @@ export const Pane3DocumentViewer: React.FC = () => {
   const [rotation, setRotation] = useState(0);
   const [hoveredHeatmapFieldId, setHoveredHeatmapFieldId] = useState<string | null>(null);
 
-  const { activeBBox, activePage, setActivePage, heatmapEnabled, setHeatmapEnabled, heatmapFields, setActiveFieldId, setActiveBBox } = useActiveHighlight();
+  const { activeBBox, activeBBoxPage, activePage, totalPages, setActivePage, heatmapEnabled, setHeatmapEnabled, heatmapFields, setActiveFieldId, setActiveBBox } = useActiveHighlight();
   const { documentFileName, documentUrl, runId } = useWorkbench();
-  const totalPages = Math.max(1, ...heatmapFields.map((f) => f.page || 1));
   const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
   const isLikelyDocumentId =
@@ -197,7 +196,7 @@ export const Pane3DocumentViewer: React.FC = () => {
                   onMouseLeave={() => setHoveredHeatmapFieldId(null)}
                   onClick={() => {
                     setActiveFieldId(field.id);
-                    setActiveBBox(field.bbox);
+                    setActiveBBox(field.bbox, field.page);
                   }}
                 >
                   <rect
@@ -239,8 +238,8 @@ export const Pane3DocumentViewer: React.FC = () => {
               );
             })}
 
-            {/* Active field bounding box (Electric Blue) */}
-            {activeBBox && (
+            {/* Active field bounding box (Electric Blue) — only on the page it belongs to */}
+            {activeBBox && activeBBoxPage === activePage && (
               <g>
                 <rect
                   x={activeBBox.x * scale}

@@ -45,7 +45,7 @@ export const Pane2ExtractedData: React.FC = () => {
   const [jsonText, setJsonText] = useState<string>('[]');
   const [fetchError, setFetchError] = useState<{ message: string; status?: number } | null>(null);
 
-  const { activeFieldId, setActiveBBox, setActivePage, setActiveFieldId, setHoveredFieldId, setHeatmapFields } =
+  const { activeFieldId, setActiveBBox, setActivePage, setActiveFieldId, setHoveredFieldId, setHeatmapFields, setTotalPages } =
     useActiveHighlight();
   const { phase, runStatus, runId } = useWorkbench();
 
@@ -70,6 +70,9 @@ export const Pane2ExtractedData: React.FC = () => {
           if (run && run.fields) {
             setFields(run.fields);
             setJsonText(JSON.stringify(run.fields, null, 2));
+            // BLK-250: Set total pages from max field page (fallback when document metadata unavailable)
+            const maxPage = run.fields.reduce((mx, f) => Math.max(mx, f.page || 1), 1);
+            setTotalPages(maxPage);
           }
         })
         .catch((err) => {
@@ -125,7 +128,7 @@ export const Pane2ExtractedData: React.FC = () => {
   const handleFieldClick = (field: ExtractedField) => {
     setActiveFieldId(field.id);
     if (field.bbox) {
-      setActiveBBox(field.bbox);
+      setActiveBBox(field.bbox, field.page || 1);
       setActivePage(field.page || 1);
     } else {
       setActiveBBox(null);
@@ -142,10 +145,11 @@ export const Pane2ExtractedData: React.FC = () => {
 
   const handleSaveEdit = (fieldId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // BLK-253: Preserve model confidence on manual edit; do NOT fabricate confidence: 1.0
+    // BLK-253: Do not fabricate 'verified' status or confidence=1.0 on manual edit.
+    // Preserve original status and confidence; only update the value.
     setFields((prev) =>
       prev.map((f) =>
-        f.id === fieldId ? { ...f, value: editValue, status: 'verified' } : f
+        f.id === fieldId ? { ...f, value: editValue } : f
       )
     );
     setEditingFieldId(null);
@@ -172,13 +176,17 @@ export const Pane2ExtractedData: React.FC = () => {
       }
     }
     // Client-side fallback (partial/failed runs still exportable)
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(fields, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', 'extracted_data.json');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    try {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(fields, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', 'extracted_data.json');
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (fallbackErr) {
+      setExportNotice(`Export failed: ${fallbackErr instanceof Error ? fallbackErr.message : 'unknown error'}`);
+    }
   };
 
   const handleExportCSV = async () => {
@@ -202,22 +210,26 @@ export const Pane2ExtractedData: React.FC = () => {
       }
     }
     // Client-side fallback (partial/failed runs still exportable)
-    const headers = ['field_name', 'value', 'confidence', 'status', 'page'];
-    const rows = fields.map((f) => [
-      f.name,
-      `"${f.value !== null ? String(f.value).replace(/"/g, '""') : ''}"`,
-      f.confidence,
-      f.status,
-      f.page || 1,
-    ]);
-    const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const dataStr = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', 'extracted_data.csv');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    try {
+      const headers = ['field_name', 'value', 'confidence', 'status', 'page'];
+      const rows = fields.map((f) => [
+        f.name,
+        `"${f.value !== null ? String(f.value).replace(/"/g, '""') : ''}"`,
+        f.confidence,
+        f.status,
+        f.page || 1,
+      ]);
+      const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const dataStr = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', 'extracted_data.csv');
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (fallbackErr) {
+      setExportNotice(`Export failed: ${fallbackErr instanceof Error ? fallbackErr.message : 'unknown error'}`);
+    }
   };
 
 
@@ -228,6 +240,8 @@ export const Pane2ExtractedData: React.FC = () => {
     navigator.clipboard.writeText(text).then(() => {
       setCopyNotification(field.name);
       setTimeout(() => setCopyNotification(null), 1500);
+    }).catch(() => {
+      setExportNotice('Failed to copy to clipboard.');
     });
   };
 
@@ -242,6 +256,8 @@ export const Pane2ExtractedData: React.FC = () => {
     navigator.clipboard.writeText(tsvContent).then(() => {
       setCopyNotification('all fields');
       setTimeout(() => setCopyNotification(null), 1500);
+    }).catch(() => {
+      setExportNotice('Failed to copy to clipboard.');
     });
   };
 

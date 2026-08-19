@@ -71,6 +71,48 @@ describe('applyFilters', () => {
     });
     expect(result).toHaveLength(3);
   });
+
+  it('includes runs on the boundary day (from date) [BLK-247]', () => {
+    const boundaryRuns = [
+      makeRun({ id: 'b1', created_at: '2026-08-01T00:00:00Z' }),
+      makeRun({ id: 'b2', created_at: '2026-08-01T23:59:59Z' }),
+      makeRun({ id: 'b3', created_at: '2026-08-15T12:00:00Z' }),
+    ];
+    const result = applyFilters(boundaryRuns, {
+      dateRange: { from: new Date('2026-08-01'), to: new Date('2026-08-31') },
+      definitionIds: [],
+      documentTypes: [],
+    });
+    expect(result.map((r) => r.id)).toEqual(['b1', 'b2', 'b3']);
+  });
+
+  it('includes runs on the boundary day (to date) [BLK-247]', () => {
+    const boundaryRuns = [
+      makeRun({ id: 'b1', created_at: '2026-08-31T00:00:00Z' }),
+      makeRun({ id: 'b2', created_at: '2026-08-31T23:59:59Z' }),
+      makeRun({ id: 'b3', created_at: '2026-09-01T00:00:00Z' }),
+    ];
+    const result = applyFilters(boundaryRuns, {
+      dateRange: { from: new Date('2026-08-01'), to: new Date('2026-08-31') },
+      definitionIds: [],
+      documentTypes: [],
+    });
+    expect(result.map((r) => r.id)).toEqual(['b1', 'b2']);
+  });
+
+  it('includes runs when from and to are the same day [BLK-247]', () => {
+    const sameDayRuns = [
+      makeRun({ id: 's1', created_at: '2026-08-15T00:00:00Z' }),
+      makeRun({ id: 's2', created_at: '2026-08-15T12:00:00Z' }),
+      makeRun({ id: 's3', created_at: '2026-08-16T00:00:00Z' }),
+    ];
+    const result = applyFilters(sameDayRuns, {
+      dateRange: { from: new Date('2026-08-15'), to: new Date('2026-08-15') },
+      definitionIds: [],
+      documentTypes: [],
+    });
+    expect(result.map((r) => r.id)).toEqual(['s1', 's2']);
+  });
 });
 
 describe('computeSuccessRate', () => {
@@ -93,7 +135,7 @@ describe('computeSuccessRate', () => {
   });
 
   it('returns 0 success rate when no completions', () => {
-    const runs = [makeRun({ status: 'failed' }), makeRun({ status: 'stopped' })];
+    const runs = [makeRun({ status: 'failed' }), makeRun({ status: 'cancelled' })];
     const result = computeSuccessRate(runs);
     expect(result[0].successRate).toBe(0);
   });
@@ -240,7 +282,7 @@ describe('computeSummary', () => {
     const runs = [
       makeRun({ status: 'completed', current_cycle: 2, total_cost_usd: 0.5, fields: [{ id: 'f1', name: 'x', value: 'a', confidence: 1, status: 'verified' }] }),
       makeRun({ status: 'failed', current_cycle: 1, total_cost_usd: 0.25, fields: [] }),
-      makeRun({ status: 'stopped', current_cycle: 3, total_cost_usd: 0.1, fields: [] }),
+      makeRun({ status: 'cancelled', current_cycle: 3, total_cost_usd: 0.1, fields: [] }),
     ];
     const result = computeSummary(runs);
     expect(result.totalRuns).toBe(3);

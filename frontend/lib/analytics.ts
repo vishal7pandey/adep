@@ -77,6 +77,13 @@ function toDateStr(ts?: string): string {
   return ts.split('T')[0];
 }
 
+function dateToStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function computeProcessingTimeMs(run: ExtractionRun): number {
   if (run.started_at && run.completed_at) {
     const start = new Date(run.started_at).getTime();
@@ -103,10 +110,12 @@ function getMeta(run: ExtractionRun): RunAnalyticsMeta {
 // -----------------------------------------------------------------------
 
 export function applyFilters(runs: ExtractionRun[], filters: AnalyticsFilters): ExtractionRun[] {
+  const fromDateStr = dateToStr(filters.dateRange.from);
+  const toDateStr = dateToStr(filters.dateRange.to);
   return runs.filter((run) => {
     const meta = getMeta(run);
-    const runDate = new Date(meta.created_at);
-    if (runDate < filters.dateRange.from || runDate > filters.dateRange.to) return false;
+    const runDateStr = meta.created_at;
+    if (runDateStr < fromDateStr || runDateStr > toDateStr) return false;
     if (filters.definitionIds.length > 0 && !filters.definitionIds.includes(run.definition_id)) return false;
     if (filters.documentTypes.length > 0 && !filters.documentTypes.includes(meta.document_type)) return false;
     return true;
@@ -274,7 +283,7 @@ export interface AnalyticsSummary {
 
 export function computeSummary(runs: ExtractionRun[]): AnalyticsSummary {
   const completed = runs.filter((r) => r.status === 'completed').length;
-  const failed = runs.filter((r) => r.status === 'failed' || r.status === 'stopped').length;
+  const failed = runs.filter((r) => r.status === 'failed' || r.status === 'max_iterations_reached' || r.status === 'cancelled').length;
   let confSum = 0, confCount = 0, costSum = 0, cyclesSum = 0;
   for (const run of runs) {
     const meta = getMeta(run);

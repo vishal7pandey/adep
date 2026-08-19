@@ -22,11 +22,14 @@ import {
   Edit2,
   ChevronDown,
   BarChart3,
-  Key
+  Key,
+  AlertCircle,
+  XCircle,
+  Layers3
 } from 'lucide-react';
 
 import { useTheme } from '@/context/ThemeContext';
-import { useWorkbench } from '@/context/WorkbenchContext';
+import { useWorkbench, RunStatusType } from '@/context/WorkbenchContext';
 import { ExtractionRun, fetchRecentRuns, deleteRun, duplicateRun, renameRun } from '@/lib/api';
 
 export const Sidebar: React.FC = () => {
@@ -76,8 +79,8 @@ export const Sidebar: React.FC = () => {
       const docName = docUrl.includes('\\') ? docUrl.split('\\').pop() || docUrl : docUrl;
       setDocument(docName || 'document', docUrl || null);
       startRun(id);
-      if (session.status) setRunStatus(session.status);
-      else setRunStatus('stopped');
+      if (session.status) setRunStatus(session.status as RunStatusType);
+      else setRunStatus('failed');
     }
     router.push(`/?run=${id}`);
   };
@@ -86,19 +89,27 @@ export const Sidebar: React.FC = () => {
   const handleDeleteSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenMenuRunId(null);
-    await deleteRun(id);
-    setSessions((prev) => prev.filter((s) => s.id !== id));
-    if (activeRunId === id) {
-      reset();
-      router.push('/');
+    try {
+      await deleteRun(id);
+      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (activeRunId === id) {
+        reset();
+        router.push('/');
+      }
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : 'Failed to delete session');
     }
   };
 
   const handleDuplicateSession = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenMenuRunId(null);
-    const duplicated = await duplicateRun(id);
-    setSessions((prev) => [duplicated, ...prev]);
+    try {
+      const duplicated = await duplicateRun(id);
+      setSessions((prev) => [duplicated, ...prev]);
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : 'Failed to duplicate session');
+    }
   };
 
   const handleRenameSession = async (id: string, e: React.MouseEvent) => {
@@ -106,10 +117,14 @@ export const Sidebar: React.FC = () => {
     setOpenMenuRunId(null);
     const newName = prompt('Enter new session name:');
     if (newName) {
-      await renameRun(id, newName);
-      setSessions((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, document_url: newName } : s))
-      );
+      try {
+        await renameRun(id, newName);
+        setSessions((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, name: newName } : s))
+        );
+      } catch (err) {
+        setSessionError(err instanceof Error ? err.message : 'Failed to rename session');
+      }
     }
   };
 
@@ -206,12 +221,16 @@ export const Sidebar: React.FC = () => {
                         <CheckCircle2 className="w-3.5 h-3.5 text-[var(--status-success)] shrink-0" />
                       ) : s.status === 'running' ? (
                         <Clock className="w-3.5 h-3.5 text-[var(--status-warning)] shrink-0 animate-spin" />
+                      ) : s.status === 'max_iterations_reached' ? (
+                        <AlertCircle className="w-3.5 h-3.5 text-[var(--status-warning)] shrink-0" />
+                      ) : s.status === 'failed' ? (
+                        <XCircle className="w-3.5 h-3.5 text-[var(--status-error)] shrink-0" />
                       ) : (
                         <FileText className="w-3.5 h-3.5 text-[var(--brand-accent)] shrink-0" />
                       )}
                       <div className="overflow-hidden">
                         <div className="text-[11px] font-medium overflow-hidden text-ellipsis whitespace-nowrap">
-                          {s.document_url || s.id}
+                          {s.name || s.document_url || s.id}
                         </div>
                         <div className="text-[9px] text-white/50">{progressPct}% extracted</div>
                       </div>
@@ -258,18 +277,19 @@ export const Sidebar: React.FC = () => {
 
         <div className="border-t border-white/10 my-2" />
 
-        {/* Library Section (Standardized "Choose Agent" Label) */}
+        {/* Registry Section (Agent Definitions) */}
         <div className="space-y-1">
           {!collapsed && (
             <div className="px-2 text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">
-              Library
+              Registry
             </div>
           )}
 
           {[
-            { href: '/definitions', label: 'Agent Definitions', icon: Layers },
+            { href: '/definitions', label: 'Definition Registry', icon: Layers },
             { href: '/skills', label: 'Skills', icon: Sparkles },
             { href: '/templates', label: 'Templates', icon: Database },
+            { href: '/batch', label: 'Batch Queue', icon: Layers3 },
             { href: '/analytics', label: 'Analytics', icon: BarChart3 },
             { href: '/settings', label: 'API Keys & Auth', icon: Key },
           ].map((item) => {

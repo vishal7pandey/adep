@@ -155,9 +155,9 @@ export default function DefinitionsPage() {
         <div>
           <h1 className="text-xl font-bold flex items-center gap-2 text-[var(--primary-text)]">
             <Layers className="w-5 h-5 text-[#0071CE]" />
-            Agent Definitions
+            Agent Definition Registry
           </h1>
-          <p className="text-xs text-muted mt-1">View, create, and manage agent definitions</p>
+          <p className="text-xs text-muted mt-1">View, create, edit, and delete agent definitions</p>
         </div>
         <AdeButton variant="primary" onClick={handleOpenCreate}>
           <Plus className="w-4 h-4" /> Create Agent Definition
@@ -200,7 +200,7 @@ export default function DefinitionsPage() {
       {filteredDefinitions.length === 0 && (
         <div className="py-12 text-center space-y-2">
           <p className="text-sm font-medium text-[var(--primary-text)]">
-            {searchQuery ? `No matches found for "${searchQuery}"` : 'No agent definitions available'}
+            {searchQuery ? `No matches found for "${searchQuery}"` : 'No agent definitions in registry'}
           </p>
           <p className="text-xs text-muted">
             {searchQuery ? 'Try clearing your search query or using a different keyword.' : 'Click "Create Agent Definition" to build your first definition.'}

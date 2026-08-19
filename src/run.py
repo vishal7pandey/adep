@@ -54,6 +54,8 @@ def build_initial_state(
     template: type[Template],
     skill: Skill,
     task_type: str = "extraction",
+    page_paths: list[str] | None = None,
+    confidence_threshold: float | None = None,
 ) -> AgentState:
     """Construct the initial AgentState for a run.
 
@@ -65,6 +67,12 @@ def build_initial_state(
         document_path: Path to the source document (image or PDF).
         template: The Pydantic template schema class.
         skill: The active skill.
+        task_type: The task type for this run.
+        page_paths: Optional list of per-page image paths from the document
+            store. When provided, the DocumentHandle is initialized with
+            the correct page count and page_paths, and DocumentState is
+            initialized with matching page count [BLK-220]. When None or
+            empty, falls back to single-page behavior (backward compat).
 
     Returns:
         The initial AgentState dict.
@@ -73,11 +81,22 @@ def build_initial_state(
     if not path.exists():
         raise FileNotFoundError(f"Document not found: {document_path}")
 
-    handle = DocumentHandle(
-        path=str(path.resolve()),
-        pages=1,
-        page_paths=[str(path.resolve())],
-    )
+    resolved = str(path.resolve())
+
+    if page_paths:
+        handle = DocumentHandle(
+            path=resolved,
+            pages=len(page_paths),
+            page_paths=page_paths,
+        )
+        doc_state = DocumentState.from_page_count(len(page_paths))
+    else:
+        handle = DocumentHandle(
+            path=resolved,
+            pages=1,
+            page_paths=[resolved],
+        )
+        doc_state = DocumentState.from_page_count(1)
 
     return AgentState(
         document=handle,
@@ -96,21 +115,29 @@ def build_initial_state(
         _planned_action=None,
         _tool_result=None,
         _compact_requested=False,
-        document_state=DocumentState.from_page_count(1),
+        document_state=doc_state,
         consecutive_non_improving=0,
         token_usage=[],
         total_tokens=0,
         total_cost_usd=0.0,
         task_type=task_type,
+        confidence_threshold=confidence_threshold or settings.default_confidence_threshold,
     )
 
 
-def build_tool_registry() -> ToolRegistry:
+def build_tool_registry(tool_names: list[str] | None = None) -> ToolRegistry:
     """Build the ToolRegistry with v1 providers based on config [§9].
 
     Provider selection is config-driven. v1 uses hardcoded imports with
     config-based dispatch — a one-line swap with zero plugin infrastructure.
     The swappability win comes from the interface contract, not the loader.
+
+    Args:
+        tool_names: Optional list of tool names to include. When provided
+            and non-empty, the registry is filtered to only those tools.
+            Names not found in the full registry are logged as warnings.
+            When None or empty, all available tools are registered (backward
+            compat) [BLK-217].
 
     Returns:
         A populated ToolRegistry with all v1 tools registered.
@@ -413,6 +440,31 @@ def build_tool_registry() -> ToolRegistry:
         ),
         _classify_doc,
     )
+
+    # Apply tool_names filter if provided [BLK-217]
+    if tool_names:
+        all_names = set(registry.names())
+        wanted = set(tool_names)
+        missing = wanted - all_names
+        if missing:
+            logger.warning(
+                "tool_names references unknown tools (ignored): %s [BLK-217]",
+                ", ".join(sorted(missing)),
+            )
+        for name in list(registry.names()):
+            if name not in wanted:
+                registry._tools.pop(name, None)
+        if not registry.names():
+            raise RuntimeError(
+                f"Tool registry is empty after filtering by tool_names={tool_names}. "
+                f"None of the requested tools exist in the registry. "
+                f"Available: {sorted(all_names)}"
+            )
+        logger.info(
+            "ToolRegistry filtered to %d tools: %s [BLK-217]",
+            len(registry.names()),
+            ", ".join(registry.names()),
+        )
 
     return registry
 

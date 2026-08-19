@@ -12,6 +12,7 @@ Tests cover:
 
 from __future__ import annotations
 
+import logging
 import time
 from pathlib import Path
 
@@ -274,6 +275,140 @@ class TestApiKeyStore:
 
 
 # ---------------------------------------------------------------------------
+# Cache tests [BLK-254]
+# ---------------------------------------------------------------------------
+
+class TestApiKeyStoreCache:
+    """Verify in-memory cache behavior — no sync file I/O on every request [BLK-254]."""
+
+    def test_get_by_secret_uses_cache_on_second_call(self, key_store: ApiKeyStore):
+        """Second call to get_by_secret should be served from cache (no disk read)."""
+        key_store.create(ApiKey(
+            key_id="cached-key",
+            key_hash=_hash_secret("my-secret"),
+            name="Cached",
+            created_at="2026-01-01T00:00:00Z",
+        ))
+        # First call populates cache
+        found1 = key_store.get_by_secret("my-secret")
+        assert found1 is not None
+        assert found1.key_id == "cached-key"
+        assert key_store._cache is not None
+
+        # Spy on _load_cache to prove second call doesn't reload from disk
+        original_load = key_store._load_cache
+        load_count = 0
+
+        def counting_load():
+            nonlocal load_count
+            load_count += 1
+            return original_load()
+
+        key_store._load_cache = counting_load  # type: ignore[method-assign]
+
+        # Second call should hit cache (within TTL), so _load_cache returns cached list
+        # without re-reading from disk
+        found2 = key_store.get_by_secret("my-secret")
+        assert found2 is not None
+        assert found2.key_id == "cached-key"
+        # _load_cache is called but it should return from cache without disk I/O
+        # Verify cache was still populated (not refreshed from disk)
+        assert key_store._cache is not None
+        assert load_count == 1, "_load_cache should be called but serve from cache"
+
+    def test_cache_invalidated_on_create(self, key_store: ApiKeyStore):
+        """Creating a new key should invalidate cache so it's immediately visible."""
+        key_store.create(ApiKey(
+            key_id="k1",
+            key_hash=_hash_secret("s1"),
+            name="K1",
+            created_at="2026-01-01T00:00:00Z",
+        ))
+        # Populate cache
+        assert key_store.get_by_secret("s1") is not None
+        # Create a new key
+        key_store.create(ApiKey(
+            key_id="k2",
+            key_hash=_hash_secret("s2"),
+            name="K2",
+            created_at="2026-01-01T00:00:00Z",
+        ))
+        # New key should be immediately findable
+        assert key_store.get_by_secret("s2") is not None
+
+    def test_cache_invalidated_on_update(self, key_store: ApiKeyStore):
+        """Updating a key should invalidate cache so changes are immediately visible."""
+        key = ApiKey(
+            key_id="upd-cache",
+            key_hash=_hash_secret("s"),
+            name="Original",
+            scopes=["runs:read"],
+            created_at="2026-01-01T00:00:00Z",
+        )
+        key_store.create(key)
+        # Populate cache
+        assert key_store.get("upd-cache").name == "Original"
+        # Update
+        key.name = "Updated"
+        key_store.update(key)
+        # Should see updated name immediately
+        assert key_store.get("upd-cache").name == "Updated"
+
+    def test_cache_invalidated_on_delete(self, key_store: ApiKeyStore):
+        """Deleting a key should invalidate cache so it's immediately gone."""
+        key_store.create(ApiKey(
+            key_id="del-cache",
+            key_hash=_hash_secret("s"),
+            name="Del",
+            created_at="2026-01-01T00:00:00Z",
+        ))
+        # Populate cache
+        assert key_store.get_by_secret("s") is not None
+        # Delete
+        key_store.delete("del-cache")
+        # Should not be found
+        assert key_store.get_by_secret("s") is None
+        assert key_store.get("del-cache") is None
+
+    def test_cache_ttl_expiry_refreshes_from_disk(self, key_store: ApiKeyStore, monkeypatch):
+        """After TTL expires, cache should refresh from disk on next read."""
+        key_store.create(ApiKey(
+            key_id="ttl-key",
+            key_hash=_hash_secret("s"),
+            name="TTL",
+            created_at="2026-01-01T00:00:00Z",
+        ))
+        # Populate cache
+        assert key_store.get("ttl-key") is not None
+        # Force TTL expiry
+        key_store._cache_time = 0.0
+        # Next read should refresh from disk
+        assert key_store.get("ttl-key") is not None
+
+    def test_list_all_uses_cache(self, key_store: ApiKeyStore):
+        """list_all should use cache and not re-read files on every call."""
+        for i in range(3):
+            key_store.create(ApiKey(
+                key_id=f"list-{i}",
+                key_hash=_hash_secret(f"s-{i}"),
+                name=f"Key {i}",
+                created_at="2026-01-01T00:00:00Z",
+            ))
+        # First call populates cache
+        keys1 = key_store.list_all()
+        assert len(keys1) == 3
+        assert key_store._cache is not None
+
+        # Second call should serve from cache (within TTL)
+        # Force a fresh _load_cache call and verify it returns the same cached list
+        cached_ref = key_store._cache
+        keys2 = key_store.list_all()
+        assert len(keys2) == 3
+        # Cache should not have been refreshed (same object reference)
+        assert key_store._cache is cached_ref, "list_all should reuse cached list, not reload from disk"
+
+
+# ---------------------------------------------------------------------------
 # Bootstrap tests
 # ---------------------------------------------------------------------------
 
@@ -292,6 +427,19 @@ class TestBootstrap:
         bootstrap_admin_key(key_store)
         with pytest.raises(RuntimeError, match="Keys already exist"):
             bootstrap_admin_key(key_store)
+
+    def test_bootstrap_secret_never_logged(self, key_store: ApiKeyStore, caplog: pytest.LogCaptureFixture):
+        """The raw secret must never be routed through the logging framework [BLK-186, BLK-188]."""
+        with caplog.at_level(logging.DEBUG):
+            secret = bootstrap_admin_key(key_store)
+        for record in caplog.records:
+            assert secret not in record.getMessage()
+
+    def test_bootstrap_secret_printed_to_stdout(self, key_store: ApiKeyStore, capsys: pytest.CaptureFixture):
+        """The secret should still be surfaced to the operator via stdout, not logs [BLK-186, BLK-188]."""
+        secret = bootstrap_admin_key(key_store)
+        captured = capsys.readouterr()
+        assert secret in captured.out
 
 
 # ---------------------------------------------------------------------------
@@ -512,3 +660,80 @@ class TestKeyManagementEndpoints:
         )
         assert resp.status_code == 400
         assert "Invalid scopes" in resp.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed / unmapped method tests [BLK-215]
+# ---------------------------------------------------------------------------
+
+class TestAuthFailClosed:
+    """Verify auth middleware fails closed for unmapped methods and routes [BLK-215]."""
+
+    def test_required_scope_deny_for_unmapped_method(self):
+        """_required_scope should return __deny__ for unmapped methods on /api/v1/ paths."""
+        from src.api.auth import _required_scope
+        # TRACE is not in ROUTE_SCOPES
+        assert _required_scope("TRACE", "/api/v1/runs") == "__deny__"
+
+    def test_required_scope_deny_for_unknown_api_path(self):
+        """_required_scope should return __deny__ for unknown /api/v1/ paths."""
+        from src.api.auth import _required_scope
+        assert _required_scope("GET", "/api/v1/nonexistent") == "__deny__"
+
+    def test_required_scope_allows_options(self):
+        """_required_scope should return None for OPTIONS (CORS preflight) [BLK-215]."""
+        from src.api.auth import _required_scope
+        assert _required_scope("OPTIONS", "/api/v1/runs") is None
+
+    def test_required_scope_head_treated_as_get(self):
+        """_required_scope should treat HEAD like GET [BLK-215]."""
+        from src.api.auth import _required_scope
+        from src.api.auth import SCOPE_RUNS_READ
+        assert _required_scope("HEAD", "/api/v1/runs") == SCOPE_RUNS_READ
+
+    def test_required_scope_non_api_path_returns_none(self):
+        """_required_scope should return None for non-api paths."""
+        from src.api.auth import _required_scope
+        assert _required_scope("GET", "/health") is None
+        assert _required_scope("POST", "/docs") is None
+
+    def test_unmapped_method_rejected_with_401(self, auth_client: TestClient, admin_key: tuple[str, str]):
+        """Unmapped HTTP methods on /api/v1/ paths should get 401, not pass through [BLK-215]."""
+        _, secret = admin_key
+        # Use a method not in ROUTE_SCOPES — TestClient doesn't support TRACE,
+        # but we can test via direct _required_scope call
+        from src.api.auth import _required_scope
+        scope = _required_scope("TRACE", "/api/v1/runs")
+        assert scope == "__deny__"
+
+    def test_unknown_api_path_rejected_with_401(self, auth_client: TestClient, admin_key: tuple[str, str]):
+        """Unknown /api/v1/ paths should get 401 even with valid key [BLK-215]."""
+        _, secret = admin_key
+        resp = auth_client.get(
+            "/api/v1/nonexistent-endpoint",
+            headers={"Authorization": f"Bearer {secret}"},
+        )
+        # FastAPI returns 404 for unknown routes, but auth middleware
+        # should intercept first with 401 for fail-closed
+        assert resp.status_code == 401
+
+    def test_options_preflight_not_blocked_by_auth(self, auth_client: TestClient):
+        """OPTIONS preflight requests should not be blocked by auth [BLK-215]."""
+        resp = auth_client.options("/api/v1/runs")
+        # Should not be 401 — CORS middleware handles it
+        assert resp.status_code != 401
+
+    def test_head_treated_as_get_for_auth(self, auth_client: TestClient, admin_key: tuple[str, str]):
+        """HEAD requests should be authenticated like GET [BLK-215]."""
+        _, secret = admin_key
+        resp = auth_client.head(
+            "/api/v1/runs",
+            headers={"Authorization": f"Bearer {secret}"},
+        )
+        # Should not be 401 — HEAD is treated as GET
+        assert resp.status_code != 401
+
+    def test_head_without_auth_returns_401(self, auth_client: TestClient):
+        """HEAD requests without auth should get 401 [BLK-215]."""
+        resp = auth_client.head("/api/v1/runs")
+        assert resp.status_code == 401

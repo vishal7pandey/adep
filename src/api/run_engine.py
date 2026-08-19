@@ -19,10 +19,13 @@ from typing import Any, TYPE_CHECKING
 from pydantic import Field, create_model
 
 from src.agent.graph import CircuitBreaker, build_react_graph
+from src.agent.oneflow import build_oneflow_graph
 from src.agent.state import AgentState, RunStatus
 from src.agent.token_tracking import summarize_token_usage, save_token_usage, update_aggregate_stats
 from src.agent.validator import GapType, ValidatorConfig, validate_extraction
+from src.agent.webhooks import emit_webhook_event_async, status_to_webhook_event, WebhookEvent
 from src.api.sse import SSEEventEmitter
+from src.api.status import map_store_status_to_sse, map_status_to_frontend
 from src.config import settings
 from src.definitions.store import DefinitionStore, get_store
 from src.fallback.pdf_runtime import run_pdf_fallback
@@ -365,16 +368,12 @@ def resolve_template(template_ref: str, store: DefinitionStore | None = None) ->
 
 
 def map_status_to_frontend(status: str) -> str:
-    """Map internal RunStatus to frontend ExtractionRun.status."""
-    if status in (RunStatus.PLANNING, RunStatus.ACTING, RunStatus.OBSERVING, RunStatus.REFLECTING):
-        return "running"
-    if status == RunStatus.COMPLETE:
-        return "completed"
-    if status == RunStatus.PARTIAL:
-        return "completed"
-    if status == RunStatus.PAUSED:
-        return "paused"
-    return "failed"
+    """Map internal RunStatus to frontend ExtractionRun.status [BLK-280].
+
+    Delegates to the canonical mapping in ``src.api.status``.
+    """
+    from src.api.status import map_status_to_frontend as _map
+    return _map(status)
 
 
 def map_field_status(confidence: float, grounded: bool, is_complete: bool) -> str:
@@ -626,6 +625,9 @@ async def _execute_run_inner(
     store: DefinitionStore | None = None,
 ) -> dict[str, Any]:
     """Inner implementation — called within context + tracing scope [BLK-130]."""
+    # BLK-173: Fail fast on partial provider config before doing any work
+    settings.validate_provider_config()
+
     if store is None:
         store = get_store()
 
@@ -645,20 +647,54 @@ async def _execute_run_inner(
 
     # Build state, registry, config
     task_type = def_data.get("task_type", "extraction")
-    state = build_initial_state(document_path, template_cls, skill, task_type=task_type)
-    registry = build_tool_registry()
-    validator_config = build_validator_config(skill)
+    tool_names = def_data.get("tool_names", [])
 
-    # Apply definition overrides [BLK-094]
+    # Apply definition overrides [BLK-094, BLK-284]
     agent_config = def_data.get("agent_config", {})
     max_cycles = agent_config.get("max_cycles_per_document")
+    max_cycles_per_field = agent_config.get("max_cycles_per_field")
+    confidence_threshold = agent_config.get("confidence_threshold")
+
+    # Resolve page_paths from DocumentStore for multi-page documents [BLK-220]
+    page_paths: list[str] | None = None
+    try:
+        from src.documents.store import get_document_store
+        doc_store = get_document_store()
+        try:
+            doc_meta = doc_store.get_document(document_path)
+            page_paths = doc_meta.get("page_paths") or None
+            if page_paths:
+                document_path = page_paths[0]
+        except (FileNotFoundError, ValueError):
+            # document_path is a raw file path, not a document ID.
+            # Try to find a stored document whose original_filename matches.
+            for d in doc_store.list_documents():
+                stored_paths = d.get("page_paths", [])
+                if stored_paths and Path(stored_paths[0]).resolve() == Path(document_path).resolve():
+                    page_paths = stored_paths
+                    break
+    except Exception:
+        logger.debug("DocumentStore lookup failed — treating as single-page [BLK-220]", exc_info=True)
+
+    state = build_initial_state(
+        document_path, template_cls, skill,
+        task_type=task_type,
+        page_paths=page_paths,
+        confidence_threshold=confidence_threshold,
+    )
+    registry = build_tool_registry(tool_names=tool_names if tool_names else None)
+    validator_config = build_validator_config(skill)
+
+    # BLK-284: Apply confidence_threshold override to validator_config
+    if confidence_threshold is not None:
+        validator_config.default_confidence_threshold = confidence_threshold
 
     # BLK-264: PDF fallback only runs when (a) no LLM provider is configured, or
     # (b) the definition explicitly opts in via use_pdf_fast_path. Previously
     # both branches of an if/else called run_pdf_fallback unconditionally,
     # silently bypassing the ReAct agent for 9 of 22 skills even with Azure configured.
     use_fast_path = agent_config.get("use_pdf_fast_path", False)
-    llm_configured = bool(settings.azure_api_key and settings.azure_chat_endpoint)
+    llm_configured = settings.is_llm_configured()
     fallback_result = None
     if not llm_configured or use_fast_path:
         fallback_result = run_pdf_fallback(
@@ -683,23 +719,76 @@ async def _execute_run_inner(
         except FileNotFoundError:
             store.save_run(run_id, serialized)
         if emitter:
-            complete_status = "success" if fallback_result.is_complete else "max_iterations_reached"
-            emitter.emit_complete(complete_status, run_id=run_id)
+            complete_status = "completed" if fallback_result.is_complete else "max_iterations_reached"
+            emitter.emit_complete(complete_status, run_id=run_id, execution_mode="fallback")
+
+        # Fire webhook notification (non-blocking) [BLK-242]
+        frontend_status = "completed" if fallback_result.is_complete else "max_iterations_reached"
+        webhook_event = status_to_webhook_event(frontend_status)
+        if webhook_event:
+            try:
+                await emit_webhook_event_async(webhook_event, {
+                    "run_id": run_id,
+                    "definition_id": definition_id,
+                    "document_url": document_path,
+                    "status": frontend_status,
+                    "execution_mode": "fallback",
+                })
+            except Exception as e:
+                logger.warning("Webhook emission failed for run %s: %s [BLK-242]", run_id, e)
+
         return serialized
 
     planner_client = _build_planner_client()
 
     # Build graph — wire control and emitter for live SSE + cooperative control [BLK-129]
     breaker = CircuitBreaker(threshold=3)
-    graph = build_react_graph(
-        registry=registry,
-        skill=skill,
-        validator_config=validator_config,
-        llm_client=planner_client,
-        breaker=breaker,
-        control=control,
-        emitter=emitter,
+
+    # Guardrails: instantiate per-run guardrail components [BLK-079..086, SCRUM-149]
+    from src.agent.guardrails.tool_guardrails import ToolCallRateLimiter
+    from src.agent.guardrails.loop_detection import LoopDetector
+    from src.agent.guardrails.audit_logging import AuditLogger
+
+    rate_limiter = ToolCallRateLimiter()
+    loop_detector = LoopDetector(
+        max_cycles_per_field=max_cycles_per_field or settings.max_cycles_per_field,
+        max_cycles_per_document=max_cycles or settings.max_cycles_per_document,
     )
+    audit_logger = AuditLogger(run_id=run_id)
+
+    # Select graph mode: OneFlow (single-agent) or standard ReAct [BLK-074]
+    execution_mode = (agent_config.get("execution_mode", "react")
+                      if agent_config else "react")
+    use_oneflow = execution_mode == "oneflow"
+
+    if use_oneflow:
+        logger.info("Run %s using OneFlow single-agent mode [BLK-074]", run_id,
+                     extra={"run_id": run_id, "execution_mode": "oneflow"})
+        graph = build_oneflow_graph(
+            registry=registry,
+            skill=skill,
+            validator_config=validator_config,
+            llm_client=planner_client,
+            breaker=breaker,
+            control=control,
+            emitter=emitter,
+            rate_limiter=rate_limiter,
+            loop_detector=loop_detector,
+            audit_logger=audit_logger,
+        )
+    else:
+        graph = build_react_graph(
+            registry=registry,
+            skill=skill,
+            validator_config=validator_config,
+            llm_client=planner_client,
+            breaker=breaker,
+            control=control,
+            emitter=emitter,
+            rate_limiter=rate_limiter,
+            loop_detector=loop_detector,
+            audit_logger=audit_logger,
+        )
 
     # Emit initial progress
     if emitter:
@@ -707,10 +796,11 @@ async def _execute_run_inner(
         if event_buffer is not None:
             event_buffer.append({"type": "progress", "completed_fields": 0, "total_fields": result_gap_count(state), "failing_fields": 0})
 
-    # Invoke graph [BLK-094]
+    # Invoke graph [BLK-094] — run in a thread to avoid blocking the event loop [BLK-240]
     recursion_limit = (max_cycles or settings.max_cycles_per_document) + 10
     try:
-        final_state = graph.invoke(
+        final_state = await asyncio.to_thread(
+            graph.invoke,
             state,
             config={"recursion_limit": recursion_limit},
         )
@@ -719,6 +809,19 @@ async def _execute_run_inner(
         mark_error(e)
         if emitter:
             emitter.emit_complete("failed", str(e), run_id=run_id)
+
+        # Fire webhook notification (non-blocking) [BLK-242]
+        try:
+            await emit_webhook_event_async(WebhookEvent.RUN_FAILED, {
+                "run_id": run_id,
+                "definition_id": definition_id,
+                "document_url": document_path,
+                "status": "failed",
+                "error": str(e),
+            })
+        except Exception as we:
+            logger.warning("Webhook emission failed for run %s: %s [BLK-242]", run_id, we)
+
         return {
             "id": run_id,
             "definition_id": definition_id,
@@ -735,28 +838,58 @@ async def _execute_run_inner(
     # Build result
     result = final_state.get("result")
     if result is None:
-        gap_report = validate_extraction(
-            schema=template_cls,
-            extraction=final_state.get("extraction", {}),
-            invariants=skill.invariants,
-            config=validator_config,
-            failure_actions=skill.failure_actions,
-        )
         status = final_state.get("status", RunStatus.PARTIAL)
         # Build token usage summary [BLK-050]
         token_usage_list = final_state.get("token_usage", [])
         token_summary = summarize_token_usage(token_usage_list)
-        result = ExtractedResult(
-            is_complete=status == RunStatus.COMPLETE,
-            values=None,
-            field_values=final_state.get("extraction", {}),
-            gap_report=gap_report,
-            trace=final_state.get("trace", []),
-            total_cycles=final_state.get("total_cycles", 0),
-            status=status,
-            provider_errors=final_state.get("provider_errors", []),
-            token_usage_summary=token_summary,
-        )
+
+        if task_type == "graph_extraction":
+            from src.agent.graph import _build_graph_result
+            from src.agent.validator import TaskValidator
+            validator = TaskValidator()
+            graph_result = _build_graph_result(
+                state=final_state,
+                is_complete=status == RunStatus.COMPLETE,
+                gap_report=None,
+                trace=final_state.get("trace", []),
+                total_cycles=final_state.get("total_cycles", 0),
+                status=status,
+                provider_errors=final_state.get("provider_errors", []),
+            )
+            # Instantiate template if it's a class for Pydantic default_factory access
+            contract = template_cls
+            if isinstance(template_cls, type):
+                try:
+                    contract = template_cls()
+                except Exception:
+                    pass
+            gap_report = validator.validate(
+                result=graph_result,
+                contract=contract,
+                invariants=skill.invariants,
+                failure_actions=skill.failure_actions,
+            )
+            graph_result.gap_report = gap_report
+            result = graph_result
+        else:
+            gap_report = validate_extraction(
+                schema=template_cls,
+                extraction=final_state.get("extraction", {}),
+                invariants=skill.invariants,
+                config=validator_config,
+                failure_actions=skill.failure_actions,
+            )
+            result = ExtractedResult(
+                is_complete=status == RunStatus.COMPLETE,
+                values=None,
+                field_values=final_state.get("extraction", {}),
+                gap_report=gap_report,
+                trace=final_state.get("trace", []),
+                total_cycles=final_state.get("total_cycles", 0),
+                status=status,
+                provider_errors=final_state.get("provider_errors", []),
+                token_usage_summary=token_summary,
+            )
 
     # Persist token usage [BLK-050]
     token_usage_list = final_state.get("token_usage", [])
@@ -780,23 +913,23 @@ async def _execute_run_inner(
                 entries_compacted=settings.compaction_threshold,
                 summary_length=len(compaction_summary),
             )
-        complete_status = "success" if result.is_complete else "max_iterations_reached"
+        complete_status = map_store_status_to_sse(map_status_to_frontend(result.status))
+        complete_msg = "All fields extracted" if result.is_complete else f"Run ended with {len(result.gap_report.gaps)} gaps remaining"
         emitter.emit_complete(
             complete_status,
-            f"Completed with {len(result.gap_report.gaps)} gaps remaining" if not result.is_complete else "All fields extracted",
+            complete_msg,
         )
     elif emitter and control is not None:
         # Live mode: emit complete with run_id if not already emitted by terminate_node
         if not emitter._closed:
-            if result.status == RunStatus.CANCELLED:
-                complete_status = "cancelled"
-            elif result.is_complete:
-                complete_status = "success"
-            else:
-                complete_status = "max_iterations_reached"
+            # Route through the canonical status contract [BLK-280, BLK-221] so
+            # RunStatus.ERROR correctly surfaces as "failed" instead of being
+            # collapsed into "max_iterations_reached".
+            complete_status = map_store_status_to_sse(map_status_to_frontend(result.status))
+            complete_msg = "All fields extracted" if result.is_complete else f"Run ended with {len(result.gap_report.gaps)} gaps remaining"
             emitter.emit_complete(
                 complete_status,
-                f"Completed with {len(result.gap_report.gaps)} gaps remaining" if not result.is_complete else "All fields extracted",
+                complete_msg,
                 run_id=run_id,
             )
 
@@ -811,14 +944,44 @@ async def _execute_run_inner(
     except FileNotFoundError:
         store.save_run(run_id, serialized)
 
+    # Fire webhook notification (non-blocking) [BLK-242]
+    frontend_status = map_status_to_frontend(result.status)
+    webhook_event = status_to_webhook_event(frontend_status)
+    if webhook_event:
+        try:
+            await emit_webhook_event_async(webhook_event, {
+                "run_id": run_id,
+                "definition_id": definition_id,
+                "document_url": document_path,
+                "status": frontend_status,
+            })
+        except Exception as e:
+            logger.warning("Webhook emission failed for run %s: %s [BLK-242]", run_id, e)
+
     return serialized
 
 
 def result_gap_count(state: dict[str, Any]) -> int:
-    """Get total fields from state for progress emission."""
+    """Get total fields from state for progress emission [BLK-218].
+
+    For field extraction, counts required schema fields.
+    For graph extraction, counts expected node types + edge types + output formats.
+    """
     template = state.get("template_schema")
     if template is None:
         return 0
+    task_type = state.get("task_type", "extraction")
+    if task_type == "graph_extraction":
+        # template may be a class or instance — instantiate if it's a class
+        if isinstance(template, type):
+            try:
+                template = template()
+            except Exception:
+                return 0
+        node_types = getattr(template, "node_types", [])
+        edge_types = getattr(template, "edge_types", [])
+        output_formats = getattr(template, "output_formats", [])
+        return len(node_types) + len(edge_types) + len(output_formats)
     from src.agent.validator import _required_fields
     return len(_required_fields(template))
 
@@ -891,6 +1054,7 @@ def _emit_trace_events(
         failing_fields=len(result.gap_report.gaps),
     )
 
-    # Emit final status_change
-    final_status = "completed" if result.is_complete else "failed"
+    # Emit final status_change — use canonical status mapping [BLK-281]
+    # so max_iterations_reached is NOT collapsed into "failed".
+    final_status = map_status_to_frontend(result.status)
     emitter.emit_status_change(status=final_status, cycle=result.total_cycles, previous_status="running")

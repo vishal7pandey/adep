@@ -32,6 +32,7 @@ from src.agent.budget import check_run_budget, BudgetLevel
 from src.agent.token_tracking import LLMResponse, estimate_tokens, record_token_usage
 from src.agent.validator import (
     GapReport,
+    TaskValidator,
     ValidatorConfig,
     validate_extraction,
 )
@@ -45,6 +46,19 @@ if TYPE_CHECKING:
     from src.api.run_executor import RunControl
     from src.api.sse import SSEEventEmitter
 
+from src.agent.guardrails.output_validation import (
+    sanitize_instruction_patterns as _guard_sanitize_instructions,
+    truncate_output as _guard_truncate_output,
+)
+from src.agent.guardrails.pii_redaction import redact_pii as _guard_redact_pii
+from src.agent.guardrails.exfiltration_prevention import sanitize_input as _guard_sanitize_input
+from src.agent.guardrails.tool_guardrails import (
+    ToolCallRateLimiter,
+    evaluate_tool_call as _guard_evaluate_tool_call,
+)
+from src.agent.guardrails.loop_detection import LoopDetector, LoopType
+from src.agent.guardrails.hallucination_detection import check_grounding as _guard_check_grounding
+from src.agent.guardrails.audit_logging import AuditLogger, AuditLogEntry
 from src.observability.tracing import span as otel_span
 from src.observability.context import set_context, cycle_var
 
@@ -84,7 +98,8 @@ class CircuitBreaker:
 
 def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None = None,
               registry: ToolRegistry | None = None,
-              emitter: SSEEventEmitter | None = None) -> dict[str, Any]:
+              emitter: SSEEventEmitter | None = None,
+              audit_logger: AuditLogger | None = None) -> dict[str, Any]:
     """Decide the next action based on the GapReport and skill hints.
 
     The plan node takes the current GapReport, the region index, and the
@@ -106,6 +121,8 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
     extraction = state.get("extraction", {})
     regions = state.get("regions", {})
     attempted = state.get("attempted", {})
+    document = state.get("document")
+    document_state = state.get("document_state")
 
     # Set cycle context for logging + tracing [BLK-130]
     cycle_var.set(step)
@@ -164,8 +181,32 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
         else ""
     )
 
+    # Build document info section for multi-page awareness [BLK-220]
+    doc_info = ""
+    if document is not None:
+        if document.pages > 1:
+            doc_info = (
+                f"## Document Pages\n"
+                f"The document has {document.pages} pages.\n"
+                f"Page image paths (0-indexed):\n"
+            )
+            for i, pp in enumerate(document.page_paths):
+                doc_info += f"  Page {i}: {pp}\n"
+            if document_state is not None:
+                doc_info += f"\n{document_state.summary()}\n"
+            doc_info += (
+                "\nUse the page index (0-based) in tool calls that accept a 'page' parameter. "
+                "Navigate to different pages to find fields that may not be on page 0.\n\n"
+            )
+        else:
+            doc_info = (
+                f"## Document Pages\n"
+                f"Single-page document. Image path: {document.page_paths[0] if document.page_paths else document.path}\n\n"
+            )
+
     user_prompt = (
         f"{trace_section}"
+        f"{doc_info}"
         f"## Current Extraction\n{json.dumps(_extraction_summary(extraction), indent=2)}\n\n"
         f"## Gaps to Fill\n{gap_summary}\n\n"
         f"## Region Index\n{region_summary}\n\n"
@@ -175,6 +216,18 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
         f"Decide the next single tool call. Respond as JSON: "
         f'{{"thought": "...", "tool": "...", "args": {{...}}, "field": "..."}}'
     )
+
+    # Guardrails: sanitize input before LLM call [BLK-083, BLK-086]
+    guardrail_actions: list[str] = []
+    sanitized = _guard_sanitize_input(user_prompt)
+    if sanitized.actions:
+        guardrail_actions.extend(sanitized.actions)
+    user_prompt = sanitized.text
+
+    redacted_prompt, pii_detections = _guard_redact_pii(user_prompt)
+    if pii_detections:
+        guardrail_actions.append(f"redacted_{len(pii_detections)}_pii")
+    user_prompt = redacted_prompt
 
     try:
         with otel_span("llm:plan", cycle=step):
@@ -189,6 +242,20 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
             # Fallback: estimate tokens if provider didn't return counts [BLK-050]
             input_tokens = estimate_tokens(system_prompt + user_prompt)
             output_tokens = estimate_tokens(response_text or "")
+
+        # Guardrails: validate LLM output [BLK-079]
+        if response_text:
+            response_text, truncated = _guard_truncate_output(response_text)
+            if truncated:
+                guardrail_actions.append("output_truncated")
+            response_text, detected = _guard_sanitize_instructions(response_text)
+            if detected:
+                guardrail_actions.append(f"sanitized_{len(detected)}_instruction_patterns")
+                logger.warning(
+                    "LLM response contains instruction-like patterns — "
+                    "sanitized via guardrail [BLK-079]: %s", detected
+                )
+
         action = _parse_llm_response(response_text)
         # Flag instruction-like patterns in LLM response [BLK-043]
         if response_text and _contains_instruction_patterns(response_text):
@@ -202,6 +269,26 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
         response_text = None
         input_tokens = 0
         output_tokens = 0
+
+    # Audit logging [BLK-084]
+    if audit_logger is not None:
+        from src.agent.guardrails.audit_logging import hash_prompt as _hash_prompt
+        entry = AuditLogEntry(
+            run_id=audit_logger.run_id,
+            cycle=step,
+            node="plan",
+            system_prompt_hash=_hash_prompt(system_prompt),
+            user_prompt=user_prompt[:2000],
+            llm_response=(response_text or "")[:2000],
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            validation_passed=action is not None,
+            guardrail_actions=guardrail_actions,
+        )
+        try:
+            audit_logger.log_llm_call(entry)
+        except Exception:
+            logger.debug("Audit log write failed (non-fatal)", exc_info=True)
 
     # Record token usage [BLK-050]
     token_usage_list = list(state.get("token_usage", []))
@@ -261,10 +348,10 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
         }
 
     # Check attempted set — skip if this exact tool+args was already tried
-    region_id = action.get("args", {}).get("region_id", "")
+    region_id = action.get("args", {}).get("region_id", "_global")
     tool_name = action.get("tool", "")
     attempt_key = f"{tool_name}:{json.dumps(action.get('args', {}), sort_keys=True)}"
-    if region_id and region_id in attempted and attempt_key in attempted[region_id]:
+    if region_id in attempted and attempt_key in attempted[region_id]:
         logger.info("Skipping already-attempted action: %s on region %s", tool_name, region_id)
         return {
             "step": step,
@@ -295,13 +382,15 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
 
 def act_node(state: AgentState, *, registry: ToolRegistry | None = None,
              breaker: CircuitBreaker | None = None,
-             emitter: SSEEventEmitter | None = None) -> dict[str, Any]:
+             emitter: SSEEventEmitter | None = None,
+             rate_limiter: ToolCallRateLimiter | None = None) -> dict[str, Any]:
     """Execute the planned tool call through the ToolRegistry.
 
     Args:
         state: Current agent state.
         registry: Tool registry (injected for testability).
         breaker: Circuit breaker for provider failures (injected).
+        rate_limiter: Optional tool call rate limiter [BLK-080].
 
     Returns:
         State updates: status, and the tool result in ``_tool_result``.
@@ -333,9 +422,28 @@ def act_node(state: AgentState, *, registry: ToolRegistry | None = None,
             "_planned_action": None,
         }
 
+    # Guardrails: evaluate tool call before execution [BLK-080]
+    decision = _guard_evaluate_tool_call(
+        tool_name, tool_args, registry, rate_limiter=rate_limiter,
+    )
+    if not decision.allowed:
+        logger.warning("Tool call rejected by guardrails: %s — %s [BLK-080]", tool_name, decision.reason)
+        result = ToolResult(ok=False, error=f"Tool call rejected: {decision.reason}", tool=tool_name)
+        if emitter:
+            emitter.emit_tool_result(step, tool_name, result)
+        return {
+            "status": RunStatus.REFLECTING,
+            "_tool_result": result,
+            "_planned_action": None,
+        }
+    # Use sanitized args from guardrail decision
+    tool_args = decision.args
+
     try:
         with otel_span(f"tool:{tool_name}", tool=tool_name, cycle=step):
             result = registry.call(tool_name, **tool_args)
+        if rate_limiter is not None:
+            rate_limiter.record(tool_name)
     except KeyError:
         result = ToolResult(ok=False, error=f"Unknown tool: {tool_name}", tool=tool_name)
     except Exception as e:
@@ -361,15 +469,23 @@ def act_node(state: AgentState, *, registry: ToolRegistry | None = None,
 # ---------------------------------------------------------------------------
 
 def observe_node(state: AgentState, *,
-                 emitter: SSEEventEmitter | None = None) -> dict[str, Any]:
+                 emitter: SSEEventEmitter | None = None,
+                 control: RunControl | None = None) -> dict[str, Any]:
     """Process the tool result and update State.
 
     Updates the extraction dict, region index, trace, and attempted set
     based on the tool result. Failed tools are recorded in the attempted
     set for retry-loop prevention [§12.3].
 
+    When a field is classified as HIGH or CRITICAL risk and control is
+    provided, emits a gate_triggered event and blocks on
+    control.gate_approval_event until the user approves or rejects via
+    the /approve API endpoint [BLK-047].
+
     Args:
         state: Current agent state.
+        emitter: Optional SSE emitter for live events.
+        control: Optional RunControl for HITL gate enforcement [BLK-047].
 
     Returns:
         State updates: extraction, regions, trace, attempted, provider_errors.
@@ -418,7 +534,7 @@ def observe_node(state: AgentState, *,
         # Compact trace [§12.3]
         resolved = {k for k, v in extraction.items()
                     if v.value is not None and v.grounding is not None
-                    and v.confidence >= settings.default_confidence_threshold}
+                    and v.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)}
         trace = compact_trace(trace, settings.trace_window_size, resolved)
 
         return {
@@ -435,7 +551,44 @@ def observe_node(state: AgentState, *,
     if result.data is not None:
         _process_tool_result(result, tool_name, tool_args, extraction, regions, field, field_attempts)
 
-    # Emit progressive field_update events [BLK-129]
+    # Guardrail: hallucination detection — verify grounding for newly extracted fields [BLK-081]
+    if field and field in extraction:
+        fv = extraction[field]
+        if fv.value is not None and fv.grounding is None:
+            logger.warning(
+                "Field '%s' has no grounding — removing from extraction [BLK-081]",
+                field,
+            )
+            extraction.pop(field, None)
+        elif fv.value is not None and fv.grounding:
+            grounding_result = _guard_check_grounding(
+                field_name=field,
+                value=fv.value,
+                bbox=fv.grounding.bbox,
+                page=fv.grounding.page,
+                claimed_confidence=fv.confidence,
+            )
+            if grounding_result.status == "hallucination_suspected":
+                logger.warning(
+                    "Hallucination suspected for field '%s': %s [BLK-081]",
+                    field, grounding_result.message,
+                )
+                # Cap confidence for suspected hallucinations
+                extraction[field] = FieldValue(
+                    name=fv.name,
+                    value=fv.value,
+                    grounding=fv.grounding,
+                    confidence=grounding_result.confidence,
+                    attempts=fv.attempts,
+                )
+            elif grounding_result.status == "ungrounded":
+                logger.warning(
+                    "Field '%s' is ungrounded — removing from extraction [BLK-081]",
+                    field,
+                )
+                extraction.pop(field, None)
+
+    # Emit progressive field_update events [BLK-129] + HITL gate [BLK-047]
     if emitter:
         template_schema = state.get("template_schema")
         total_fields = 0
@@ -445,15 +598,16 @@ def observe_node(state: AgentState, *,
         extracted_count = sum(
             1 for fv in extraction.values()
             if fv.value is not None and fv.grounding is not None
-            and fv.confidence >= settings.default_confidence_threshold
+            and fv.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)
         )
         for name, fv in extraction.items():
             if fv.value is not None and fv.grounding is not None:
                 from src.agent.hitl import classify_extraction_risk
-                risk_tier = classify_extraction_risk(
+                gate_decision = classify_extraction_risk(
                     confidence=fv.confidence,
                     semantic_failed=False,
-                ).tier.value
+                )
+                risk_tier = gate_decision.tier.value
                 bbox = None
                 page = 0
                 if fv.grounding:
@@ -477,10 +631,57 @@ def observe_node(state: AgentState, *,
                     risk_tier=risk_tier,
                 )
 
+                # HITL gate enforcement [BLK-047]
+                if gate_decision.requires_gate and control is not None:
+                    control.reset_gate()
+                    control.gate_field = name
+                    emitter.emit_gate_triggered(
+                        field=name,
+                        risk_tier=risk_tier,
+                        confidence=fv.confidence,
+                        reason=gate_decision.reason,
+                        cycle=step,
+                        required_action="approve or reject this field",
+                    )
+                    # Block the agent thread until /approve or /reject signals
+                    control.gate_approval_event.wait()
+                    # SCRUM-483: If cancel was requested while waiting in the
+                    # gate, unblock immediately with CANCELLED status.
+                    if control.cancel_requested:
+                        logger.info(
+                            "HITL gate for field '%s' interrupted by cancel — aborting [SCRUM-483]",
+                            name,
+                        )
+                        return {
+                            "extraction": extraction,
+                            "regions": regions,
+                            "trace": trace,
+                            "attempted": attempted,
+                            "provider_errors": provider_errors,
+                            "field_attempts": field_attempts,
+                            "status": RunStatus.CANCELLED,
+                        }
+                    decision = control.gate_decision
+                    if decision == "reject":
+                        # Remove the rejected field from extraction so the
+                        # agent retries it in the next cycle
+                        extraction.pop(name, None)
+                        field_attempts[name] = field_attempts.get(name, 0)
+                        logger.info(
+                            "HITL gate rejected field '%s' — agent will retry [BLK-047]",
+                            name,
+                        )
+                    else:
+                        logger.info(
+                            "HITL gate accepted field '%s' — locked, continuing [BLK-047]",
+                            name,
+                        )
+                    control.reset_gate()
+
     # Compact trace
     resolved = {k for k, v in extraction.items()
                 if v.value is not None and v.grounding is not None
-                and v.confidence >= settings.default_confidence_threshold}
+                and v.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)}
     trace = compact_trace(trace, settings.trace_window_size, resolved)
 
     return {
@@ -504,6 +705,7 @@ def reflect_node(
     skill: Skill | None = None,
     validator_config: ValidatorConfig | None = None,
     emitter: SSEEventEmitter | None = None,
+    loop_detector: LoopDetector | None = None,
 ) -> dict[str, Any]:
     """Run the Outcome Validator and decide whether to continue or stop.
 
@@ -511,6 +713,7 @@ def reflect_node(
         state: Current agent state.
         skill: The active skill (injected for testability).
         validator_config: Validator configuration (injected).
+        loop_detector: Optional loop detector for circular reasoning detection [BLK-082].
 
     Returns:
         State updates: gap_report, total_cycles, status.
@@ -534,18 +737,43 @@ def reflect_node(
             "status": RunStatus.PLANNING,
         }
 
+    task_type = state.get("task_type", "extraction")
+
     with otel_span("validate:outcome", cycle=total_cycles):
-        gap_report = validate_extraction(
-            schema=template_schema,
-            extraction=extraction,
-            invariants=skill.invariants,
-            config=validator_config,
-            failure_actions=skill.failure_actions,
-        )
+        if task_type == "graph_extraction":
+            gap_report = _validate_graph_state(state, template_schema, skill)
+        else:
+            gap_report = validate_extraction(
+                schema=template_schema,
+                extraction=extraction,
+                invariants=skill.invariants,
+                config=validator_config,
+                failure_actions=skill.failure_actions,
+            )
 
     # Check give-up caps [§2.6]
     field_attempts = state.get("field_attempts", {})
     caps_exhausted = _check_caps(field_attempts, total_cycles)
+
+    # Loop detection guardrail [BLK-082]
+    loop_detected = False
+    if loop_detector is not None:
+        action = state.get("_planned_action") or {}
+        trace = state.get("trace", [])
+        last_thought = action.get("thought", "") if action else ""
+        last_tool = action.get("tool", "") if action else ""
+        last_field = action.get("field") if action else None
+        extracted_count = sum(
+            1 for fv in extraction.values()
+            if fv.value is not None and fv.grounding is not None
+        )
+        loop_detector.record_cycle(last_tool, action.get("args", {}), last_field, last_thought, extracted_count)
+        loop_report = loop_detector.check_all()
+        if loop_report.detected:
+            logger.warning(
+                "Loop detected — terminating: %s [BLK-082]", loop_report.summary
+            )
+            loop_detected = True
 
     # Trajectory cascade detection [BLK-049, §13]
     prev_gap_report = state.get("gap_report")
@@ -577,6 +805,12 @@ def reflect_node(
 
     if gap_report.is_complete:
         status = RunStatus.COMPLETE
+    elif loop_detected:
+        status = RunStatus.PARTIAL
+        logger.info(
+            "Loop detected — terminating with partial result. Cycles: %d",
+            total_cycles,
+        )
     elif caps_exhausted:
         status = RunStatus.PARTIAL
         logger.info(
@@ -820,7 +1054,9 @@ def terminate_node(state: AgentState, *,
         if status == RunStatus.CANCELLED:
             complete_status = "cancelled"
         elif is_complete:
-            complete_status = "success"
+            complete_status = "completed"
+        elif status == RunStatus.PARTIAL:
+            complete_status = "max_iterations_reached"
         elif status == RunStatus.PAUSED:
             complete_status = "paused"
         else:
@@ -907,6 +1143,56 @@ def _build_graph_result(
 
 
 # ---------------------------------------------------------------------------
+# Graph-specific validation during live loop [BLK-218]
+# ---------------------------------------------------------------------------
+
+def _validate_graph_state(
+    state: AgentState,
+    template_schema: Any,
+    skill: Skill,
+) -> GapReport:
+    """Validate graph extraction state using graph-specific checks [BLK-218].
+
+    Builds a GraphExtractionResult from the current trace and runs
+    TaskValidator._validate_graph to check node coverage, edge connectivity,
+    topology, grounding, and serialization — instead of field-level checks.
+
+    Returns:
+        GapReport with graph-specific gap types (NODE_MISSING, EDGE_MISSING,
+        TOPOLOGY_VIOLATION, UNGROUNDED, SERIALIZATION_FAILED).
+    """
+    trace = state.get("trace", [])
+    total_cycles = state.get("total_cycles", 0)
+    status = state.get("status", RunStatus.PLANNING)
+    provider_errors = state.get("provider_errors", [])
+
+    graph_result = _build_graph_result(
+        state=state,
+        is_complete=False,
+        gap_report=None,
+        trace=trace,
+        total_cycles=total_cycles,
+        status=status,
+        provider_errors=provider_errors,
+    )
+
+    validator = TaskValidator()
+    # template_schema may be a class or instance — instantiate if it's a class
+    contract = template_schema
+    if isinstance(template_schema, type):
+        try:
+            contract = template_schema()
+        except Exception:
+            pass
+    return validator.validate(
+        result=graph_result,
+        contract=contract,
+        invariants=skill.invariants,
+        failure_actions=skill.failure_actions,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Conditional edge: reflect → plan or terminate
 # ---------------------------------------------------------------------------
 
@@ -925,8 +1211,10 @@ def should_continue(state: AgentState) -> str:
     # Check compaction triggers [§12.4]
     if settings.compaction_enabled:
         compact_requested = state.get("_compact_requested", False)
-        trace_len = len(state.get("trace", []))
-        if compact_requested or trace_len >= settings.compaction_threshold:
+        # Use total_cycles, not len(trace), because observe_node already
+        # prunes the trace to a rolling window [SCRUM-499]
+        total_cycles = state.get("total_cycles", 0)
+        if compact_requested or total_cycles >= settings.compaction_threshold:
             return "compact"
 
     return "plan"
@@ -947,6 +1235,73 @@ def should_act(state: AgentState) -> str:
     return "act"
 
 
+def should_act_with_control(state: AgentState, control: RunControl | None = None) -> str:
+    """Conditional edge after plan with control checks [BLK-129, SCRUM-407].
+
+    Checks cancel/pause before delegating to should_act. Extracted as a
+    module-level function so tests can exercise the real code path.
+    """
+    if control is not None:
+        if control.cancel_requested:
+            state["status"] = RunStatus.CANCELLED
+            return "terminate"
+        if control.pause_requested:
+            prev_status = state.get("status", RunStatus.PLANNING)
+            state["status"] = RunStatus.PAUSED
+            control.wait_for_resume()
+            if control.cancel_requested:
+                state["status"] = RunStatus.CANCELLED
+                return "terminate"
+            # Restore original status so the run continues [SCRUM-499]
+            state["status"] = prev_status
+    return should_act(state)
+
+
+def should_continue_with_control(state: AgentState, control: RunControl | None = None) -> str:
+    """Conditional edge after reflect with control checks [BLK-129, SCRUM-407].
+
+    Checks cancel/pause/compact/rollback before delegating to should_continue.
+    Extracted as a module-level function so tests can exercise the real code
+    path — the closure in build_react_graph simply delegates here.
+    """
+    if control is not None:
+        if control.cancel_requested:
+            state["status"] = RunStatus.CANCELLED
+            return "terminate"
+        if control.pause_requested:
+            prev_status = state.get("status", RunStatus.PLANNING)
+            state["status"] = RunStatus.PAUSED
+            control.wait_for_resume()
+            if control.cancel_requested:
+                state["status"] = RunStatus.CANCELLED
+                return "terminate"
+            # Restore original status so the run continues [SCRUM-499]
+            state["status"] = prev_status
+        # Check manual compaction request from API [BLK-244]
+        if control.compact_requested:
+            state["_compact_requested"] = True
+            control.compact_requested = False
+        # Check rollback request from API [BLK-244, SCRUM-396]
+        if control.rollback_requested:
+            to_cycle = control.rollback_to_cycle
+            trace = state.get("trace", [])
+            state["trace"] = [e for e in trace if e.step <= to_cycle]
+            state["total_cycles"] = to_cycle
+            extraction = state.get("extraction", {})
+            state["extraction"] = {
+                k: v for k, v in extraction.items()
+                if getattr(v, "_step", getattr(v, "step", 0)) <= to_cycle
+            }
+            state["compaction_summary"] = ""
+            control.rollback_requested = False
+            control.rollback_to_cycle = -1
+            logger.info(
+                "Rollback to cycle %d applied — trace truncated, extraction pruned [SCRUM-396]",
+                to_cycle,
+            )
+    return should_continue(state)
+
+
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
@@ -959,6 +1314,9 @@ def build_react_graph(
     breaker: CircuitBreaker | None = None,
     control: RunControl | None = None,
     emitter: SSEEventEmitter | None = None,
+    rate_limiter: ToolCallRateLimiter | None = None,
+    loop_detector: LoopDetector | None = None,
+    audit_logger: AuditLogger | None = None,
 ) -> Any:
     """Build the LangGraph ReAct state machine.
 
@@ -970,6 +1328,9 @@ def build_react_graph(
         breaker: Circuit breaker (injected, defaults to new instance).
         control: Optional RunControl for cooperative pause/cancel [BLK-129].
         emitter: Optional SSE emitter for live event streaming [BLK-129].
+        rate_limiter: Optional tool call rate limiter [BLK-080].
+        loop_detector: Optional loop detector for circular reasoning [BLK-082].
+        audit_logger: Optional audit logger for LLM call auditing [BLK-084].
 
     Returns:
         A compiled LangGraph ready to invoke.
@@ -982,18 +1343,18 @@ def build_react_graph(
     # Add nodes with bound dependencies
     graph.add_node("plan", lambda s: plan_node(
         s, llm_client=llm_client, skill=skill, registry=registry,
-        emitter=emitter,
+        emitter=emitter, audit_logger=audit_logger,
     ))
     graph.add_node("act", lambda s: act_node(
         s, registry=registry, breaker=breaker,
-        emitter=emitter,
+        emitter=emitter, rate_limiter=rate_limiter,
     ))
     graph.add_node("observe", lambda s: observe_node(
-        s, emitter=emitter,
+        s, emitter=emitter, control=control,
     ))
     graph.add_node("reflect", lambda s: reflect_node(
         s, skill=skill, validator_config=validator_config,
-        emitter=emitter,
+        emitter=emitter, loop_detector=loop_detector,
     ))
     graph.add_node("compact", lambda s: compact_node(
         s, llm_client=llm_client
@@ -1002,26 +1363,11 @@ def build_react_graph(
         s, emitter=emitter,
     ))
 
-    # Edges — wire control checks into conditional edges [BLK-129]
-    def _should_act_with_control(state: AgentState) -> str:
-        if control is not None:
-            if control.cancel_requested:
-                state["status"] = RunStatus.CANCELLED
-                return "terminate"
-            if control.pause_requested:
-                state["status"] = RunStatus.PAUSED
-                return "terminate"
-        return should_act(state)
-
-    def _should_continue_with_control(state: AgentState) -> str:
-        if control is not None:
-            if control.cancel_requested:
-                state["status"] = RunStatus.CANCELLED
-                return "terminate"
-            if control.pause_requested:
-                state["status"] = RunStatus.PAUSED
-                return "terminate"
-        return should_continue(state)
+    # Edges — wire control checks into conditional edges [BLK-129, SCRUM-407]
+    # Closures delegate to module-level functions so tests can exercise the
+    # real control logic directly without building a full graph.
+    _should_act_with_control = lambda s: should_act_with_control(s, control)
+    _should_continue_with_control = lambda s: should_continue_with_control(s, control)
 
     graph.set_entry_point("plan")
     graph.add_conditional_edges(

@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, Save, Copy, Plus, Trash2, ArrowUp, ArrowDown, Check, Sliders } from 'lucide-react';
+import { Sparkles, Save, Copy, Plus, Trash2, ArrowUp, ArrowDown, Sliders } from 'lucide-react';
 import { Skill, createSkill, updateSkill } from '@/lib/api';
 import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
 
 interface ProbeOrderStep {
   id: string;
@@ -142,6 +141,10 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
     ]);
   };
 
+  const deleteProbeStep = (id: string) => {
+    setProbeSteps((prev) => prev.filter((s) => s.id !== id));
+  };
+
   const moveProbeStep = (index: number, direction: 'up' | 'down') => {
     const newSteps = [...probeSteps];
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
@@ -159,11 +162,19 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
     ]);
   };
 
+  const deleteInvariant = (id: string) => {
+    setInvariants((prev) => prev.filter((i) => i.id !== id));
+  };
+
   const addFailureAction = () => {
     setFailureActions((prev) => [
       ...prev,
       { id: crypto.randomUUID(), condition: 'ocr_error', action: 'deskew' },
     ]);
+  };
+
+  const deleteFailureAction = (id: string) => {
+    setFailureActions((prev) => prev.filter((fa) => fa.id !== id));
   };
 
   const handleSave = async () => {
@@ -411,11 +422,14 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
                     </div>
 
                     <div className="flex items-center gap-1">
-                      <button onClick={() => moveProbeStep(idx, 'up')} className="p-1 hover:bg-black/10 rounded">
+                      <button onClick={() => moveProbeStep(idx, 'up')} className="p-1 hover:bg-black/10 rounded" title="Move up">
                         <ArrowUp className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => moveProbeStep(idx, 'down')} className="p-1 hover:bg-black/10 rounded">
+                      <button onClick={() => moveProbeStep(idx, 'down')} className="p-1 hover:bg-black/10 rounded" title="Move down">
                         <ArrowDown className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => deleteProbeStep(step.id)} className="p-1 hover:bg-red-500/20 rounded text-red-500" title="Delete step">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -435,9 +449,33 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
               <div className="space-y-2">
                 {invariants.map((inv) => (
                   <div key={inv.id} className="p-3 rounded-lg border border-[var(--card-border)] bg-black/5 dark:bg-white/5 space-y-2">
-                    <div className="flex justify-between font-mono font-semibold text-[var(--brand-primary)]">
-                      <span>{inv.fieldName}</span>
-                      <span className="text-muted">{inv.type}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        value={inv.fieldName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setInvariants((prev) => prev.map((i) => (i.id === inv.id ? { ...i, fieldName: val } : i)));
+                        }}
+                        placeholder="Field name"
+                        className="flex-1 p-1.5 font-mono font-semibold text-xs rounded border border-black/10 bg-[var(--pane-bg)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      />
+                      <select
+                        value={inv.type}
+                        onChange={(e) => {
+                          const val = e.target.value as InvariantRule['type'];
+                          setInvariants((prev) => prev.map((i) => (i.id === inv.id ? { ...i, type: val } : i)));
+                        }}
+                        className="p-1.5 text-xs rounded border border-black/10 bg-[var(--pane-bg)] focus:outline-none focus:border-[var(--brand-primary)]"
+                      >
+                        <option value="date_compare">date_compare</option>
+                        <option value="numeric_tolerance">numeric_tolerance</option>
+                        <option value="coverage_loop">coverage_loop</option>
+                        <option value="sum_check">sum_check</option>
+                      </select>
+                      <button onClick={() => deleteInvariant(inv.id)} className="p-1 hover:bg-red-500/20 rounded text-red-500" title="Delete rule">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                     <input
                       type="text"
@@ -446,6 +484,7 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
                         const val = e.target.value;
                         setInvariants((prev) => prev.map((i) => (i.id === inv.id ? { ...i, params: val } : i)));
                       }}
+                      placeholder="Rule expression"
                       className="w-full p-2 font-mono text-xs rounded border border-black/10 bg-[var(--pane-bg)] focus:outline-none"
                     />
                   </div>
@@ -464,9 +503,34 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
 
               <div className="space-y-2">
                 {failureActions.map((fa) => (
-                  <div key={fa.id} className="p-3 rounded-lg border border-[var(--card-border)] bg-black/5 dark:bg-white/5 flex items-center justify-between">
-                    <span className="font-mono text-muted">{fa.condition}</span>
-                    <AdeBadge variant="failed">{fa.action}</AdeBadge>
+                  <div key={fa.id} className="p-3 rounded-lg border border-[var(--card-border)] bg-black/5 dark:bg-white/5 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={fa.condition}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFailureActions((prev) => prev.map((item) => (item.id === fa.id ? { ...item, condition: val } : item)));
+                      }}
+                      placeholder="e.g. confidence < 0.6"
+                      className="flex-1 p-1.5 font-mono text-xs rounded border border-black/10 bg-[var(--pane-bg)] focus:outline-none focus:border-[var(--brand-primary)]"
+                    />
+                    <select
+                      value={fa.action}
+                      onChange={(e) => {
+                        const val = e.target.value as FailureActionRule['action'];
+                        setFailureActions((prev) => prev.map((item) => (item.id === fa.id ? { ...item, action: val } : item)));
+                      }}
+                      className="p-1.5 text-xs rounded border border-black/10 bg-[var(--pane-bg)] focus:outline-none focus:border-[var(--brand-primary)]"
+                    >
+                      <option value="crop">crop</option>
+                      <option value="deskew">deskew</option>
+                      <option value="denoise">denoise</option>
+                      <option value="threshold">threshold</option>
+                      <option value="vlm_escalation">vlm_escalation</option>
+                    </select>
+                    <button onClick={() => deleteFailureAction(fa.id)} className="p-1 hover:bg-red-500/20 rounded text-red-500" title="Delete action">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>

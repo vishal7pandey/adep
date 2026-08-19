@@ -154,23 +154,26 @@ class TestSSEGateEvent:
             risk_tier="high",
             confidence=0.3,
             reason="Confidence 0.30 < 0.5 — pre-execution review required",
+            cycle=3,
+            required_action="approve or reject this field",
         )
         events = self._collect_events(emitter)
         assert events[0]["type"] == "gate_triggered"
         assert events[0]["field"] == "total"
         assert events[0]["risk_tier"] == "high"
         assert events[0]["confidence"] == 0.3
+        assert events[0]["cycle"] == 3
+        assert events[0]["required_action"] == "approve or reject this field"
         assert "review" in events[0]["reason"].lower()
 
 
 class TestApproveEndpoint:
-    """Verify POST /approve endpoint [BLK-047]."""
+    """Verify POST /approve and POST /reject endpoints [BLK-047]."""
 
     def test_approve_accept(self, client: TestClient):
         _save_run("run-1")
         response = client.post("/api/v1/runs/run-1/approve", json={
             "field": "total",
-            "action": "accept",
         })
         assert response.status_code == 200
         data = response.json()
@@ -178,28 +181,33 @@ class TestApproveEndpoint:
         assert data["action"] == "accept"
         assert "accept" in data["message"].lower()
 
-    def test_approve_reject(self, client: TestClient):
+    def test_approve_no_body(self, client: TestClient):
+        """Approve should work without a body [BLK-047]."""
+        _save_run("run-1b")
+        response = client.post("/api/v1/runs/run-1b/approve")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["action"] == "accept"
+
+    def test_reject_field(self, client: TestClient):
         _save_run("run-2")
-        response = client.post("/api/v1/runs/run-2/approve", json={
+        response = client.post("/api/v1/runs/run-2/reject", json={
             "field": "subtotal",
-            "action": "reject",
         })
         assert response.status_code == 200
         data = response.json()
         assert data["action"] == "reject"
-
-    def test_approve_invalid_action(self, client: TestClient):
-        _save_run("run-3")
-        response = client.post("/api/v1/runs/run-3/approve", json={
-            "field": "total",
-            "action": "maybe",
-        })
-        assert response.status_code == 400
+        assert data["field"] == "subtotal"
 
     def test_approve_nonexistent_run(self, client: TestClient):
         response = client.post("/api/v1/runs/nonexistent/approve", json={
             "field": "total",
-            "action": "accept",
+        })
+        assert response.status_code == 404
+
+    def test_reject_nonexistent_run(self, client: TestClient):
+        response = client.post("/api/v1/runs/nonexistent/reject", json={
+            "field": "total",
         })
         assert response.status_code == 404
 
@@ -208,10 +216,19 @@ class TestApproveEndpoint:
         _save_run("run-4", status="paused")
         response = client.post("/api/v1/runs/run-4/approve", json={
             "field": "total",
-            "action": "accept",
         })
         assert response.status_code == 200
         get_response = client.get("/api/v1/runs/run-4")
+        assert get_response.json()["status"] == "running"
+
+    def test_reject_resumes_paused_run(self, client: TestClient):
+        """Rejecting a field should also resume a paused run [BLK-047]."""
+        _save_run("run-4b", status="paused")
+        response = client.post("/api/v1/runs/run-4b/reject", json={
+            "field": "total",
+        })
+        assert response.status_code == 200
+        get_response = client.get("/api/v1/runs/run-4b")
         assert get_response.json()["status"] == "running"
 
     def test_approve_records_decision(self, client: TestClient):
@@ -219,14 +236,91 @@ class TestApproveEndpoint:
         _save_run("run-5")
         client.post("/api/v1/runs/run-5/approve", json={
             "field": "total",
-            "action": "accept",
         })
-        client.post("/api/v1/runs/run-5/approve", json={
+        client.post("/api/v1/runs/run-5/reject", json={
             "field": "vendor",
-            "action": "reject",
         })
         get_response = client.get("/api/v1/runs/run-5")
         run_data = get_response.json()
         assert "gate_approvals" in run_data
         assert run_data["gate_approvals"]["total"] == "accept"
         assert run_data["gate_approvals"]["vendor"] == "reject"
+
+
+class TestRunControlGate:
+    """Verify RunControl gate synchronization primitives [BLK-047]."""
+
+    def test_gate_event_blocks_until_signaled(self):
+        """gate_approval_event.wait() blocks until signal_gate_decision is called."""
+        import threading
+        from src.api.run_executor import RunControl
+
+        control = RunControl()
+        results: list[str] = []
+
+        def waiter():
+            control.gate_approval_event.wait()
+            results.append(control.gate_decision)
+
+        t = threading.Thread(target=waiter)
+        t.start()
+        assert results == []  # Still blocked
+        control.signal_gate_decision("accept", "total")
+        t.join(timeout=2)
+        assert results == ["accept"]
+
+    def test_reset_gate_clears_state(self):
+        """reset_gate clears the event and decision for the next gate."""
+        from src.api.run_executor import RunControl
+
+        control = RunControl()
+        control.signal_gate_decision("reject", "subtotal")
+        assert control.gate_approval_event.is_set()
+        assert control.gate_decision == "reject"
+        control.reset_gate()
+        assert not control.gate_approval_event.is_set()
+        assert control.gate_decision == ""
+        assert control.gate_field == ""
+
+    def test_cancel_unblocks_gate_wait(self):
+        """SCRUM-483: request_cancel must set gate_approval_event so a
+        worker blocked in gate_approval_event.wait() unblocks immediately."""
+        import threading
+        from src.api.run_executor import RunControl
+
+        control = RunControl()
+        unblocked = threading.Event()
+
+        def waiter():
+            control.gate_approval_event.wait()
+            unblocked.set()
+
+        t = threading.Thread(target=waiter)
+        t.start()
+        assert not unblocked.is_set()  # Still blocked
+        control.request_cancel()
+        t.join(timeout=2)
+        assert unblocked.is_set()  # Unblocked by cancel
+        assert control.cancel_requested is True
+
+    def test_cancel_unblocks_pause_wait(self):
+        """SCRUM-483: request_cancel must set resume_event so a worker
+        blocked in wait_for_resume() unblocks immediately."""
+        import threading
+        from src.api.run_executor import RunControl
+
+        control = RunControl()
+        control.request_pause()
+        unblocked = threading.Event()
+
+        def waiter():
+            control.wait_for_resume()
+            unblocked.set()
+
+        t = threading.Thread(target=waiter)
+        t.start()
+        assert not unblocked.is_set()  # Still blocked
+        control.request_cancel()
+        t.join(timeout=2)
+        assert unblocked.is_set()  # Unblocked by cancel
+        assert control.cancel_requested is True

@@ -1,0 +1,35 @@
+{
+  "document": "sample-purchase-order-02-sf1449.pdf",
+  "definition_id": "def-purchase-order-sf1449",
+  "expected": {
+    "po_number": "SPE7L1-24-P-0042",
+    "po_date": "2024-06-15",
+    "expected_delivery_date": "2024-07-30",
+    "buyer": "U.S. Government DLA",
+    "vendor": "Defense Supply Contractor LLC",
+    "ship_to_address": "Defense Logistics Agency, Richmond, VA 23297",
+    "subtotal": 15750.00,
+    "tax": 0.00,
+    "shipping": 125.00,
+    "total": 15875.00
+  },
+  "tolerances": {
+    "subtotal": 1.00,
+    "tax": 0.01,
+    "shipping": 0.01,
+    "total": 1.00
+  },
+  "min_confidence": {
+    "po_number": 0.85,
+    "po_date": 0.85,
+    "expected_delivery_date": 0.80,
+    "buyer": 0.85,
+    "vendor": 0.85,
+    "ship_to_address": 0.80,
+    "subtotal": 0.85,
+    "tax": 0.85,
+    "shipping": 0.85,
+    "total": 0.85
+  },
+  "_notes": "SF-1449 government form — uses def-purchase-order-sf1449 definition. Tax may be zero for government orders."
+}

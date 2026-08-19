@@ -392,6 +392,10 @@ def emit_webhook_event(
 ) -> list[dict[str, Any]]:
     """Emit a webhook event to all subscribed webhooks [BLK-064].
 
+    This is the **synchronous** version — it blocks the calling thread.
+    Use ``emit_webhook_event_async`` from async contexts (FastAPI endpoints,
+    run_engine) to avoid blocking the event loop [BLK-242].
+
     Args:
         event: Event type (e.g. "run.completed").
         payload: Webhook payload dict.
@@ -412,6 +416,79 @@ def emit_webhook_event(
         results.append(result)
 
     return results
+
+
+async def emit_webhook_event_async(
+    event: str,
+    payload: dict[str, Any],
+    store: WebhookStore | None = None,
+) -> list[dict[str, Any]]:
+    """Emit a webhook event without blocking the event loop [BLK-242].
+
+    Dispatches each webhook in a separate thread via ``asyncio.to_thread``
+    so the async event loop is not blocked by synchronous ``urlopen`` calls
+    or retry backoff sleeps.
+
+    Args:
+        event: Event type (e.g. "run.completed").
+        payload: Webhook payload dict.
+        store: Webhook store (uses default if None).
+
+    Returns:
+        List of delivery results.
+    """
+    import asyncio
+
+    if store is None:
+        store = WebhookStore()
+
+    configs = store.get_all_for_event(event)
+    if not configs:
+        return []
+
+    tasks = [
+        asyncio.to_thread(dispatch_webhook, config, event, payload)
+        for config in configs
+    ]
+    results_raw = await asyncio.gather(*tasks, return_exceptions=True)
+
+    results = []
+    for config, raw in zip(configs, results_raw):
+        if isinstance(raw, Exception):
+            logger.warning(
+                "Webhook %s dispatch raised: %s [BLK-242]",
+                config.id, raw,
+            )
+            results.append({
+                "webhook_id": config.id,
+                "delivered": False,
+                "status_code": 0,
+                "attempts": 0,
+                "error": str(raw),
+            })
+        else:
+            raw["webhook_id"] = config.id
+            results.append(raw)
+
+    return results
+
+
+def status_to_webhook_event(status: str) -> str | None:
+    """Map a canonical run status to a webhook event type [BLK-242].
+
+    Args:
+        status: Canonical frontend status (e.g. "completed", "failed").
+
+    Returns:
+        Webhook event string (e.g. "run.completed") or None if no
+        webhook event applies (e.g. for "running", "queued", "paused").
+    """
+    mapping = {
+        "completed": WebhookEvent.RUN_COMPLETED,
+        "max_iterations_reached": WebhookEvent.RUN_PARTIAL,
+        "failed": WebhookEvent.RUN_FAILED,
+    }
+    return mapping.get(status)
 
 
 # Singleton

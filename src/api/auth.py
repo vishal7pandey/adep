@@ -111,11 +111,19 @@ def _required_scope(method: str, path: str) -> str | None:
     matching ROUTE_SCOPES entry — this makes the middleware fail closed
     for unknown routes instead of silently passing them through (BLK-215).
 
+    HEAD is treated as GET (RFC 7231 §4.3.2).
+    OPTIONS is allowed through (CORS preflight — no credentials sent).
+
     For non-api paths (e.g. /docs, /health), returns None to let FastAPI
     handle them normally.
     """
+    # OPTIONS = CORS preflight — no credentials, let CORS middleware handle it
+    if method == "OPTIONS":
+        return None
+    # HEAD is equivalent to GET for auth purposes (RFC 7231 §4.3.2)
+    effective_method = "GET" if method == "HEAD" else method
     for req_method, prefix, scope in ROUTE_SCOPES:
-        if method == req_method and path.startswith(prefix):
+        if effective_method == req_method and path.startswith(prefix):
             return scope
     # Fail closed: any /api/v1/ path without a matching scope entry is denied
     if path.startswith("/api/v1/"):
@@ -196,16 +204,43 @@ def _generate_secret() -> str:
 # ---------------------------------------------------------------------------
 
 class ApiKeyStore:
-    """File-based store for API keys under .adep/api_keys/ [BLK-122]."""
+    """File-based store for API keys under .adep/api_keys/ [BLK-122].
+
+    BLK-254: An in-memory cache with TTL avoids sync file I/O on every request.
+    The cache is invalidated on any write (create/update/delete) and refreshes
+    lazily after the TTL expires.
+    """
+
+    _CACHE_TTL_SECONDS: float = 30.0
 
     def __init__(self, base_dir: str | Path | None = None) -> None:
         if base_dir is None:
             base_dir = Path.cwd() / ".adep"
         self.base_dir = Path(base_dir) / "api_keys"
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        self._cache: list[ApiKey] | None = None
+        self._cache_time: float = 0.0
 
     def _path_for(self, key_id: str) -> Path:
         return self.base_dir / f"{key_id}.json"
+
+    def _invalidate_cache(self) -> None:
+        """Drop the in-memory cache so the next read refreshes from disk."""
+        self._cache = None
+        self._cache_time = 0.0
+
+    def _load_cache(self) -> list[ApiKey]:
+        """Return cached keys, refreshing from disk if stale or empty."""
+        now = time.monotonic()
+        if self._cache is not None and (now - self._cache_time) < self._CACHE_TTL_SECONDS:
+            return self._cache
+        keys: list[ApiKey] = []
+        for json_file in self.base_dir.glob("*.json"):
+            data = json.loads(json_file.read_text(encoding="utf-8"))
+            keys.append(ApiKey.from_dict(data))
+        self._cache = keys
+        self._cache_time = now
+        return keys
 
     def create(self, key: ApiKey) -> ApiKey:
         """Create a new API key. Fails if it already exists."""
@@ -213,37 +248,32 @@ class ApiKeyStore:
         if path.exists():
             raise FileExistsError(f"API key '{key.key_id}' already exists")
         path.write_text(json.dumps(asdict(key), indent=2), encoding="utf-8")
+        self._invalidate_cache()
         logger.info("Created API key: %s", key.key_id)
         return key
 
     def get(self, key_id: str) -> ApiKey | None:
         """Get an API key by ID. Returns None if not found."""
-        path = self._path_for(key_id)
-        if not path.exists():
-            return None
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return ApiKey.from_dict(data)
+        for key in self._load_cache():
+            if key.key_id == key_id:
+                return key
+        return None
 
     def get_by_secret(self, secret: str) -> ApiKey | None:
         """Look up an API key by its raw secret.
 
-        Iterates all keys and verifies the secret against each hash.
-        This is O(n) but n is small (typically < 10 keys).
+        BLK-254: Uses in-memory cache instead of reading files on every call.
+        Iterates cached keys and verifies the secret against each hash.
+        This is O(n) but n is small (typically < 10 keys) and all in-memory.
         """
-        for json_file in self.base_dir.glob("*.json"):
-            data = json.loads(json_file.read_text(encoding="utf-8"))
-            key = ApiKey.from_dict(data)
+        for key in self._load_cache():
             if _verify_secret(secret, key.key_hash):
                 return key
         return None
 
     def list_all(self) -> list[ApiKey]:
         """List all API keys."""
-        results = []
-        for json_file in sorted(self.base_dir.glob("*.json")):
-            data = json.loads(json_file.read_text(encoding="utf-8"))
-            results.append(ApiKey.from_dict(data))
-        return results
+        return sorted(self._load_cache(), key=lambda k: k.key_id)
 
     def update(self, key: ApiKey) -> ApiKey:
         """Update an existing API key."""
@@ -251,6 +281,7 @@ class ApiKeyStore:
         if not path.exists():
             raise FileNotFoundError(f"API key '{key.key_id}' not found")
         path.write_text(json.dumps(asdict(key), indent=2), encoding="utf-8")
+        self._invalidate_cache()
         return key
 
     def delete(self, key_id: str) -> None:
@@ -259,10 +290,11 @@ class ApiKeyStore:
         if not path.exists():
             raise FileNotFoundError(f"API key '{key_id}' not found")
         path.unlink()
+        self._invalidate_cache()
 
     def is_empty(self) -> bool:
         """Check if no keys exist."""
-        return not any(self.base_dir.glob("*.json"))
+        return len(self._load_cache()) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +326,11 @@ def reset_key_store(base_dir: str | Path | None = None) -> ApiKeyStore:
 def bootstrap_admin_key(store: ApiKeyStore) -> str:
     """Create a bootstrap admin key if no keys exist.
 
-    Returns the raw secret (shown once). Logs a warning.
+    Returns the raw secret (shown once). The secret is never passed through
+    the logging framework — logs may be persisted, shipped to aggregators,
+    or otherwise retained beyond the operator's console session [BLK-186,
+    BLK-188]. Instead, it is printed directly to stdout as a one-time
+    banner; only non-sensitive metadata (key_id) is logged.
     """
     if not store.is_empty():
         raise RuntimeError("Keys already exist — cannot bootstrap")
@@ -314,10 +350,19 @@ def bootstrap_admin_key(store: ApiKeyStore) -> str:
     store.create(key)
 
     logger.warning(
-        "Bootstrap admin key created — this is the ONLY time the secret "
-        "will be shown. Key ID: %s, Secret: %s",
+        "Bootstrap admin key created (key_id: %s) — the secret was printed "
+        "to stdout once and is not recoverable from logs.",
         key_id,
-        secret,
+    )
+    print(
+        "\n"
+        "==================== BOOTSTRAP ADMIN KEY ====================\n"
+        f"  Key ID:  {key_id}\n"
+        f"  Secret:  {secret}\n"
+        "This secret is shown ONLY ONCE and is never written to logs.\n"
+        "Store it securely now — it cannot be recovered later.\n"
+        "===============================================================\n",
+        flush=True,
     )
     return secret
 

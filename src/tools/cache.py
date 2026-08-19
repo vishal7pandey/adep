@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from src.config import settings
-from src.tools.base import ToolResult
+from src.tools.base import Grounding, ToolResult
 
 logger = logging.getLogger(__name__)
 
@@ -132,12 +132,22 @@ class ToolCache:
     def _serialize_entry(self, entry: CacheEntry) -> dict[str, Any]:
         """Serialize a CacheEntry to a JSON-compatible dict."""
         tr = entry.result
+        grounding = None
+        if tr.grounding is not None:
+            g = tr.grounding
+            grounding = {
+                "bbox": list(g.bbox),
+                "page": g.page,
+                "region_id": g.region_id,
+                "source_tool": g.source_tool,
+                "confidence": g.confidence,
+            }
         return {
             "ok": tr.ok,
             "data": tr.data,
             "error": tr.error,
             "tool": tr.tool,
-            "grounding": None,  # Grounding is not serializable in general
+            "grounding": grounding,
             "cost": tr.cost,
             "created_at": entry.created_at,
             "last_used_at": entry.last_used_at,
@@ -148,11 +158,22 @@ class ToolCache:
 
     def _deserialize_entry(self, data: dict[str, Any]) -> CacheEntry:
         """Deserialize a dict back to a CacheEntry."""
+        grounding = None
+        g = data.get("grounding")
+        if g is not None:
+            grounding = Grounding(
+                bbox=tuple(g.get("bbox", (0, 0, 0, 0))),
+                page=g.get("page", 0),
+                region_id=g.get("region_id"),
+                source_tool=g.get("source_tool", ""),
+                confidence=g.get("confidence", 0.0),
+            )
         tr = ToolResult(
             ok=data.get("ok", True),
             data=data.get("data"),
             error=data.get("error", ""),
             tool=data.get("tool", ""),
+            grounding=grounding,
             cost=data.get("cost", {}),
         )
         return CacheEntry(

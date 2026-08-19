@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { GitCompare, ArrowRight, TrendingUp, TrendingDown, Minus, CheckCircle2, AlertTriangle, FileText, X } from 'lucide-react';
+import { GitCompare, ArrowRight, TrendingUp, TrendingDown, Minus, CheckCircle2, AlertTriangle, FileText, X, RefreshCw } from 'lucide-react';
 import { ExtractionRun, ExtractedField, fetchRecentRuns, fetchRun } from '@/lib/api';
 import { AdeButton } from '@/components/ui/AdeButton';
 import { AdeBadge } from '@/components/ui/AdeBadge';
@@ -110,6 +110,20 @@ export const RunComparisonView: React.FC<RunComparisonViewProps> = ({ onClose })
           </AdeButton>
         )}
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg bg-[var(--status-error-subtle)] border border-[var(--status-error)]/40 text-xs text-[var(--status-error)] font-medium">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="font-bold underline ml-2 shrink-0"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Selectors Panel */}
       <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] text-xs">

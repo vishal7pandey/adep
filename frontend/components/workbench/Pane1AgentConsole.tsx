@@ -46,6 +46,7 @@ import { connectToRunStream, SSEThoughtEvent, SSEToolCallEvent, SSEToolResultEve
 import { AdeButton } from '@/components/ui/AdeButton';
 import { AdeBadge } from '@/components/ui/AdeBadge';
 import { useWorkbench, RunStatusType } from '@/context/WorkbenchContext';
+import { useActiveHighlight } from '@/context/ActiveHighlightContext';
 
 export interface ConsoleTraceCycle {
   cycleNumber: number;
@@ -90,7 +91,7 @@ export const Pane1AgentConsole: React.FC = () => {
   const [selectedDefId, setSelectedDefId] = useState<string>('');
   const [hasManualDefinitionSelection, setHasManualDefinitionSelection] = useState(false);
   const [collapsedCycles, setCollapsedCycles] = useState<Record<number, boolean>>({});
-  const [gateInfo, setGateInfo] = useState<{ reason: string; required_action: string; cycle: number } | null>(null);
+  const [gateInfo, setGateInfo] = useState<{ field: string; reason: string; required_action: string; cycle: number } | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [disclosureLevel, setDisclosureLevel] = useState<1 | 2 | 3>(2);
   const [showRollbackDropdown, setShowRollbackDropdown] = useState(false);
@@ -100,7 +101,8 @@ export const Pane1AgentConsole: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
-  const { phase, runStatus, documentFileName, documentUrl, runId, setDocument, startRun, completeRun } = useWorkbench();
+  const { phase, runStatus, documentFileName, documentUrl, runId, setDocument, startRun, completeRun, setRunStatus } = useWorkbench();
+  const { setTotalPages } = useActiveHighlight();
 
   const [defError, setDefError] = useState<string | null>(null);
 
@@ -113,22 +115,28 @@ export const Pane1AgentConsole: React.FC = () => {
       setDefinitions([]);
       const msg = err instanceof Error ? err.message : 'Backend server offline';
       setDefError(msg);
-      setNotification(`Agent fetch warning: ${msg}. Check backend server or API Key.`);
+      setNotification(`Agent Definition fetch warning: ${msg}. Check backend server or API Key.`);
     });
   }, []);
 
   const handlePauseResume = useCallback(async () => {
     if (!activeRunId) return;
-    if (runState === 'running') {
-      setRunState('paused');
-      await pauseRun(activeRunId);
-      setNotification('Run execution paused at cycle boundary');
-    } else if (runState === 'paused') {
-      setRunState('running');
-      await resumeRun(activeRunId);
-      setNotification('Run execution resumed');
+    try {
+      if (runState === 'running') {
+        setRunState('paused');
+        await pauseRun(activeRunId);
+        setNotification('Run execution paused at cycle boundary');
+      } else if (runState === 'paused') {
+        setRunState('running');
+        await resumeRun(activeRunId);
+        setNotification('Run execution resumed');
+      }
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      setNotification(`Pause/Resume failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setRunState(runState === 'running' ? 'running' : 'paused');
+      setTimeout(() => setNotification(null), 5000);
     }
-    setTimeout(() => setNotification(null), 3000);
   }, [activeRunId, runState]);
 
   // BLK-117: Keyboard shortcuts listener for Space (Pause/Resume) and 1/2/3 (Disclosure Levels)
@@ -183,7 +191,9 @@ export const Pane1AgentConsole: React.FC = () => {
       setActiveRunId(runId);
       if (runStatus === 'completed') setRunState('completed');
       else if (runStatus === 'paused') setRunState('paused');
-      else if (runStatus === 'stopped') setRunState('stopped');
+      else if (runStatus === 'failed') setRunState('failed');
+      else if (runStatus === 'cancelled') setRunState('cancelled');
+      else if (runStatus === 'max_iterations_reached') setRunState('max_iterations_reached');
       else if (runStatus === 'running') setRunState('running');
       else setRunState('idle');
     }
@@ -201,31 +211,46 @@ export const Pane1AgentConsole: React.FC = () => {
 
   const handleStop = async () => {
     if (!activeRunId) return;
-    setRunState('stopped');
-    await stopRun(activeRunId);
-    setNotification('Run halted by user — partial results preserved');
-    setTimeout(() => setNotification(null), 4000);
+    setRunState('cancelled');
+    try {
+      await stopRun(activeRunId);
+      setNotification('Run halted by user — partial results preserved');
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err) {
+      setNotification(`Stop failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setTimeout(() => setNotification(null), 5000);
+    }
   };
 
   const handleRollback = async (toCycle: number) => {
     if (!activeRunId) return;
     setShowRollbackDropdown(false);
-    await rollbackRun(activeRunId, toCycle);
-    setCycles((prev) => prev.filter((c) => c.cycleNumber <= toCycle));
-    setNotification(`Rolled back context to cycle ${toCycle}`);
-    setTimeout(() => setNotification(null), 4000);
+    try {
+      await rollbackRun(activeRunId, toCycle);
+      setCycles((prev) => prev.filter((c) => c.cycleNumber <= toCycle));
+      setNotification(`Rolled back context to cycle ${toCycle}`);
+      setTimeout(() => setNotification(null), 4000);
+    } catch (err) {
+      setNotification(`Rollback failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setTimeout(() => setNotification(null), 5000);
+    }
   };
 
   const handleCompact = async () => {
     if (!activeRunId) return;
     setIsCompacting(true);
-    await compactRun(activeRunId);
-
-    setTimeout(() => {
+    try {
+      await compactRun(activeRunId);
+      setTimeout(() => {
+        setIsCompacting(false);
+        setNotification('Context compacted: 15 trace entries → 420 char summary');
+        setTimeout(() => setNotification(null), 4000);
+      }, 1200);
+    } catch (err) {
       setIsCompacting(false);
-      setNotification('Context compacted: 15 trace entries → 420 char summary');
-      setTimeout(() => setNotification(null), 4000);
-    }, 1200);
+      setNotification(`Compact failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setTimeout(() => setNotification(null), 5000);
+    }
   };
 
   const [isUploading, setIsUploading] = useState(false);
@@ -245,10 +270,10 @@ export const Pane1AgentConsole: React.FC = () => {
   const handleApproveGate = async () => {
     if (!activeRunId) return;
     try {
-      await approveRun(activeRunId);
+      await approveRun(activeRunId, gateInfo?.field);
       setGateInfo(null);
       setRunState('running');
-      setNotification('HITL Gate approved — agent resuming execution');
+      setNotification('HITL Gate approved — Agent Definition resuming execution');
     } catch (err) {
       setNotification(`Approval failed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -257,10 +282,10 @@ export const Pane1AgentConsole: React.FC = () => {
   const handleRejectGate = async () => {
     if (!activeRunId) return;
     try {
-      await rejectRun(activeRunId, 'User rejected execution');
+      await rejectRun(activeRunId, 'User rejected execution', gateInfo?.field);
       setGateInfo(null);
-      setRunState('stopped');
-      setNotification('HITL Gate rejected — run halted by user');
+      setRunState('running');
+      setNotification('HITL Gate rejected — Agent Definition will retry with different approach');
     } catch (err) {
       setNotification(`Rejection failed: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -291,7 +316,8 @@ export const Pane1AgentConsole: React.FC = () => {
       try {
         const meta = await fetchDocument(docUrl);
         resolvedDocumentPath = meta.page_paths[0] || docUrl;
-      } catch {
+      } catch (err) {
+        console.warn('Failed to resolve document path, using raw URL:', err);
         resolvedDocumentPath = docUrl;
       }
     }
@@ -340,7 +366,7 @@ export const Pane1AgentConsole: React.FC = () => {
         },
         onGateTriggered: (evt) => {
           setRunState('paused');
-          setGateInfo({ reason: evt.reason, required_action: evt.required_action, cycle: evt.cycle });
+          setGateInfo({ field: evt.field, reason: evt.reason, required_action: evt.required_action, cycle: evt.cycle });
           setNotification(`HITL Gate Triggered (Cycle ${evt.cycle}): ${evt.reason}`);
         },
         onTrajectoryWarning: (evt) => {
@@ -350,7 +376,7 @@ export const Pane1AgentConsole: React.FC = () => {
           setNotification(`🚨 Trajectory Critical Alert (Cycle ${evt.cycle}): ${evt.message}`);
         },
         onComplete: (evt) => {
-          if (evt.status === 'success' || evt.status === 'completed') {
+          if (evt.status === 'completed') {
             setRunState('completed');
             setRunStatus('completed');
           } else if (evt.status === 'max_iterations_reached') {
@@ -366,14 +392,16 @@ export const Pane1AgentConsole: React.FC = () => {
             setRunStatus('failed');
             setNotification(evt.summary || 'Extraction failed during execution.');
           } else {
-            setRunState('stopped');
-            setRunStatus('stopped');
+            setRunState('failed');
+            setRunStatus('failed');
             setNotification(evt.summary || `Run ended with status: ${evt.status}`);
           }
         },
 
         onStopped: () => {
-          setRunState('stopped');
+          setRunState('failed');
+          setNotification('Run stopped unexpectedly by backend. Check server logs for details.');
+          setTimeout(() => setNotification(null), 5000);
         },
         onPaused: () => {
           setRunState('paused');
@@ -386,7 +414,7 @@ export const Pane1AgentConsole: React.FC = () => {
         },
         onReconnectFailed: () => {
           setNotification('Connection lost. Please check backend server and click Retry.');
-          setRunState('stopped');
+          setRunState('failed');
         },
       });
 
@@ -405,6 +433,8 @@ export const Pane1AgentConsole: React.FC = () => {
       const res = await uploadDocument(file);
       const docId = res.document_id;
       setDocument(res.original_filename || file.name, docId);
+      // BLK-250: Set total pages from document metadata so pagination is not driven by field data
+      setTotalPages(res.total_pages || 1);
 
       try {
         const suggestion = await suggestAgent(docId);
@@ -417,7 +447,7 @@ export const Pane1AgentConsole: React.FC = () => {
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Classification service unavailable';
-        setNotification(`Classification notice: ${msg}. Agent definition selection preserved.`);
+        setNotification(`Classification notice: ${msg}. Agent Definition selection preserved.`);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Upload failed';
@@ -476,7 +506,6 @@ export const Pane1AgentConsole: React.FC = () => {
               {runState === 'failed' && <AdeBadge variant="failed">Failed</AdeBadge>}
               {runState === 'cancelled' && <AdeBadge variant="neutral">Cancelled</AdeBadge>}
               {runState === 'max_iterations_reached' && <AdeBadge variant="medium">Max Iterations Reached</AdeBadge>}
-              {runState === 'stopped' && <AdeBadge variant="neutral">Stopped</AdeBadge>}
               {runState === 'idle' && <AdeBadge variant="neutral">Idle</AdeBadge>}
 
             </div>
@@ -632,6 +661,19 @@ export const Pane1AgentConsole: React.FC = () => {
         )}
       </div>
 
+      {/* Definition Fetch Error Banner */}
+      {defError && (
+        <div className="px-4 py-2 bg-[var(--status-error-subtle)] border-b border-[var(--status-error)]/40 text-xs text-[var(--status-error)] font-medium flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+            <span>Agent Definition load error: {defError}</span>
+          </div>
+          <button onClick={() => setDefError(null)} className="font-bold underline ml-2 shrink-0">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Notification Toast */}
       {notification && (
         <div className="px-4 py-2 bg-[var(--brand-primary-muted)] border-b border-[var(--brand-primary)] text-xs text-[var(--brand-primary)] font-medium flex items-center gap-1.5 animate-fadeIn">
@@ -671,7 +713,7 @@ export const Pane1AgentConsole: React.FC = () => {
                   <p className="text-xs max-w-xs mt-1 text-muted">
                     {isDragOver
                       ? 'Release to upload PDF, PNG, JPG, or TIFF'
-                      : 'Upload your document first. ADEP will classify its structure and suggest the best matching extraction agent definition automatically.'}
+                      : 'Upload your document first. ADEP will classify its structure and suggest the best matching Agent Definition automatically.'}
                   </p>
                 </div>
                 {!isDragOver && (
@@ -689,11 +731,11 @@ export const Pane1AgentConsole: React.FC = () => {
               <div className="p-6 rounded-xl border border-[var(--brand-primary)] bg-[var(--brand-primary-subtle)] text-center space-y-3 animate-pulse">
                 <Sparkles className="w-8 h-8 mx-auto text-[var(--brand-primary)] animate-spin" />
                 <h3 className="font-bold text-sm text-[var(--primary-text)]">Classifying Document Structure...</h3>
-                <p className="text-xs text-muted">Analyzing document layout, headers, and matching optimal extraction agent definition.</p>
+                <p className="text-xs text-muted">Analyzing document layout, headers, and matching optimal Agent Definition.</p>
               </div>
             )}
 
-            {/* BLK-131: Agent Suggestion Recommendation Card */}
+            {/* BLK-131: Agent Definition Suggestion Recommendation Card */}
             {(uploadedFileName || documentFileName) && !isClassifying && suggestionResult && (
               <div className="p-4 rounded-xl border border-[var(--brand-primary)] bg-[var(--card-bg)] space-y-3.5 shadow-md animate-fadeIn">
                 <div className="flex items-center justify-between">
@@ -720,12 +762,12 @@ export const Pane1AgentConsole: React.FC = () => {
                       <span>Multi-Type Document Detected</span>
                     </div>
                     <p className="text-[11px] text-muted">
-                      This file contains multiple document types. The agent definition will process the entire file using the primary suggested agent definition.
+                      This file contains multiple document types. The Agent Definition will process the entire file using the primary suggested Agent Definition.
                     </p>
                   </div>
                 )}
 
-                {/* Agent Selection & Run CTAs */}
+                {/* Agent Definition Selection & Run CTAs */}
                 <div className="pt-2 border-t border-[var(--pane-border)] space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-muted">Suggested Agent Definition:</span>

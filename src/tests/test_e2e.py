@@ -244,17 +244,17 @@ class TestE2EInvoiceMocked:
         mock_registry = _build_mock_registry()
 
         def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None):
+                              control=None, emitter=None, **kwargs):
             from src.agent.graph import build_react_graph as _real_build
             return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter)
+                               control=control, emitter=emitter, **kwargs)
 
         with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
              patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
 
             result = _run_async(execute_run("def-trade-finance-scrutiny", str(sample_pdf)))
 
-        assert result["status"] in ("completed", "failed", "partial", "paused")
+        assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
         assert result["definition_id"] == "def-trade-finance-scrutiny"
         assert result["document_url"] == str(sample_pdf)
         assert result["total_fields"] > 0
@@ -278,10 +278,10 @@ class TestE2ESeedAndRun:
         mock_registry = _build_mock_registry()
 
         def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None):
+                              control=None, emitter=None, **kwargs):
             from src.agent.graph import build_react_graph as _real_build
             return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter)
+                               control=control, emitter=emitter, **kwargs)
 
         with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
              patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
@@ -299,10 +299,10 @@ class TestE2ESeedAndRun:
         mock_registry = _build_mock_registry()
 
         def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None):
+                              control=None, emitter=None, **kwargs):
             from src.agent.graph import build_react_graph as _real_build
             return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter)
+                               control=control, emitter=emitter, **kwargs)
 
         with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
              patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph), \
@@ -310,7 +310,7 @@ class TestE2ESeedAndRun:
              patch.object(settings, "compaction_threshold", 999):
             result = _run_async(execute_run("def-utility-bill", str(sample_pdf)))
 
-        assert result["status"] in ("completed", "failed", "partial", "paused")
+        assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
         assert result["total_fields"] > 0
 
     def test_medical_claim_run_mocked(self, seeded_store, sample_pdf):
@@ -320,10 +320,10 @@ class TestE2ESeedAndRun:
         mock_registry = _build_mock_registry()
 
         def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None):
+                              control=None, emitter=None, **kwargs):
             from src.agent.graph import build_react_graph as _real_build
             return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter)
+                               control=control, emitter=emitter, **kwargs)
 
         with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
              patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph), \
@@ -331,7 +331,7 @@ class TestE2ESeedAndRun:
              patch.object(settings, "compaction_threshold", 999):
             result = _run_async(execute_run("def-medical-claim", str(sample_pdf)))
 
-        assert result["status"] in ("completed", "failed", "partial", "paused")
+        assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
         assert result["total_fields"] > 0
 
     def test_boq_run_mocked(self, seeded_store, sample_pdf):
@@ -342,17 +342,17 @@ class TestE2ESeedAndRun:
         mock_registry = _build_mock_registry()
 
         def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None):
+                              control=None, emitter=None, **kwargs):
             from src.agent.graph import build_react_graph as _real_build
             return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter)
+                               control=control, emitter=emitter, **kwargs)
 
         with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
              patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
 
             result = _run_async(execute_run("def-boq-estimator", str(sample_pdf)))
 
-        assert result["status"] in ("completed", "failed", "partial", "paused")
+        assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
         assert result["total_fields"] > 0
 
 
@@ -366,10 +366,10 @@ class TestE2EResultSerialization:
         mock_registry = _build_mock_registry()
 
         def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None):
+                              control=None, emitter=None, **kwargs):
             from src.agent.graph import build_react_graph as _real_build
             return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter)
+                               control=control, emitter=emitter, **kwargs)
 
         with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
              patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):

@@ -26,7 +26,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from src.tools.base import ToolRegistry, ToolSpec, ToolResult
+from src.tools.base import Grounding, ToolRegistry, ToolSpec, ToolResult
 from src.tools.cache import (
     ToolCache,
     compute_cache_key,
@@ -496,3 +496,49 @@ class TestCacheEndpoints:
         data = resp.json()
         assert "cleared" in data
         assert data["cleared"] >= 0
+
+
+# ---------------------------------------------------------------------------
+# Grounding preservation tests (SCRUM-480)
+# ---------------------------------------------------------------------------
+
+class TestGroundingPreservation:
+    """Verify grounding is not stripped during cache serialization [SCRUM-480]."""
+
+    def test_grounding_survives_memory_roundtrip(self, tmp_cache: ToolCache):
+        """Grounding should survive a put → get cycle in memory."""
+        grounding = Grounding(bbox=(10, 20, 100, 200), page=0, source_tool="ocr", confidence=0.95)
+        result = ToolResult(ok=True, data={"text": "hello"}, tool="ocr", grounding=grounding)
+        tmp_cache.put("key_g", result, tool_name="ocr")
+        cached = tmp_cache.get("key_g")
+        assert cached is not None
+        assert cached.grounding is not None
+        assert cached.grounding.bbox == (10, 20, 100, 200)
+        assert cached.grounding.page == 0
+        assert cached.grounding.source_tool == "ocr"
+        assert cached.grounding.confidence == 0.95
+
+    def test_grounding_survives_disk_roundtrip(self, tmp_path: Path):
+        """Grounding should survive serialization to disk and back."""
+        cache1 = ToolCache(base_dir=tmp_path / "cache")
+        grounding = Grounding(bbox=(5, 10, 50, 80), page=2, source_tool="vlm", confidence=0.87)
+        result = ToolResult(ok=True, data={"text": "disk"}, tool="vlm", grounding=grounding)
+        cache1.put("disk_g", result, tool_name="vlm")
+
+        # New cache instance reads from disk
+        cache2 = ToolCache(base_dir=tmp_path / "cache")
+        cached = cache2.get("disk_g")
+        assert cached is not None
+        assert cached.grounding is not None
+        assert cached.grounding.bbox == (5, 10, 50, 80)
+        assert cached.grounding.page == 2
+        assert cached.grounding.source_tool == "vlm"
+        assert cached.grounding.confidence == 0.87
+
+    def test_none_grounding_stays_none(self, tmp_cache: ToolCache):
+        """Result without grounding should return None grounding from cache."""
+        result = ToolResult(ok=True, data={"text": "no grounding"}, tool="ocr")
+        tmp_cache.put("key_ng", result, tool_name="ocr")
+        cached = tmp_cache.get("key_ng")
+        assert cached is not None
+        assert cached.grounding is None

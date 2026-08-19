@@ -49,7 +49,8 @@ from src.eval.benchmarks import (
 def _has_credentials() -> bool:
     """Check if real provider credentials are available [BLK-128]."""
     return bool(
-        os.environ.get("AZURE_OPENAI_API_KEY")
+        os.environ.get("AZURE_API_KEY")
+        or os.environ.get("AZURE_OPENAI_API_KEY")
         or os.environ.get("OPENAI_API_KEY")
     )
 

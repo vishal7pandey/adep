@@ -1,0 +1,45 @@
+{
+  "document": "sample-pay-stub-02-civilian-les-sample.pdf",
+  "definition_id": "def-pay-stub",
+  "expected": {
+    "employee_name": "Jane B. Employee",
+    "employer_name": "Federal Civilian Agency",
+    "pay_period_start": "2024-06-01",
+    "pay_period_end": "2024-06-15",
+    "pay_date": "2024-06-14",
+    "gross_pay": 2875.00,
+    "net_pay": 2102.25,
+    "ytd_gross": 14375.00,
+    "ytd_net": 10511.25,
+    "federal_tax": 345.00,
+    "state_tax": 143.75,
+    "social_security": 178.25,
+    "medicare": 41.69
+  },
+  "tolerances": {
+    "gross_pay": 0.01,
+    "net_pay": 0.01,
+    "ytd_gross": 0.01,
+    "ytd_net": 0.01,
+    "federal_tax": 0.01,
+    "state_tax": 0.01,
+    "social_security": 0.01,
+    "medicare": 0.01
+  },
+  "min_confidence": {
+    "employee_name": 0.85,
+    "employer_name": 0.85,
+    "pay_period_start": 0.85,
+    "pay_period_end": 0.85,
+    "pay_date": 0.85,
+    "gross_pay": 0.85,
+    "net_pay": 0.85,
+    "ytd_gross": 0.85,
+    "ytd_net": 0.85,
+    "federal_tax": 0.85,
+    "state_tax": 0.85,
+    "social_security": 0.85,
+    "medicare": 0.85
+  },
+  "_notes": "Civilian LES sample — similar structure to military LES but for federal civilian employees."
+}

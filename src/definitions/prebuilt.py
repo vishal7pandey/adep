@@ -104,20 +104,20 @@ _skill_descriptions: dict[str, str] = {
 
 # Skill ID → tools list mapping (used for serializing skill metadata)
 _skill_tools: dict[str, list[str]] = {
-    "invoice": ["detect_layout", "ocr", "vlm", "crop_image", "cross_check"],
-    "trade_finance_scrutiny": ["detect_layout", "ocr", "vlm", "cross_check", "crop_image"],
-    "bill_of_quantities": ["detect_layout", "detect_tables", "ocr", "read_table", "crop_image", "cross_check"],
-    "utility_bill": ["detect_layout", "ocr", "read_chart", "vlm", "crop_image"],
-    "thermal_receipt": ["auto_orient", "deskew", "denoise", "threshold", "ocr", "vlm", "crop_image", "cross_check"],
-    "medical_claim": ["detect_layout", "ocr", "vlm", "crop_image", "cross_check"],
-    "compliance_audit": ["detect_layout", "ocr", "vlm", "locate", "crop_image"],
-    "commercial_lease": ["detect_layout", "ocr", "vlm", "locate", "crop_image"],
-    "commodity_trade": ["detect_layout", "ocr", "vlm", "read_table", "cross_check", "crop_image"],
-    "metallurgical_assay": ["detect_layout", "detect_tables", "ocr", "read_table", "vlm", "crop_image", "deskew"],
-    "store_audit": ["detect_layout", "detect_figures", "ocr", "vlm", "crop_image"],
-    "ad_buy": ["detect_layout", "detect_tables", "ocr", "read_table", "cross_check"],
-    "purchase_order_sf1449": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
-    "packing_list_travel": ["detect_layout", "ocr", "crop_image", "cross_check"],
+    "invoice": ["detect_layout", "ocr", "vlm", "crop"],
+    "trade_finance_scrutiny": ["detect_layout", "ocr", "vlm", "crop"],
+    "bill_of_quantities": ["detect_layout", "detect_tables", "ocr", "read_table", "crop"],
+    "utility_bill": ["detect_layout", "ocr", "read_chart", "vlm", "crop"],
+    "thermal_receipt": ["auto_orient", "deskew", "denoise", "threshold", "ocr", "vlm", "crop"],
+    "medical_claim": ["detect_layout", "ocr", "vlm", "crop"],
+    "compliance_audit": ["detect_layout", "ocr", "vlm", "crop"],
+    "commercial_lease": ["detect_layout", "ocr", "vlm", "crop"],
+    "commodity_trade": ["detect_layout", "ocr", "vlm", "read_table", "crop"],
+    "metallurgical_assay": ["detect_layout", "detect_tables", "ocr", "read_table", "vlm", "crop", "deskew"],
+    "store_audit": ["detect_layout", "ocr", "vlm", "crop"],
+    "ad_buy": ["detect_layout", "detect_tables", "ocr", "read_table"],
+    "purchase_order_sf1449": ["detect_layout", "ocr", "read_table", "crop"],
+    "packing_list_travel": ["detect_layout", "ocr", "crop"],
 }
 
 PREBUILT_DEFINITIONS: list[dict] = [
@@ -127,7 +127,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "invoice",
         "template_id": "invoice",
-        "tool_names": ["detect_layout", "ocr", "vlm", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 20,
@@ -140,7 +140,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "trade_finance_scrutiny",
         "template_id": "trade_finance_mt700",
-        "tool_names": ["detect_layout", "ocr", "vlm", "cross_check", "crop_image"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 25,
@@ -153,7 +153,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "bill_of_quantities",
         "template_id": "bill_of_quantities",
-        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 30,
@@ -166,7 +166,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "compliance_audit",
         "template_id": "compliance_audit_soc2",
-        "tool_names": ["detect_layout", "ocr", "vlm", "locate", "crop_image"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 40,
@@ -179,7 +179,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "commercial_lease",
         "template_id": "commercial_lease",
-        "tool_names": ["detect_layout", "ocr", "vlm", "locate", "crop_image"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 35,
@@ -192,7 +192,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "commodity_trade",
         "template_id": "commodity_trade_assay",
-        "tool_names": ["detect_layout", "ocr", "vlm", "read_table", "cross_check", "crop_image"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 20,
@@ -205,7 +205,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "metallurgical_assay",
         "template_id": "metallurgical_assay",
-        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table", "vlm", "crop_image", "deskew"],
+        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table", "vlm", "crop", "deskew"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 20,
@@ -218,7 +218,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "medical_claim",
         "template_id": "medical_claim_cms1500",
-        "tool_names": ["detect_layout", "ocr", "vlm", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 15,
@@ -231,7 +231,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "store_audit",
         "template_id": "store_audit_checklist",
-        "tool_names": ["detect_layout", "detect_figures", "ocr", "vlm", "crop_image"],
+        "tool_names": ["detect_layout", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 15,
@@ -244,7 +244,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "thermal_receipt",
         "template_id": "thermal_receipt",
-        "tool_names": ["auto_orient", "deskew", "denoise", "threshold", "ocr", "vlm", "crop_image", "cross_check"],
+        "tool_names": ["auto_orient", "deskew", "denoise", "threshold", "ocr", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 12,
@@ -257,7 +257,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "ad_buy",
         "template_id": "ad_insertion_order",
-        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table", "cross_check"],
+        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 15,
@@ -270,7 +270,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "utility_bill",
         "template_id": "utility_bill",
-        "tool_names": ["detect_layout", "ocr", "read_chart", "vlm", "crop_image"],
+        "tool_names": ["detect_layout", "ocr", "read_chart", "vlm", "crop"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 15,
@@ -283,7 +283,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "bank_statement",
         "template_id": "bank_statement",
-        "tool_names": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 30,
@@ -296,7 +296,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "purchase_order",
         "template_id": "purchase_order",
-        "tool_names": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 25,
@@ -309,7 +309,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "purchase_order_sf1449",
         "template_id": "purchase_order_sf1449",
-        "tool_names": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 20,
@@ -322,7 +322,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "packing_list",
         "template_id": "packing_list",
-        "tool_names": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 30,
@@ -335,7 +335,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "packing_list_travel",
         "template_id": "packing_list_travel",
-        "tool_names": ["detect_layout", "ocr", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "crop"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 20,
@@ -348,7 +348,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "w2_tax_form",
         "template_id": "w2_tax_form",
-        "tool_names": ["detect_layout", "ocr", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "crop"],
         "agent_config": {
             "max_cycles_per_field": 4,
             "max_cycles_per_document": 25,
@@ -361,7 +361,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "pay_stub",
         "template_id": "pay_stub",
-        "tool_names": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 30,
@@ -374,7 +374,7 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "insurance_policy",
         "template_id": "insurance_policy",
-        "tool_names": ["detect_layout", "ocr", "read_table", "crop_image", "cross_check"],
+        "tool_names": ["detect_layout", "ocr", "read_table", "crop"],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 35,

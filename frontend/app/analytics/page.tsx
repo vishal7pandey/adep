@@ -209,7 +209,10 @@ export default function AnalyticsPage() {
   const fetchAnalytics = useCallback((): Promise<void> => {
     return Promise.all([
       fetchRecentRuns(200),
-      fetchDefinitions().catch(() => [] as AgentDefinition[]),
+      fetchDefinitions().catch((err) => {
+        console.warn('Failed to load definitions for analytics:', err);
+        return [] as AgentDefinition[];
+      }),
     ])
       .then(([runs, defs]) => {
         applyResult(runs, defs, null);
@@ -245,13 +248,16 @@ export default function AnalyticsPage() {
   // CSV export
   const handleExportCsv = () => {
     const csv = exportToCsv(filteredRuns);
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `adep-analytics-${datePreset}.csv`;
+    a.style.display = 'none';
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
   };
 
   // PDF export (print)
@@ -361,7 +367,7 @@ export default function AnalyticsPage() {
                     </button>
                   </div>
 
-                  {/* Agent filter */}
+                  {/* Agent Definition filter */}
                   <div>
                     <div className="text-[10px] font-bold text-muted uppercase tracking-wide mb-1.5">Agent Definition</div>
                     <div className="space-y-1">
@@ -600,7 +606,7 @@ export default function AnalyticsPage() {
           </ChartCard>
         </div>
 
-        {/* ── Row 3: Failure Heatmap + Agent Leaderboard */}
+        {/* ── Row 3: Failure Heatmap + Agent Definition Leaderboard */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
 
           {/* Failure Heatmap */}
@@ -638,21 +644,21 @@ export default function AnalyticsPage() {
             )}
           </ChartCard>
 
-          {/* Agent Leaderboard */}
+          {/* Agent Definition Leaderboard */}
           <ChartCard
-            title="Agent Leaderboard"
-            subtitle="Performance comparison across agent definitions"
+            title="Agent Definition Leaderboard"
+            subtitle="Performance comparison across Agent Definitions"
             icon={Trophy}
           >
             {agentLeaderboard.length === 0 ? (
-              <p className="text-xs text-muted text-center py-4">No agents in selected range.</p>
+              <p className="text-xs text-muted text-center py-4">No Agent Definitions in selected range.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-[11px]">
                   <thead>
                     <tr className="border-b border-[var(--card-border)]">
                       <th className="text-left pb-2 text-muted font-semibold text-[10px] uppercase tracking-wide">#</th>
-                      <th className="text-left pb-2 text-muted font-semibold text-[10px] uppercase tracking-wide">Agent</th>
+                      <th className="text-left pb-2 text-muted font-semibold text-[10px] uppercase tracking-wide">Agent Definition</th>
                       <th className="text-right pb-2 text-muted font-semibold text-[10px] uppercase tracking-wide">Runs</th>
                       <th className="text-right pb-2 text-muted font-semibold text-[10px] uppercase tracking-wide">Success</th>
                       <th className="text-right pb-2 text-muted font-semibold text-[10px] uppercase tracking-wide">Conf.</th>

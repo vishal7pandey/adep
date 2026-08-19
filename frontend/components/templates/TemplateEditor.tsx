@@ -95,7 +95,7 @@ export const TemplateEditorComponent: React.FC<{ initialTemplate?: Template | nu
                 placeholder="e.g. Commercial Invoice Schema"
                 className="w-full p-2.5 rounded-lg border border-[var(--card-border)] bg-black/5 dark:bg-black/20 focus:outline-none focus:border-[var(--brand-primary)]"
               />
-              <p className="text-[10px] text-muted mt-1">Short recognizable title used in agent definitions</p>
+              <p className="text-[10px] text-muted mt-1">Short recognizable title used in Agent Definitions</p>
             </div>
 
             <div>
@@ -120,7 +120,7 @@ export const TemplateEditorComponent: React.FC<{ initialTemplate?: Template | nu
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-bold text-sm text-[var(--primary-text)]">2. Document Target Fields</h3>
-              <p className="text-[11px] text-muted">Add and configure each field the agent should extract from documents.</p>
+              <p className="text-[11px] text-muted">Add and configure each field the Agent Definition should extract from documents.</p>
             </div>
             <AdeButton variant="secondary" size="sm" onClick={addField}>
               <Plus className="w-3.5 h-3.5" /> Add Field
@@ -211,7 +211,7 @@ export const TemplateEditorComponent: React.FC<{ initialTemplate?: Template | nu
                         type="text"
                         value={field.description}
                         onChange={(e) => updateField(idx, 'description', e.target.value)}
-                        placeholder="Description / hint for extraction agent"
+                        placeholder="Description / hint for Agent Definition"
                         className="w-full p-1.5 rounded border border-[var(--card-border)] text-[11px] bg-[var(--pane-bg)] focus:outline-none"
                       />
                     </div>

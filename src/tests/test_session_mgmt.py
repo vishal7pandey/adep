@@ -80,6 +80,35 @@ class TestListRuns:
         assert resp.status_code == 200
         assert resp.json()["total"] == 1
 
+    def test_search_matches_document_url(self, client):
+        """Regression [BLK-185, SCRUM-18]: search must match the canonical
+        ``document_url`` field actually persisted by run_executor/run_engine,
+        not the stale ``document_path`` key.
+        """
+        from src.definitions.store import get_store
+        store = get_store()
+        _create_run(store, "run-aaa", {"document_url": "/tmp/invoice_2026.pdf", "document_path": None})
+        _create_run(store, "run-bbb", {"document_url": "/tmp/receipt_2026.pdf", "document_path": None})
+
+        resp = client.get("/api/v1/runs?q=invoice")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == "run-aaa"
+
+    def test_search_falls_back_to_legacy_document_path(self, client):
+        """Legacy runs persisted with the old ``document_path`` key must still
+        be searchable [BLK-185, SCRUM-18]."""
+        from src.definitions.store import get_store
+        store = get_store()
+        _create_run(store, "run-legacy", {"document_path": "/tmp/legacy_report.pdf"})
+
+        resp = client.get("/api/v1/runs?q=legacy_report")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1
+        assert data["items"][0]["id"] == "run-legacy"
+
 
 class TestGetRun:
     """Verify GET /runs/{id} returns correct field counts [BLK-077]."""
@@ -155,11 +184,11 @@ class TestDuplicateRun:
         resp = client.post("/api/v1/runs/run-001/duplicate")
         assert resp.status_code == 201
         data = resp.json()
-        assert data["status"] == "idle"
+        assert data["status"] == "queued"
         assert data["extracted_fields_count"] == 0
         assert data["fields"] == []
         assert data["definition_id"] == "def-1"
-        assert data["document_path"] == "/tmp/doc.pdf"
+        assert data["document_url"] == "/tmp/doc.pdf"
         assert data["id"] != "run-001"
         assert "source_run_id" in data
 
@@ -181,6 +210,18 @@ class TestExportEndpoints:
         data = resp.json()
         assert data["run_id"] == "run-001"
         assert data["extracted_fields_count"] == 5
+
+    def test_export_json_includes_document_url(self, client):
+        """Regression [BLK-185, SCRUM-18]: export must surface the canonical
+        ``document_url`` field, not an always-null ``document_path``."""
+        from src.definitions.store import get_store
+        store = get_store()
+        _create_run(store, "run-001", {"document_url": "/tmp/doc.pdf", "document_path": None})
+
+        resp = client.get("/api/v1/runs/run-001/export/json")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["document_url"] == "/tmp/doc.pdf"
 
     def test_export_csv(self, client):
         from src.definitions.store import get_store

@@ -125,7 +125,8 @@ export interface ExtractionRun {
   id: string;
   definition_id: string;
   document_url: string;
-  status: 'idle' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached' | 'stopped';
+  name?: string;
+  status: 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached';
 
   current_cycle: number;
   total_fields: number;
@@ -557,9 +558,13 @@ export async function stopRun(runId: string): Promise<{ run_id: string; stopped:
   }
 }
 
-export async function approveRun(runId: string): Promise<{ run_id: string; approved: boolean; message: string }> {
+export async function approveRun(runId: string, field?: string): Promise<{ run_id: string; action: string; delivered: boolean; message: string }> {
   try {
-    const res = await apiFetch(`${API_BASE_URL}/runs/${runId}/approve`, { method: 'POST' });
+    const res = await apiFetch(`${API_BASE_URL}/runs/${runId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ field: field || '', action: 'accept' }),
+    });
     if (!res.ok && res.status !== 202) throw new ApiError(`Failed to approve run: ${res.statusText}`, res.status);
     return await res.json();
   } catch (err) {
@@ -567,12 +572,12 @@ export async function approveRun(runId: string): Promise<{ run_id: string; appro
   }
 }
 
-export async function rejectRun(runId: string, reason?: string): Promise<{ run_id: string; rejected: boolean; message: string }> {
+export async function rejectRun(runId: string, reason?: string, field?: string): Promise<{ run_id: string; action: string; delivered: boolean; message: string }> {
   try {
     const res = await apiFetch(`${API_BASE_URL}/runs/${runId}/reject`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: reason || 'User rejected high-risk tool execution' }),
+      body: JSON.stringify({ field: field || '', action: 'reject', reason: reason || 'User rejected high-risk tool execution' }),
     });
     if (!res.ok && res.status !== 202) throw new ApiError(`Failed to reject run: ${res.statusText}`, res.status);
     return await res.json();
@@ -693,6 +698,117 @@ export async function exportRunCSV(runId: string): Promise<Blob> {
   try {
     const res = await apiFetch(`${API_BASE_URL}/runs/${runId}/export/csv`);
     if (!res.ok) throw new ApiError(`Failed to export run as CSV: ${res.statusText}`, res.status);
+    return await res.blob();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+// --- Batch Processing Queue (BLK-118) ---
+
+export interface BatchRunItem {
+  run_id: string;
+  document_id: string;
+  original_filename: string;
+  status: string;
+  error?: string | null;
+}
+
+export interface Batch {
+  id: string;
+  name: string;
+  definition_id: string;
+  status: 'queued' | 'running' | 'paused' | 'completed' | 'cancelled' | 'failed' | 'max_iterations_reached';
+  total_runs: number;
+  completed_runs: number;
+  failed_runs: number;
+  running_runs: number;
+  queued_runs: number;
+  cancelled_runs: number;
+  paused_runs?: number;
+  max_iterations_runs?: number;
+  created_at: string;
+  runs: BatchRunItem[];
+  failed_uploads?: Array<{ filename: string; error: string }>;
+}
+
+export async function createBatch(
+  definitionId: string,
+  files: File[],
+  name?: string,
+): Promise<Batch> {
+  try {
+    const formData = new FormData();
+    formData.append('definition_id', definitionId);
+    if (name) formData.append('name', name);
+    for (const file of files) {
+      formData.append('files', file);
+    }
+    const res = await apiFetch(`${API_BASE_URL}/batches`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) throw new ApiError(`Failed to create batch: ${res.statusText}`, res.status);
+    return await res.json();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function fetchBatches(): Promise<Batch[]> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/batches`);
+    if (!res.ok) throw new ApiError(`Failed to fetch batches: ${res.statusText}`, res.status);
+    return await res.json();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function fetchBatch(batchId: string): Promise<Batch> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/batches/${batchId}`);
+    if (!res.ok) throw new ApiError(`Failed to fetch batch: ${res.statusText}`, res.status);
+    return await res.json();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function cancelBatch(batchId: string): Promise<{ id: string; cancelled_runs: number; message: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/batches/${batchId}/cancel`, { method: 'POST' });
+    if (!res.ok && res.status !== 202) throw new ApiError(`Failed to cancel batch: ${res.statusText}`, res.status);
+    return await res.json();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function deleteBatch(batchId: string): Promise<{ deleted: boolean; id: string }> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/batches/${batchId}`, { method: 'DELETE' });
+    if (!res.ok) throw new ApiError(`Failed to delete batch: ${res.statusText}`, res.status);
+    return await res.json();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function exportBatchJSON(batchId: string): Promise<Blob> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/batches/${batchId}/export/json`);
+    if (!res.ok) throw new ApiError(`Failed to export batch as JSON: ${res.statusText}`, res.status);
+    return await res.blob();
+  } catch (err) {
+    rethrowAsApiError(err);
+  }
+}
+
+export async function exportBatchCSV(batchId: string): Promise<Blob> {
+  try {
+    const res = await apiFetch(`${API_BASE_URL}/batches/${batchId}/export/csv`);
+    if (!res.ok) throw new ApiError(`Failed to export batch as CSV: ${res.statusText}`, res.status);
     return await res.blob();
   } catch (err) {
     rethrowAsApiError(err);

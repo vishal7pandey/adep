@@ -120,3 +120,35 @@ async def delete_definition(definition_id: str) -> Response:
         get_store().delete_definition(definition_id)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Definition '{definition_id}' not found")
+
+
+class ComposeDefinitionRequest(BaseModel):
+    """Request body for AI Agent Composer [BLK-069]."""
+
+    description: str = Field(description="Natural language description of the document type and what to extract")
+    sample_document_summary: str | None = Field(default=None, description="Optional summary of a sample document")
+    save_to_store: bool = Field(default=False, description="If True, saves generated skill, template, and definition to the store")
+
+
+@router.post("/definitions/compose")
+async def compose_definition(req: ComposeDefinitionRequest) -> dict[str, Any]:
+    """Generate a complete Agent Definition from natural language [BLK-069].
+
+    Orchestrates the Template Composer (BLK-067), Skill Composer (BLK-068),
+    and Agent Composer (BLK-069) to produce a candidate definition.
+
+    The generated definition, skill, and template are returned for review.
+    If save_to_store is True, they are also persisted to the store.
+    """
+    from src.ai.agent_composer import compose_agent
+
+    result = compose_agent(
+        description=req.description,
+        sample_document_summary=req.sample_document_summary,
+        save_to_store=req.save_to_store,
+    )
+
+    if result.errors and not result.definition:
+        raise HTTPException(status_code=400, detail=result.errors[0])
+
+    return result.to_dict()

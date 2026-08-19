@@ -26,6 +26,7 @@ class AgentConfig(BaseModel):
     max_cycles_per_document: int | None = None
     confidence_threshold: float | None = None
     use_pdf_fast_path: bool = False
+    execution_mode: str = "react"  # "react" (standard) or "oneflow" (single-agent) [BLK-074]
 
 
 class AgentDefinition(BaseModel):
