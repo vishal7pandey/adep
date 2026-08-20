@@ -107,8 +107,8 @@ class Settings(BaseSettings):
     store_backend: str = "file"  # "file" or "sqlite"
     store_db_path: str = ".adep/store.db"  # SQLite DB path (relative to cwd)
 
-    # Rate limiting [BLK-123]
-    rate_limit_enabled: bool = False  # disabled by default for tests
+    # Rate limiting [BLK-123] — enabled by default (secure for production) [SCRUM-63]
+    rate_limit_enabled: bool = True  # set ADE_RATE_LIMIT_ENABLED=false for local dev
     rate_limit_post_runs_per_min: int = 10
     rate_limit_post_documents_per_min: int = 20
     rate_limit_mutating_per_min: int = 60
@@ -162,4 +162,12 @@ if not settings.auth_enabled:
     _logging.getLogger(__name__).warning(
         "ADE_AUTH_ENABLED is false — all endpoints are unauthenticated. "
         "This is NOT recommended for production. Set ADE_AUTH_ENABLED=true."
+    )
+
+# SCRUM-63: Warn when rate limiting is disabled
+if not settings.rate_limit_enabled:
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "ADE_RATE_LIMIT_ENABLED is false — rate limiting is inactive. "
+        "This is NOT recommended for production. Set ADE_RATE_LIMIT_ENABLED=true."
     )

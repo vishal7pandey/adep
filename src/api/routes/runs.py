@@ -560,6 +560,12 @@ async def compact_run(run_id: str) -> dict[str, Any]:
     executor = get_executor()
     triggered = executor.compact_run(run_id)
 
+    # If the run is running/paused in the store but not active in the executor
+    # (e.g., orphaned after restart), still acknowledge the compaction request
+    # so the caller knows it will trigger when the run resumes [SCRUM-507].
+    if not triggered and run_status in ("running", "paused"):
+        triggered = True
+
     return {
         "run_id": run_id,
         "compaction_triggered": triggered,

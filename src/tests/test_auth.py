@@ -737,3 +737,19 @@ class TestAuthFailClosed:
         """HEAD requests without auth should get 401 [BLK-215]."""
         resp = auth_client.head("/api/v1/runs")
         assert resp.status_code == 401
+
+    def test_scope_does_not_match_broad_prefix(self):
+        """_required_scope should NOT match /api/v1/runs-export as /api/v1/runs [SCRUM-15]."""
+        from src.api.auth import _required_scope
+        # /api/v1/runs-export should NOT inherit runs:read scope
+        assert _required_scope("GET", "/api/v1/runs-export") == "__deny__"
+        # /api/v1/runsbatch should NOT inherit runs:write scope
+        assert _required_scope("POST", "/api/v1/runsbatch") == "__deny__"
+
+    def test_scope_matches_exact_and_subpaths(self):
+        """_required_scope should match exact path and subpaths with / separator [SCRUM-15]."""
+        from src.api.auth import _required_scope, SCOPE_RUNS_READ
+        # Exact match
+        assert _required_scope("GET", "/api/v1/runs") == SCOPE_RUNS_READ
+        # Subpath with / separator
+        assert _required_scope("GET", "/api/v1/runs/run-123") == SCOPE_RUNS_READ

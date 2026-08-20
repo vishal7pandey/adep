@@ -14,6 +14,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import threading
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -170,12 +173,19 @@ def save_token_usage(
     return file_path
 
 
+# Module-level lock for serializing concurrent aggregate stats writes [SCRUM-53]
+_aggregate_lock = threading.Lock()
+
+
 def update_aggregate_stats(
     run_id: str,
     usage_summary: dict[str, Any],
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Update .adep/stats/aggregate.json with run token/cost data [BLK-050].
+
+    Uses a threading lock + atomic write (temp file + ``os.replace``) to
+    prevent corruption under concurrent requests [SCRUM-53, BLK-257].
 
     Args:
         run_id: The completed run ID.
@@ -192,37 +202,43 @@ def update_aggregate_stats(
     stats_dir.mkdir(parents=True, exist_ok=True)
 
     stats_file = stats_dir / "aggregate.json"
-    if stats_file.exists():
-        aggregate = json.loads(stats_file.read_text(encoding="utf-8"))
-    else:
-        aggregate = {
-            "total_tokens": 0,
-            "total_cost_usd": 0.0,
-            "runs_count": 0,
-            "avg_tokens_per_run": 0,
-            "avg_cost_per_run": 0.0,
-            "by_date": {},
-        }
 
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    run_tokens = usage_summary.get("total_tokens", 0)
-    run_cost = usage_summary.get("total_cost_usd", 0.0)
+    with _aggregate_lock:
+        if stats_file.exists():
+            aggregate = json.loads(stats_file.read_text(encoding="utf-8"))
+        else:
+            aggregate = {
+                "total_tokens": 0,
+                "total_cost_usd": 0.0,
+                "runs_count": 0,
+                "avg_tokens_per_run": 0,
+                "avg_cost_per_run": 0.0,
+                "by_date": {},
+            }
 
-    aggregate["total_tokens"] += run_tokens
-    aggregate["total_cost_usd"] = round(aggregate["total_cost_usd"] + run_cost, 6)
-    aggregate["runs_count"] += 1
-    aggregate["avg_tokens_per_run"] = aggregate["total_tokens"] // aggregate["runs_count"]
-    aggregate["avg_cost_per_run"] = round(aggregate["total_cost_usd"] / aggregate["runs_count"], 6)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        run_tokens = usage_summary.get("total_tokens", 0)
+        run_cost = usage_summary.get("total_cost_usd", 0.0)
 
-    if today not in aggregate["by_date"]:
-        aggregate["by_date"][today] = {
-            "tokens": 0,
-            "cost_usd": 0.0,
-            "runs": 0,
-        }
-    aggregate["by_date"][today]["tokens"] += run_tokens
-    aggregate["by_date"][today]["cost_usd"] = round(aggregate["by_date"][today]["cost_usd"] + run_cost, 6)
-    aggregate["by_date"][today]["runs"] += 1
+        aggregate["total_tokens"] += run_tokens
+        aggregate["total_cost_usd"] = round(aggregate["total_cost_usd"] + run_cost, 6)
+        aggregate["runs_count"] += 1
+        aggregate["avg_tokens_per_run"] = aggregate["total_tokens"] // aggregate["runs_count"]
+        aggregate["avg_cost_per_run"] = round(aggregate["total_cost_usd"] / aggregate["runs_count"], 6)
 
-    stats_file.write_text(json.dumps(aggregate, indent=2), encoding="utf-8")
+        if today not in aggregate["by_date"]:
+            aggregate["by_date"][today] = {
+                "tokens": 0,
+                "cost_usd": 0.0,
+                "runs": 0,
+            }
+        aggregate["by_date"][today]["tokens"] += run_tokens
+        aggregate["by_date"][today]["cost_usd"] = round(aggregate["by_date"][today]["cost_usd"] + run_cost, 6)
+        aggregate["by_date"][today]["runs"] += 1
+
+        # Atomic write: temp file + os.replace [SCRUM-53, BLK-257]
+        tmp_path = stats_file.with_suffix(f".tmp.{uuid.uuid4().hex[:8]}")
+        tmp_path.write_text(json.dumps(aggregate, indent=2), encoding="utf-8")
+        os.replace(tmp_path, stats_file)
+
     return aggregate

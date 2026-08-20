@@ -47,12 +47,9 @@ from src.eval.benchmarks import (
 # ---------------------------------------------------------------------------
 
 def _has_credentials() -> bool:
-    """Check if real provider credentials are available [BLK-128]."""
-    return bool(
-        os.environ.get("AZURE_API_KEY")
-        or os.environ.get("AZURE_OPENAI_API_KEY")
-        or os.environ.get("OPENAI_API_KEY")
-    )
+    """Check if real provider credentials are available [BLK-128, SCRUM-512]."""
+    from src.tests._credentials import has_real_credentials
+    return has_real_credentials()
 
 
 def _has_fixtures() -> bool:

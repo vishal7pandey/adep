@@ -1364,10 +1364,55 @@ def build_react_graph(
     ))
 
     # Edges — wire control checks into conditional edges [BLK-129, SCRUM-407]
-    # Closures delegate to module-level functions so tests can exercise the
-    # real control logic directly without building a full graph.
-    _should_act_with_control = lambda s: should_act_with_control(s, control)
-    _should_continue_with_control = lambda s: should_continue_with_control(s, control)
+    # Inline pause/cancel logic so the graph itself calls wait_for_resume(),
+    # not a sibling helper [SCRUM-507].  The module-level helpers remain for
+    # unit-test convenience but the graph wiring below is the authoritative
+    # path used at runtime.
+    def _should_act_with_control(s: AgentState) -> str:
+        if control is not None:
+            if control.cancel_requested:
+                s["status"] = RunStatus.CANCELLED
+                return "terminate"
+            if control.pause_requested:
+                prev_status = s.get("status", RunStatus.PLANNING)
+                s["status"] = RunStatus.PAUSED
+                control.wait_for_resume()
+                if control.cancel_requested:
+                    s["status"] = RunStatus.CANCELLED
+                    return "terminate"
+                s["status"] = prev_status
+        return should_act(s)
+
+    def _should_continue_with_control(s: AgentState) -> str:
+        if control is not None:
+            if control.cancel_requested:
+                s["status"] = RunStatus.CANCELLED
+                return "terminate"
+            if control.pause_requested:
+                prev_status = s.get("status", RunStatus.PLANNING)
+                s["status"] = RunStatus.PAUSED
+                control.wait_for_resume()
+                if control.cancel_requested:
+                    s["status"] = RunStatus.CANCELLED
+                    return "terminate"
+                s["status"] = prev_status
+            if control.compact_requested:
+                s["_compact_requested"] = True
+                control.compact_requested = False
+            if control.rollback_requested:
+                to_cycle = control.rollback_to_cycle
+                trace = s.get("trace", [])
+                s["trace"] = [e for e in trace if e.step <= to_cycle]
+                s["total_cycles"] = to_cycle
+                extraction = s.get("extraction", {})
+                s["extraction"] = {
+                    k: v for k, v in extraction.items()
+                    if getattr(v, "_step", getattr(v, "step", 0)) <= to_cycle
+                }
+                s["compaction_summary"] = ""
+                control.rollback_requested = False
+                control.rollback_to_cycle = -1
+        return should_continue(s)
 
     graph.set_entry_point("plan")
     graph.add_conditional_edges(

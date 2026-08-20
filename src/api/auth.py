@@ -123,7 +123,12 @@ def _required_scope(method: str, path: str) -> str | None:
     # HEAD is equivalent to GET for auth purposes (RFC 7231 §4.3.2)
     effective_method = "GET" if method == "HEAD" else method
     for req_method, prefix, scope in ROUTE_SCOPES:
-        if effective_method == req_method and path.startswith(prefix):
+        if effective_method != req_method:
+            continue
+        # Match on path segment boundaries, not raw startswith, so that
+        # a scope for "/api/v1/runs" does NOT match "/api/v1/runs-export"
+        # or "/api/v1/runsbatch" [SCRUM-15].
+        if path == prefix or path.startswith(prefix + "/"):
             return scope
     # Fail closed: any /api/v1/ path without a matching scope entry is denied
     if path.startswith("/api/v1/"):

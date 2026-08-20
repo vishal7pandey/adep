@@ -363,6 +363,20 @@ class SSEEventEmitter:
             "message": f"{level} budget exceeded — terminating with partial results",
         })
 
+    def emit_warning(self, code: str, message: str) -> None:
+        """Emit a warning event — advisory message that doesn't halt the run [SCRUM-9].
+
+        Args:
+            code: Short machine-readable warning code (e.g. "definition_mismatch").
+            message: Human-readable warning message.
+        """
+        self._emit({
+            "type": "warning",
+            "code": code,
+            "message": message,
+            "timestamp": self._timestamp(),
+        })
+
     def emit_complete(self, status: str, summary: str | None = None,
                       run_id: str | None = None,
                       execution_mode: str | None = None) -> None:

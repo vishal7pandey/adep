@@ -168,11 +168,8 @@ class BenchmarkSuiteReport:
 # ---------------------------------------------------------------------------
 
 def _has_credentials() -> bool:
-    return bool(
-        os.environ.get("AZURE_OPENAI_API_KEY")
-        or os.environ.get("AZURE_API_KEY")
-        or os.environ.get("OPENAI_API_KEY")
-    )
+    from src.tests._credentials import has_real_credentials
+    return has_real_credentials()
 
 
 def _set_provider_env(provider: str) -> dict[str, str]:
