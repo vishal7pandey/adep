@@ -1,4 +1,4 @@
-import { BBoxModel, ExtractedField, getAuthHeaders } from './api';
+import { BBoxModel, ExtractedField, getAuthHeaders, RunStatus } from './api';
 
 export interface SSEThoughtEvent {
   type: 'thought';
@@ -89,14 +89,14 @@ export interface SSEGateTriggeredEvent {
 
 export interface SSEStatusChangeEvent {
   type: 'status_change';
-  status: 'queued' | 'running' | 'paused' | 'completed' | 'max_iterations_reached' | 'failed' | 'cancelled';
+  status: RunStatus;
   cycle: number;
   previous_status?: string | null;
 }
 
 export interface SSECompleteEvent {
   type: 'complete';
-  status: 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached' | 'paused';
+  status: RunStatus;
   summary?: string;
   run_id?: string;
 }

@@ -7,7 +7,7 @@ Provides:
 - Concurrent SSE cap with slot release on disconnect
 - Idle bucket eviction on a timer to avoid memory leaks
 - Health/ready endpoints exempt
-- Disabled by default (ADE_RATE_LIMIT_ENABLED=false) so tests are unaffected
+- Enabled by default (ADE_RATE_LIMIT_ENABLED=true); set false for local dev/tests [SCRUM-63]
 
 In-memory implementation for v1 (single process). Multi-process deployments
 need Redis — that's a v2 concern.

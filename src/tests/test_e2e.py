@@ -449,9 +449,9 @@ _SAMPLE_DATA = Path(__file__).parent.parent.parent / "sample-data"
 
 
 def _providers_available() -> bool:
-    """Check if OCR and VLM providers are configured."""
-    from src.config import settings
-    return bool(settings.azure_api_key and settings.azure_chat_endpoint)
+    """Check if OCR and VLM providers are configured with real credentials [SCRUM-512]."""
+    from src.tests._credentials import has_real_credentials
+    return has_real_credentials() and bool(settings.azure_chat_endpoint)
 
 
 @INTEGRATION

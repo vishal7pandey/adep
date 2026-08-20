@@ -244,6 +244,35 @@ class TestUpdateAggregateStats:
         data = json.loads(stats_file.read_text())
         assert data["total_tokens"] == 500
 
+    def test_concurrent_writes_atomic(self, tmp_path: Path):
+        """Concurrent writes should not corrupt the aggregate file [SCRUM-53, BLK-257]."""
+        import threading
+
+        num_threads = 10
+        tokens_per_run = 100
+        barrier = threading.Barrier(num_threads)
+        errors: list[Exception] = []
+
+        def worker(idx: int):
+            try:
+                barrier.wait(timeout=5)
+                summary = {"total_tokens": tokens_per_run, "total_cost_usd": 0.001}
+                update_aggregate_stats(f"run-{idx}", summary, base_dir=tmp_path)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(num_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
+
+        assert not errors, f"Workers raised: {errors}"
+        stats_file = tmp_path / "stats" / "aggregate.json"
+        data = json.loads(stats_file.read_text(encoding="utf-8"))
+        assert data["total_tokens"] == num_threads * tokens_per_run
+        assert data["runs_count"] == num_threads
+
 
 class TestSSETokenUsageEvent:
     """Verify SSE token_usage event [BLK-050]."""

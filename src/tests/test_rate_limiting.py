@@ -403,10 +403,10 @@ class TestRateLimitMiddleware:
 class TestRateLimitConfig:
     """Config settings [BLK-123]."""
 
-    def test_rate_limit_disabled_by_default(self):
+    def test_rate_limit_enabled_by_default(self):
         from src.config import Settings
         s = Settings()
-        assert s.rate_limit_enabled is False
+        assert s.rate_limit_enabled is True  # secure by default [SCRUM-63]
 
     def test_tier_limits_have_defaults(self):
         from src.config import Settings

@@ -1,3 +1,5 @@
+export type RunStatus = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached';
+
 export class ApiError extends Error {
   status: number;
   body?: unknown;
@@ -126,7 +128,7 @@ export interface ExtractionRun {
   definition_id: string;
   document_url: string;
   name?: string;
-  status: 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled' | 'max_iterations_reached';
+  status: RunStatus;
 
   current_cycle: number;
   total_fields: number;
@@ -710,7 +712,7 @@ export interface BatchRunItem {
   run_id: string;
   document_id: string;
   original_filename: string;
-  status: string;
+  status: RunStatus;
   error?: string | null;
 }
 
@@ -718,7 +720,7 @@ export interface Batch {
   id: string;
   name: string;
   definition_id: string;
-  status: 'queued' | 'running' | 'paused' | 'completed' | 'cancelled' | 'failed' | 'max_iterations_reached';
+  status: RunStatus;
   total_runs: number;
   completed_runs: number;
   failed_runs: number;

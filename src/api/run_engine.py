@@ -333,6 +333,65 @@ def _canonicalize_definition_for_document(
     return definition_id
 
 
+# --- Definition-document mismatch guardrail [SCRUM-9, BLK-170] ---
+
+_KEYWORD_MAP: dict[str, set[str]] = {
+    "invoice": {"invoice", "inv-", "receipt"},
+    "trade_finance_scrutiny": {"mt700", "trade_finance", "lc-", "letter_of_credit"},
+    "bill_of_quantities": {"boq", "bill_of_quantities", "quantity"},
+    "compliance_audit": {"soc2", "ospar", "compliance", "audit"},
+    "commercial_lease": {"lease", "tenancy"},
+    "commodity_trade": {"commodity", "trade_recon"},
+    "metallurgical_assay": {"assay", "metallurg"},
+    "medical_claim": {"cms1500", "medical_claim", "claim"},
+    "store_audit": {"store_audit", "checklist"},
+    "thermal_receipt": {"thermal", "receipt"},
+    "ad_buy": {"ad_buy", "insertion_order", "io-"},
+    "utility_bill": {"utility", "electric", "gas_bill", "water_bill"},
+    "bank_statement": {"bank_statement", "statement"},
+    "purchase_order": {"purchase_order", "po-"},
+    "purchase_order_sf1449": {"sf1449", "sf-1449"},
+    "packing_list": {"packing_list", "packing"},
+    "packing_list_travel": {"travel", "travel_checklist"},
+    "w2_tax_form": {"w2", "w-2", "tax_form"},
+    "pay_stub": {"pay_stub", "payslip", "payroll"},
+    "insurance_policy": {"insurance", "declaration", "dec_page"},
+    "pid_to_dexpi": {"pid", "p&id", "diagram", "dexpi", "isometric"},
+}
+
+
+def _check_definition_document_mismatch(
+    skill_id: str,
+    document_path: str,
+) -> str | None:
+    """Lightweight filename-based check for obvious definition-document mismatch [SCRUM-9].
+
+    Returns a warning message string if a mismatch is detected, or None if the
+    match is plausible or inconclusive.
+    """
+    filename = Path(document_path).stem.lower()
+
+    # Find which skill_id the filename keywords suggest
+    matched_skills: set[str] = set()
+    for skill, keywords in _KEYWORD_MAP.items():
+        if any(kw in filename for kw in keywords):
+            matched_skills.add(skill)
+
+    if not matched_skills:
+        return None  # inconclusive — no keywords matched
+
+    if skill_id in matched_skills:
+        return None  # match confirmed
+
+    # A different skill's keywords matched — likely mismatch
+    suggested = ", ".join(sorted(matched_skills))
+    return (
+        f"Definition skill '{skill_id}' may not match document '{filename}'. "
+        f"Filename suggests: {suggested}. "
+        f"Consider using a matching definition for best results."
+    )
+
+
 def resolve_skill(skill_ref: str, store: DefinitionStore | None = None) -> Skill:
     """Resolve a skill reference to a Skill instance.
 
@@ -644,6 +703,13 @@ async def _execute_run_inner(
     template_ref = def_data.get("template_id", "") or def_data.get("template_ref", "")
     skill = resolve_skill(skill_ref, store)
     template_cls = resolve_template(template_ref, store)
+
+    # Definition-document mismatch guardrail [SCRUM-9, BLK-170]
+    mismatch_msg = _check_definition_document_mismatch(skill_ref, document_path)
+    if mismatch_msg:
+        logger.warning("Definition mismatch: %s", mismatch_msg)
+        if emitter:
+            emitter.emit_warning("definition_mismatch", mismatch_msg)
 
     # Build state, registry, config
     task_type = def_data.get("task_type", "extraction")
