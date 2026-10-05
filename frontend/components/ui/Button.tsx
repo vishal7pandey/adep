@@ -4,13 +4,13 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-interface LttsButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'destructive' | 'tertiary';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
 
-export const LttsButton: React.FC<LttsButtonProps> = ({
+export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
   className,

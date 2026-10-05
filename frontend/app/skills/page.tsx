@@ -4,8 +4,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Sparkles, Plus, Check, Edit2, ArrowLeft, Search, X, Trash2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Skill, fetchSkills, deleteSkill, ApiError } from '@/lib/api';
-import { LttsButton } from '@/components/ui/LttsButton';
-import { LttsBadge } from '@/components/ui/LttsBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { FieldCardSkeleton } from '@/components/ui/SkeletonLoader';
 
 const SkillEditorComponent = dynamic(
@@ -59,7 +59,7 @@ export default function SkillsPage() {
     return (
       <div className="h-full flex flex-col">
         <div className="p-3 bg-[var(--pane-bg)] border-b border-[var(--pane-border)] flex items-center gap-2">
-          <LttsButton
+          <Button
             variant="tertiary"
             size="sm"
             onClick={() => {
@@ -68,7 +68,7 @@ export default function SkillsPage() {
             }}
           >
             <ArrowLeft className="w-4 h-4" /> Back to Registry
-          </LttsButton>
+          </Button>
         </div>
         <div className="flex-1">
           <SkillEditorComponent
@@ -93,7 +93,7 @@ export default function SkillsPage() {
           </h1>
           <p className="text-xs text-muted mt-1">Configure reasoning prompts, tool preferences, probe order, and pragmatic semantic checks</p>
         </div>
-        <LttsButton
+        <Button
           variant="primary"
           onClick={() => {
             setEditingSkill(null);
@@ -101,7 +101,7 @@ export default function SkillsPage() {
           }}
         >
           <Plus className="w-4 h-4" /> Create Skill
-        </LttsButton>
+        </Button>
       </div>
 
       {error && (
@@ -161,8 +161,8 @@ export default function SkillsPage() {
               </div>
 
               <div className="flex items-center gap-2">
-                {skill.semantic_checks_enabled && <LttsBadge variant="verified">Semantic Check</LttsBadge>}
-                <LttsButton
+                {skill.semantic_checks_enabled && <Badge variant="verified">Semantic Check</Badge>}
+                <Button
                   variant="tertiary"
                   size="sm"
                   onClick={() => {
@@ -171,7 +171,7 @@ export default function SkillsPage() {
                   }}
                 >
                   <Edit2 className="w-3.5 h-3.5" /> Edit
-                </LttsButton>
+                </Button>
                 <button
                   onClick={(e) => handleDelete(skill.id, e)}
                   className="p-1.5 text-muted hover:text-[var(--status-error)] hover:bg-red-500/10 rounded transition-colors"
@@ -187,9 +187,9 @@ export default function SkillsPage() {
                 <span className="text-[11px] text-muted font-medium">Tools:</span>
                 <div className="flex flex-wrap gap-1">
                   {skill.tools.map((t) => (
-                    <LttsBadge key={t} variant="tool">
+                    <Badge key={t} variant="tool">
                       {t}
-                    </LttsBadge>
+                    </Badge>
                   ))}
                 </div>
               </div>

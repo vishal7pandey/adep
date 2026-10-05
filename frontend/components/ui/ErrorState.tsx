@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AlertCircle, RefreshCcw, WifiOff, Clock, ShieldAlert, Copy, Check } from 'lucide-react';
-import { LttsButton } from './LttsButton';
+import { Button } from './Button';
 
 interface ErrorStateProps {
   title?: string;
@@ -104,10 +104,10 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
         </button>
 
         {onRetry && (
-          <LttsButton variant="primary" size="sm" onClick={onRetry}>
+          <Button variant="primary" size="sm" onClick={onRetry}>
             <RefreshCcw className="w-3.5 h-3.5" />
             <span>Retry Now</span>
-          </LttsButton>
+          </Button>
         )}
       </div>
     </div>

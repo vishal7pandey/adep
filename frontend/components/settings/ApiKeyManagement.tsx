@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Plus, Trash2, Copy, Check, Shield, AlertTriangle, Eye, EyeOff, Lock, Sparkles, RefreshCw } from 'lucide-react';
 import { ApiKeyItem, fetchApiKeys, createApiKey, deleteApiKey, ApiError } from '@/lib/api';
-import { LttsButton } from '@/components/ui/LttsButton';
-import { LttsBadge } from '@/components/ui/LttsBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 export const ApiKeyManagement: React.FC = () => {
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
@@ -114,12 +114,12 @@ export const ApiKeyManagement: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <LttsButton variant="tertiary" size="sm" onClick={loadKeys} disabled={isLoading}>
+          <Button variant="tertiary" size="sm" onClick={loadKeys} disabled={isLoading}>
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          </LttsButton>
-          <LttsButton variant="primary" onClick={() => setShowCreateModal(true)}>
+          </Button>
+          <Button variant="primary" onClick={() => setShowCreateModal(true)}>
             <Plus className="w-4 h-4" /> Create API Key
-          </LttsButton>
+          </Button>
         </div>
       </div>
 
@@ -137,9 +137,9 @@ export const ApiKeyManagement: React.FC = () => {
             <Lock className="w-4 h-4" />
             <span>Browser Tab Session Credential</span>
           </div>
-          <LttsBadge variant={activeConnectedKey ? 'verified' : 'neutral'}>
+          <Badge variant={activeConnectedKey ? 'verified' : 'neutral'}>
             {activeConnectedKey ? 'Connected (sessionStorage)' : 'No Auth Key Attached'}
-          </LttsBadge>
+          </Badge>
         </div>
 
         {activeConnectedKey ? (
@@ -163,9 +163,9 @@ export const ApiKeyManagement: React.FC = () => {
               onChange={(e) => setSessionKey(e.target.value)}
               className="flex-1 p-2 rounded-lg border border-[var(--pane-border)] bg-[var(--pane-bg)] font-mono text-xs focus:outline-none focus:border-[var(--brand-primary)]"
             />
-            <LttsButton variant="primary" size="sm" type="submit" disabled={!sessionKey.trim()}>
+            <Button variant="primary" size="sm" type="submit" disabled={!sessionKey.trim()}>
               Attach Credential
-            </LttsButton>
+            </Button>
           </form>
         )}
       </div>
@@ -192,9 +192,9 @@ export const ApiKeyManagement: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-[var(--primary-text)]">{k.name}</span>
-                    <LttsBadge variant={isActive ? 'verified' : 'failed'}>
+                    <Badge variant={isActive ? 'verified' : 'failed'}>
                       {isActive ? 'Active' : 'Revoked'}
-                    </LttsBadge>
+                    </Badge>
                   </div>
 
                   <div className="flex items-center gap-3 text-muted text-[11px]">
@@ -281,12 +281,12 @@ export const ApiKeyManagement: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--pane-border)]">
-              <LttsButton variant="tertiary" onClick={() => setShowCreateModal(false)}>
+              <Button variant="tertiary" onClick={() => setShowCreateModal(false)}>
                 Cancel
-              </LttsButton>
-              <LttsButton variant="primary" onClick={handleCreateKey} disabled={!keyName.trim()}>
+              </Button>
+              <Button variant="primary" onClick={handleCreateKey} disabled={!keyName.trim()}>
                 Generate Key
-              </LttsButton>
+              </Button>
             </div>
           </div>
         </div>
@@ -307,16 +307,16 @@ export const ApiKeyManagement: React.FC = () => {
 
             <div className="p-3 rounded-lg border border-[var(--pane-border)] bg-black/10 dark:bg-black/40 flex items-center justify-between font-mono text-xs">
               <span className="text-[var(--brand-primary)] font-bold break-all select-all">{createdRawKey}</span>
-              <LttsButton variant="primary" size="sm" onClick={handleCopyRawKey}>
+              <Button variant="primary" size="sm" onClick={handleCopyRawKey}>
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copied ? 'Copied!' : 'Copy Key'}</span>
-              </LttsButton>
+              </Button>
             </div>
 
             <div className="flex justify-end pt-2">
-              <LttsButton variant="primary" onClick={() => setShowRevealModal(false)}>
+              <Button variant="primary" onClick={() => setShowRevealModal(false)}>
                 Done (I have saved my key)
-              </LttsButton>
+              </Button>
             </div>
           </div>
         </div>

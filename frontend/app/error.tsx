@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, RefreshCw, Copy, Check, Home } from 'lucide-react';
-import { LttsButton } from '@/components/ui/LttsButton';
+import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 
 export default function GlobalError({
@@ -43,17 +43,17 @@ Stack: ${error.stack || 'N/A'}`;
       </div>
 
       <div className="flex items-center gap-2 pt-2">
-        <LttsButton variant="primary" onClick={() => reset()}>
+        <Button variant="primary" onClick={() => reset()}>
           <RefreshCw className="w-4 h-4" /> Try Again
-        </LttsButton>
-        <LttsButton variant="secondary" onClick={handleCopy}>
+        </Button>
+        <Button variant="secondary" onClick={handleCopy}>
           {copied ? <Check className="w-4 h-4 text-[var(--status-success)]" /> : <Copy className="w-4 h-4" />}
           <span>{copied ? 'Copied Diagnostics' : 'Copy Diagnostics'}</span>
-        </LttsButton>
+        </Button>
         <Link href="/">
-          <LttsButton variant="tertiary">
+          <Button variant="tertiary">
             <Home className="w-4 h-4" /> Home
-          </LttsButton>
+          </Button>
         </Link>
       </div>
     </div>

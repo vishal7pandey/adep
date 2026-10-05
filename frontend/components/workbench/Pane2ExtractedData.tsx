@@ -23,8 +23,8 @@ import { useActiveHighlight } from '@/context/ActiveHighlightContext';
 import { useWorkbench } from '@/context/WorkbenchContext';
 import { ExtractedField, exportRunJSON, exportRunCSV, fetchRun } from '@/lib/api';
 import { connectToRunStream } from '@/lib/sse';
-import { LttsButton } from '@/components/ui/LttsButton';
-import { LttsBadge } from '@/components/ui/LttsBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 import { FieldCardSkeleton } from '@/components/ui/SkeletonLoader';
 import { ErrorState } from '@/components/ui/ErrorState';
@@ -278,7 +278,7 @@ export const Pane2ExtractedData: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-xs text-[var(--primary-text)]">Extracted Data</h2>
-            <LttsBadge variant="verified">{verifiedCount}/{fields.length || 6} Verified</LttsBadge>
+            <Badge variant="verified">{verifiedCount}/{fields.length || 6} Verified</Badge>
           </div>
 
           <div className="flex items-center gap-2">
@@ -313,11 +313,11 @@ export const Pane2ExtractedData: React.FC = () => {
 
             {/* BLK-133: Export Dropdown */}
             <div className="relative">
-              <LttsButton variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
+              <Button variant="secondary" size="sm" onClick={() => setShowExportMenu(!showExportMenu)}>
                 <Download className="w-3.5 h-3.5" />
                 <span>Export</span>
                 <ChevronDown className="w-3 h-3" />
-              </LttsButton>
+              </Button>
 
               {showExportMenu && (
                 <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--pane-bg)] border border-[var(--pane-border)] rounded-lg shadow-xl py-1 z-30 text-xs">
@@ -476,9 +476,9 @@ export const Pane2ExtractedData: React.FC = () => {
                     </span>
 
                     <div className="flex items-center gap-2">
-                      <LttsBadge variant={badgeVariant}>
+                      <Badge variant={badgeVariant}>
                         {field.status === 'failed' ? 'Failed' : `${Math.round(field.confidence * 100)}% Confidence`}
-                      </LttsBadge>
+                      </Badge>
 
                       <button
                         onClick={(e) => handleCopyField(field, e)}

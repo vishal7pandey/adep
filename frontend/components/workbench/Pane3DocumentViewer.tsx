@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useActiveHighlight } from '@/context/ActiveHighlightContext';
 import { useWorkbench } from '@/context/WorkbenchContext';
-import { LttsButton } from '@/components/ui/LttsButton';
+import { Button } from '@/components/ui/Button';
 
 /**
  * Returns a confidence-based color for heatmap overlay.
@@ -81,15 +81,15 @@ export const Pane3DocumentViewer: React.FC = () => {
         <div className="px-4 py-2 flex items-center justify-between bg-black/5 dark:bg-white/5">
           {/* Left Group: Page Navigation & Filename */}
           <div className="flex items-center gap-2">
-            <LttsButton variant="tertiary" size="sm" onClick={prevPage} disabled={activePage <= 1}>
+            <Button variant="tertiary" size="sm" onClick={prevPage} disabled={activePage <= 1}>
               <ChevronLeft className="w-4 h-4" />
-            </LttsButton>
+            </Button>
             <span className="font-mono text-xs font-semibold text-[var(--primary-text)]">
               Page {activePage} of {totalPages}
             </span>
-            <LttsButton variant="tertiary" size="sm" onClick={nextPage} disabled={activePage >= totalPages}>
+            <Button variant="tertiary" size="sm" onClick={nextPage} disabled={activePage >= totalPages}>
               <ChevronRight className="w-4 h-4" />
-            </LttsButton>
+            </Button>
             <span className="font-mono text-[11px] text-muted overflow-hidden text-ellipsis whitespace-nowrap max-w-[160px] pl-2 border-l border-black/10">
               {documentFileName}
             </span>
@@ -113,21 +113,21 @@ export const Pane3DocumentViewer: React.FC = () => {
 
             <div className="w-px h-4 bg-black/10 dark:bg-white/10 mx-0.5" />
 
-            <LttsButton variant="tertiary" size="sm" onClick={handleZoomOut} title="Zoom Out">
+            <Button variant="tertiary" size="sm" onClick={handleZoomOut} title="Zoom Out">
               <ZoomOut className="w-4 h-4" />
-            </LttsButton>
+            </Button>
             <span className="font-mono text-xs text-muted w-12 text-center">
               {Math.round(scale * 100)}%
             </span>
-            <LttsButton variant="tertiary" size="sm" onClick={handleZoomIn} title="Zoom In">
+            <Button variant="tertiary" size="sm" onClick={handleZoomIn} title="Zoom In">
               <ZoomIn className="w-4 h-4" />
-            </LttsButton>
-            <LttsButton variant="tertiary" size="sm" onClick={handleResetZoom} title="Reset Zoom">
+            </Button>
+            <Button variant="tertiary" size="sm" onClick={handleResetZoom} title="Reset Zoom">
               <Maximize2 className="w-4 h-4" />
-            </LttsButton>
-            <LttsButton variant="tertiary" size="sm" onClick={handleRotate} title="Rotate 90°">
+            </Button>
+            <Button variant="tertiary" size="sm" onClick={handleRotate} title="Rotate 90°">
               <RotateCw className="w-4 h-4" />
-            </LttsButton>
+            </Button>
           </div>
         </div>
 

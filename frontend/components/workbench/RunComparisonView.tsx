@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { GitCompare, ArrowRight, TrendingUp, TrendingDown, Minus, CheckCircle2, AlertTriangle, FileText, X, RefreshCw } from 'lucide-react';
 import { ExtractionRun, ExtractedField, fetchRecentRuns, fetchRun } from '@/lib/api';
-import { LttsButton } from '@/components/ui/LttsButton';
-import { LttsBadge } from '@/components/ui/LttsBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 interface RunComparisonViewProps {
   onClose?: () => void;
@@ -105,9 +105,9 @@ export const RunComparisonView: React.FC<RunComparisonViewProps> = ({ onClose })
         </div>
 
         {onClose && (
-          <LttsButton variant="tertiary" size="sm" onClick={onClose}>
+          <Button variant="tertiary" size="sm" onClick={onClose}>
             <X className="w-4 h-4" /> Close Comparison
-          </LttsButton>
+          </Button>
         )}
       </div>
 
@@ -219,26 +219,26 @@ export const RunComparisonView: React.FC<RunComparisonViewProps> = ({ onClose })
               <div className="col-span-4 flex items-center gap-2 font-mono">
                 <span className="truncate">{row.fA?.value !== undefined ? String(row.fA.value) : <em className="text-muted">null</em>}</span>
                 {row.fA && (
-                  <LttsBadge variant={row.fA.confidence > 0.8 ? 'verified' : 'medium'}>
+                  <Badge variant={row.fA.confidence > 0.8 ? 'verified' : 'medium'}>
                     {Math.round(row.fA.confidence * 100)}%
-                  </LttsBadge>
+                  </Badge>
                 )}
               </div>
 
               <div className="col-span-4 flex items-center gap-2 font-mono">
                 <span className="truncate">{row.fB?.value !== undefined ? String(row.fB.value) : <em className="text-muted">null</em>}</span>
                 {row.fB && (
-                  <LttsBadge variant={row.fB.confidence > 0.8 ? 'verified' : 'medium'}>
+                  <Badge variant={row.fB.confidence > 0.8 ? 'verified' : 'medium'}>
                     {Math.round(row.fB.confidence * 100)}%
-                  </LttsBadge>
+                  </Badge>
                 )}
               </div>
 
               <div className="col-span-1 text-right font-mono font-bold">
                 {row.status === 'improved' && <span className="text-[var(--status-success)]">+{Math.round(row.delta * 100)}%</span>}
                 {row.status === 'regressed' && <span className="text-[var(--status-error)]">{Math.round(row.delta * 100)}%</span>}
-                {row.status === 'new' && <LttsBadge variant="info">New</LttsBadge>}
-                {row.status === 'removed' && <LttsBadge variant="failed">Lost</LttsBadge>}
+                {row.status === 'new' && <Badge variant="info">New</Badge>}
+                {row.status === 'removed' && <Badge variant="failed">Lost</Badge>}
                 {row.status === 'unchanged' && <span className="text-muted">0%</span>}
               </div>
             </div>

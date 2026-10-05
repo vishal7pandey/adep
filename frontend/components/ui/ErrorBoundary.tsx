@@ -2,7 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Copy, Check, ShieldAlert } from 'lucide-react';
-import { LttsButton } from '@/components/ui/LttsButton';
+import { Button } from '@/components/ui/Button';
 
 interface Props {
   children: ReactNode;
@@ -94,13 +94,13 @@ ${errorInfo?.componentStack || 'N/A'}`;
           </div>
 
           <div className="flex items-center gap-2 pt-2">
-            <LttsButton variant="primary" size="sm" onClick={this.handleReset}>
+            <Button variant="primary" size="sm" onClick={this.handleReset}>
               <RefreshCw className="w-3.5 h-3.5" /> Retry
-            </LttsButton>
-            <LttsButton variant="secondary" size="sm" onClick={this.handleCopyError}>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={this.handleCopyError}>
               {this.state.copied ? <Check className="w-3.5 h-3.5 text-[var(--status-success)]" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{this.state.copied ? 'Copied' : 'Copy Diagnostics'}</span>
-            </LttsButton>
+            </Button>
           </div>
         </div>
       );

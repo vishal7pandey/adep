@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Save, Copy, Plus, Trash2, ArrowUp, ArrowDown, Sliders } from 'lucide-react';
 import { Skill, createSkill, updateSkill } from '@/lib/api';
-import { LttsButton } from '@/components/ui/LttsButton';
+import { Button } from '@/components/ui/Button';
 
 interface ProbeOrderStep {
   id: string;
@@ -244,12 +244,12 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
             </button>
           </div>
 
-          <LttsButton variant="tertiary" onClick={handleClone}>
+          <Button variant="tertiary" onClick={handleClone}>
             <Copy className="w-4 h-4" /> Clone Skill
-          </LttsButton>
-          <LttsButton variant="primary" onClick={handleSave} disabled={!isFormValid}>
+          </Button>
+          <Button variant="primary" onClick={handleSave} disabled={!isFormValid}>
             <Save className="w-4 h-4" /> Save Skill
-          </LttsButton>
+          </Button>
         </div>
       </div>
 
@@ -391,9 +391,9 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
             <div className="p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] space-y-3 shadow-2xs">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-xs">Extraction Steps (Probe Order)</h4>
-                <LttsButton variant="secondary" size="sm" onClick={addProbeStep}>
+                <Button variant="secondary" size="sm" onClick={addProbeStep}>
                   <Plus className="w-3.5 h-3.5" /> Add Step
-                </LttsButton>
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -441,9 +441,9 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
             <div className="p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] space-y-3 shadow-2xs">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-xs">Validation Rules (Invariants)</h4>
-                <LttsButton variant="secondary" size="sm" onClick={addInvariant}>
+                <Button variant="secondary" size="sm" onClick={addInvariant}>
                   <Plus className="w-3.5 h-3.5" /> Add Rule
-                </LttsButton>
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -496,9 +496,9 @@ export const SkillEditorComponent: React.FC<{ initialSkill?: Skill | null; onSav
             <div className="p-4 rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)] space-y-3 shadow-2xs">
               <div className="flex items-center justify-between">
                 <h4 className="font-bold text-xs">Fallback Behavior (Failure Actions)</h4>
-                <LttsButton variant="secondary" size="sm" onClick={addFailureAction}>
+                <Button variant="secondary" size="sm" onClick={addFailureAction}>
                   <Plus className="w-3.5 h-3.5" /> Add Behavior
-                </LttsButton>
+                </Button>
               </div>
 
               <div className="space-y-2">
