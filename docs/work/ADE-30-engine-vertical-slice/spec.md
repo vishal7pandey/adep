@@ -1,7 +1,14 @@
 # ADE-30 — Land the ade2 engine beside the old one (first vertical slice)
 
-Status: draft · Risk: high · Jira: ADE-30
+Status: spec-approved (design doc, not implemented directly) · Risk: high · Jira: ADE-30
 Created: 2026-10-05 · Slug: engine-vertical-slice
+
+> **2026-10-05: owner approved the direction and this spec.** Rather than implement all of it in one PR,
+> it is split into dependency-ordered stories (ADE-34 to ADE-40, each its own branch/PR through the normal
+> factory-spec → factory-plan → factory-test → factory-implement cycle). This document stays as the shared
+> design reference each story's own narrower spec.md points back to; ADE-30 itself does not get a plan.md
+> or an implementation. The two open questions below are resolved: add `pydantic-ai` scoped to the new
+> package, and the two new tools live in `src/engine/tools.py`.
 
 ## Problem
 
