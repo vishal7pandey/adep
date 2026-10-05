@@ -45,8 +45,9 @@ AC2: the backend job is honest: steps that fail today are disabled with a commen
 ADE-20, mypy: ADE-21) or deselect exactly the known-failing tests by node id (ADE-23, ADE-24); the 80%
 coverage gate stays on and the two duplicate pytest runs become one.
 
-AC3: the frontend and docker jobs are reported as they are; if they fail for a reason outside this ticket
-a ticket is filed rather than hidden.
+AC3: the frontend and docker jobs are reported as they are; failures outside this ticket get a ticket and
+the failing step is disabled with a comment naming it: frontend eslint (22 errors) is ADE-28, the backend
+Dockerfile (copies a requirements.txt that does not exist) is ADE-27. Frontend tests and build pass.
 
 ## Fix constraints
 

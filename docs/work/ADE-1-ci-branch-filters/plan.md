@@ -7,7 +7,8 @@ Created: 2026-10-05 · Slug: ci-branch-filters · Spec: spec.md
 
 Point `ci.yml` at `master`, and make the backend job reflect reality: comment out ruff and mypy (tickets
 ADE-20, ADE-21), run pytest once with the coverage gate, deselecting the ten known-failing tests by node
-id (ADE-23, ADE-24).
+id (ADE-23, ADE-24). The first CI run also showed frontend eslint failing (ADE-28) and the docker build
+failing (ADE-27); those steps are disabled with comments the same way.
 
 **Size:** S
 
