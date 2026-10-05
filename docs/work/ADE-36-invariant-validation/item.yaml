@@ -2,7 +2,7 @@ id: ADE-36
 type: feature
 title: "Engine: schema and invariant validation — real checks, not keyword matching"
 slug: invariant-validation
-status: plan-approved
+status: in-review
 risk: medium
 jira: ADE-36
 branch: feature/ade-36-invariant-validation
