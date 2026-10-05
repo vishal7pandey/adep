@@ -2,7 +2,7 @@ id: ADE-35
 type: feature
 title: "Engine: budget tracker — turns/cost/time accounting with recommendations"
 slug: budget-tracker
-status: plan-approved
+status: in-review
 risk: low
 jira: ADE-35
 branch: feature/ade-35-budget-tracker
