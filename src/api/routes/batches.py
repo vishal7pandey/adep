@@ -35,6 +35,7 @@ router = APIRouter(tags=["batches"])
 # Batch store — file-based persistence in .adep/batches/
 # ---------------------------------------------------------------------------
 
+
 def _batches_dir() -> Path:
     """Return the batches directory, creating it if needed."""
     d = Path.cwd() / ".adep" / "batches"
@@ -85,13 +86,19 @@ def update_batch(batch_id: str, updates: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 BatchRunStatus = Literal[
-    "queued", "running", "paused", "completed", "failed",
-    "cancelled", "max_iterations_reached",
+    "queued",
+    "running",
+    "paused",
+    "completed",
+    "failed",
+    "cancelled",
+    "max_iterations_reached",
 ]
 
 
 class BatchRunItem(BaseModel):
     """A single run within a batch."""
+
     run_id: str
     document_id: str
     original_filename: str
@@ -100,13 +107,19 @@ class BatchRunItem(BaseModel):
 
 
 BatchStatus = Literal[
-    "queued", "running", "paused", "completed", "cancelled",
-    "failed", "max_iterations_reached",
+    "queued",
+    "running",
+    "paused",
+    "completed",
+    "cancelled",
+    "failed",
+    "max_iterations_reached",
 ]
 
 
 class BatchResponse(BaseModel):
     """Response model for batch creation and status."""
+
     id: str
     name: str
     definition_id: str
@@ -126,6 +139,7 @@ class BatchResponse(BaseModel):
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
+
 
 @router.post("/batches", response_model=BatchResponse, status_code=status.HTTP_201_CREATED)
 async def create_batch(
@@ -168,10 +182,12 @@ async def create_batch(
         filename = file.filename or "unknown"
         ext = Path(filename).suffix.lower()
         if ext not in SUPPORTED_FORMATS:
-            failed_uploads.append({
-                "filename": filename,
-                "error": f"Unsupported format '{ext}'",
-            })
+            failed_uploads.append(
+                {
+                    "filename": filename,
+                    "error": f"Unsupported format '{ext}'",
+                }
+            )
             continue
 
         tmp_path: Path | None = None
@@ -212,18 +228,22 @@ async def create_batch(
                 document_path=document_id,
             )
 
-            run_items.append({
-                "run_id": ctx.run_id,
-                "document_id": document_id,
-                "original_filename": filename,
-                "status": ctx.status,
-            })
+            run_items.append(
+                {
+                    "run_id": ctx.run_id,
+                    "document_id": document_id,
+                    "original_filename": filename,
+                    "status": ctx.status,
+                }
+            )
         except Exception as e:
             logger.error("Failed to process file %s in batch: %s", filename, e)
-            failed_uploads.append({
-                "filename": filename,
-                "error": str(e),
-            })
+            failed_uploads.append(
+                {
+                    "filename": filename,
+                    "error": str(e),
+                }
+            )
         finally:
             if tmp_path is not None:
                 tmp_path.unlink(missing_ok=True)
@@ -256,7 +276,9 @@ async def create_batch(
 
     logger.info(
         "Batch %s created with %d runs (definition=%s) [BLK-118]",
-        batch_id, len(run_items), definition_id,
+        batch_id,
+        len(run_items),
+        definition_id,
     )
 
     return batch_data
@@ -343,21 +365,25 @@ async def export_batch_json(batch_id: str) -> StreamingResponse:
         run_id = run_item["run_id"]
         try:
             run_data = store.get_run(run_id)
-            results.append({
-                "run_id": run_id,
-                "filename": run_item.get("original_filename", ""),
-                "status": run_data.get("status", "unknown"),
-                "fields": run_data.get("fields", []),
-                "total_cost_usd": run_data.get("total_cost_usd", 0),
-                "total_tokens": run_data.get("total_tokens", 0),
-            })
+            results.append(
+                {
+                    "run_id": run_id,
+                    "filename": run_item.get("original_filename", ""),
+                    "status": run_data.get("status", "unknown"),
+                    "fields": run_data.get("fields", []),
+                    "total_cost_usd": run_data.get("total_cost_usd", 0),
+                    "total_tokens": run_data.get("total_tokens", 0),
+                }
+            )
         except FileNotFoundError:
-            results.append({
-                "run_id": run_id,
-                "filename": run_item.get("original_filename", ""),
-                "status": "not_found",
-                "fields": [],
-            })
+            results.append(
+                {
+                    "run_id": run_id,
+                    "filename": run_item.get("original_filename", ""),
+                    "status": "not_found",
+                    "fields": [],
+                }
+            )
 
     content = json.dumps(results, indent=2, default=str)
     return StreamingResponse(
@@ -390,14 +416,16 @@ async def export_batch_csv(batch_id: str) -> PlainTextResponse:
         try:
             run_data = store.get_run(run_id)
             for field in run_data.get("fields", []):
-                writer.writerow([
-                    run_id,
-                    filename,
-                    field.get("name", ""),
-                    field.get("value", ""),
-                    field.get("confidence", 0),
-                    field.get("status", ""),
-                ])
+                writer.writerow(
+                    [
+                        run_id,
+                        filename,
+                        field.get("name", ""),
+                        field.get("value", ""),
+                        field.get("confidence", 0),
+                        field.get("status", ""),
+                    ]
+                )
         except FileNotFoundError:
             writer.writerow([run_id, filename, "", "", "", "not_found"])
 
@@ -411,6 +439,7 @@ async def export_batch_csv(batch_id: str) -> PlainTextResponse:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _refresh_batch_status(batch: dict[str, Any]) -> dict[str, Any]:
     """Refresh run statuses in a batch from the executor/store."""

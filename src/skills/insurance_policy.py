@@ -32,13 +32,11 @@ def _check_premium_sum(e: dict) -> tuple[bool, str]:
     if not isinstance(cov_list, list) or len(cov_list) == 0:
         return True, ""
     premium_sum = sum(
-        c.get("premium", 0) if isinstance(c, dict) else getattr(c, "premium", 0)
-        for c in cov_list
+        c.get("premium", 0) if isinstance(c, dict) else getattr(c, "premium", 0) for c in cov_list
     )
     if abs(premium_sum - total_premium.value) > 0.50:
         return False, (
-            f"sum of coverage premiums ({premium_sum}) != "
-            f"total_premium ({total_premium.value})"
+            f"sum of coverage premiums ({premium_sum}) != total_premium ({total_premium.value})"
         )
     return True, ""
 

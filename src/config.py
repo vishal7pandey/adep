@@ -51,7 +51,9 @@ class Settings(BaseSettings):
     azure_chat_endpoint: str = Field(default="", alias="AZURE_CHAT_ENDPOINT")
     azure_chat_deployment: str = Field(default="gpt-5.4", alias="AZURE_CHAT_DEPLOYMENT")
     azure_embedding_endpoint: str = Field(default="", alias="AZURE_EMBEDDING_ENDPOINT")
-    azure_embedding_deployment: str = Field(default="text-embedding-3-large", alias="AZURE_EMBEDDING_DEPLOYMENT")
+    azure_embedding_deployment: str = Field(
+        default="text-embedding-3-large", alias="AZURE_EMBEDDING_DEPLOYMENT"
+    )
 
     # Validation thresholds [§4.1]
     default_confidence_threshold: float = 0.8
@@ -159,6 +161,7 @@ settings.validate_provider_config()
 # BLK-153: Warn when auth is disabled
 if not settings.auth_enabled:
     import logging as _logging
+
     _logging.getLogger(__name__).warning(
         "ADE_AUTH_ENABLED is false — all endpoints are unauthenticated. "
         "This is NOT recommended for production. Set ADE_AUTH_ENABLED=true."
@@ -167,6 +170,7 @@ if not settings.auth_enabled:
 # SCRUM-63: Warn when rate limiting is disabled
 if not settings.rate_limit_enabled:
     import logging as _logging
+
     _logging.getLogger(__name__).warning(
         "ADE_RATE_LIMIT_ENABLED is false — rate limiting is inactive. "
         "This is NOT recommended for production. Set ADE_RATE_LIMIT_ENABLED=true."

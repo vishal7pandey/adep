@@ -35,6 +35,7 @@ from src.eval.benchmarks import (
 
 def _has_credentials() -> bool:
     from src.tests._credentials import has_real_credentials
+
     return has_real_credentials()
 
 
@@ -47,6 +48,7 @@ skip_no_credentials = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 # Non-provider benchmarks (always runnable)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 class TestBenchmarksNoProvider:
@@ -79,13 +81,14 @@ class TestBenchmarksNoProvider:
         )
 
         assert result.passed, (
-            f"Tool registry lookup took {per_lookup*1000:.3f} ms, "
-            f"target is {BENCHMARK_TARGETS['tool_registry_lookup']*1000:.1f} ms"
+            f"Tool registry lookup took {per_lookup * 1000:.3f} ms, "
+            f"target is {BENCHMARK_TARGETS['tool_registry_lookup'] * 1000:.1f} ms"
         )
 
     def test_benchmark_definition_store_list(self, tmp_path: Path):
         """Definition store list (100 defs) < 50 ms [BLK-128]."""
         import src.definitions.store as store_module
+
         old_store = store_module._store
 
         store = store_module.DefinitionStore(base_dir=tmp_path / ".adep")
@@ -94,6 +97,7 @@ class TestBenchmarksNoProvider:
         try:
             # Create 100 definitions
             import json
+
             for i in range(100):
                 def_data = {
                     "id": f"def-bench-{i:03d}",
@@ -119,8 +123,8 @@ class TestBenchmarksNoProvider:
             )
 
             assert result.passed, (
-                f"Definition store list took {duration*1000:.1f} ms, "
-                f"target is {BENCHMARK_TARGETS['definition_store_list_100']*1000:.0f} ms"
+                f"Definition store list took {duration * 1000:.1f} ms, "
+                f"target is {BENCHMARK_TARGETS['definition_store_list_100'] * 1000:.0f} ms"
             )
         finally:
             store_module._store = old_store
@@ -129,6 +133,7 @@ class TestBenchmarksNoProvider:
 # ---------------------------------------------------------------------------
 # Provider benchmarks (require credentials + fixtures)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 @skip_no_credentials
@@ -187,15 +192,11 @@ class TestBenchmarksWithProvider:
             pytest.skip("No sample invoice found in sample-data/")
 
         # First run to warm the cache
-        asyncio.get_event_loop().run_until_complete(
-            execute_run("def-invoice", str(sample))
-        )
+        asyncio.get_event_loop().run_until_complete(execute_run("def-invoice", str(sample)))
 
         # Second run — should hit cache
         start = time.perf_counter()
-        asyncio.get_event_loop().run_until_complete(
-            execute_run("def-invoice", str(sample))
-        )
+        asyncio.get_event_loop().run_until_complete(execute_run("def-invoice", str(sample)))
         duration = time.perf_counter() - start
 
         report_result = BenchmarkResult(
@@ -236,6 +237,7 @@ class TestBenchmarksWithProvider:
         first_byte_time = None
 
         original_emit = emitter.emit_progress
+
         def timed_emit(*args, **kwargs):
             nonlocal first_byte_time
             if first_byte_time is None:
@@ -259,6 +261,6 @@ class TestBenchmarksWithProvider:
         )
 
         assert result.passed, (
-            f"SSE first byte took {first_byte_time*1000:.0f} ms, "
-            f"target is {BENCHMARK_TARGETS['sse_first_byte']*1000:.0f} ms"
+            f"SSE first byte took {first_byte_time * 1000:.0f} ms, "
+            f"target is {BENCHMARK_TARGETS['sse_first_byte'] * 1000:.0f} ms"
         )

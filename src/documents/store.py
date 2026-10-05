@@ -100,9 +100,7 @@ class DocumentMeta:
             "original_filename": self.original_filename,
             "format": self.format,
             "total_pages": self.total_pages,
-            "page_dimensions": [
-                {"width": w, "height": h} for w, h in self.page_dimensions
-            ],
+            "page_dimensions": [{"width": w, "height": h} for w, h in self.page_dimensions],
             "page_paths": self.page_paths,
             "thumbnail": self.thumbnail_path,
             "created_at": self.created_at,
@@ -135,7 +133,9 @@ class DocumentStore:
             )
         return self.docs_dir / doc_id
 
-    def import_document(self, file_path: Path, original_filename: str | None = None) -> DocumentMeta:
+    def import_document(
+        self, file_path: Path, original_filename: str | None = None
+    ) -> DocumentMeta:
         """Import and pre-process a document [BLK-059].
 
         Args:
@@ -159,9 +159,7 @@ class DocumentStore:
 
         file_size = file_path.stat().st_size
         if file_size > MAX_FILE_SIZE_BYTES:
-            raise ValueError(
-                f"File size {file_size // 1024 // 1024}MB exceeds 20MB limit"
-            )
+            raise ValueError(f"File size {file_size // 1024 // 1024}MB exceeds 20MB limit")
 
         doc_id = uuid.uuid4().hex[:12]
         doc_dir = self.get_doc_dir(doc_id)
@@ -178,7 +176,9 @@ class DocumentStore:
 
         logger.info(
             "Imported document %s: %d pages, format=%s [BLK-059]",
-            doc_id, meta.total_pages, meta.format,
+            doc_id,
+            meta.total_pages,
+            meta.format,
         )
         return meta
 
@@ -193,9 +193,7 @@ class DocumentStore:
         try:
             import fitz  # PyMuPDF
         except ImportError:
-            raise RuntimeError(
-                "PyMuPDF (fitz) not installed. Install with: uv add pymupdf"
-            )
+            raise RuntimeError("PyMuPDF (fitz) not installed. Install with: uv add pymupdf")
 
         doc = fitz.open(str(file_path))
 
@@ -222,9 +220,7 @@ class DocumentStore:
         # Generate thumbnail from first page
         thumbnail_path = ""
         if page_paths:
-            thumbnail_path = self._generate_thumbnail(
-                Path(page_paths[0]), doc_dir
-            )
+            thumbnail_path = self._generate_thumbnail(Path(page_paths[0]), doc_dir)
 
         doc.close()
 
@@ -323,18 +319,14 @@ class DocumentStore:
         doc_dir = self.get_doc_dir(doc_id)
         page_file = doc_dir / f"page_{page_number:03d}.png"
         if not page_file.exists():
-            raise FileNotFoundError(
-                f"Page {page_number} not found for document '{doc_id}'"
-            )
+            raise FileNotFoundError(f"Page {page_number} not found for document '{doc_id}'")
         return page_file
 
     def get_thumbnail_path(self, doc_id: str) -> Path:
         """Get the path to a document's thumbnail."""
         thumb_path = self.get_doc_dir(doc_id) / "thumbnail.jpg"
         if not thumb_path.exists():
-            raise FileNotFoundError(
-                f"Thumbnail not found for document '{doc_id}'"
-            )
+            raise FileNotFoundError(f"Thumbnail not found for document '{doc_id}'")
         return thumb_path
 
     def list_documents(self) -> list[dict[str, Any]]:

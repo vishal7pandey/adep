@@ -9,6 +9,7 @@ from src.templates.base import Template
 
 class PackingItem(Template):
     """A single item on a packing list."""
+
     item_code: str = Field(description="SKU or product code")
     description: str = Field(description="Item description")
     quantity: float = Field(description="Quantity packed")
@@ -19,6 +20,7 @@ class PackingItem(Template):
 
 class PackingListTemplate(Template):
     """Outcome schema for packing list extraction."""
+
     pl_number: str = Field(description="Packing list number")
     pl_date: str = Field(description="Issue date in ISO YYYY-MM-DD format")
     shipper: str = Field(description="Name of the shipping company")

@@ -9,6 +9,7 @@ from src.templates.base import Template
 
 class POLineItem(Template):
     """A single line item on a purchase order."""
+
     description: str = Field(description="Item or service description")
     quantity: float = Field(description="Quantity ordered")
     unit_price: float = Field(description="Price per unit")
@@ -17,6 +18,7 @@ class POLineItem(Template):
 
 class PurchaseOrderTemplate(Template):
     """Outcome schema for purchase order extraction."""
+
     po_number: str = Field(description="Purchase order number")
     po_date: str = Field(description="Issue date in ISO YYYY-MM-DD format")
     expected_delivery_date: str = Field(description="Expected delivery date (ISO YYYY-MM-DD)")

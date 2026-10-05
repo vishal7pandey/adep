@@ -51,17 +51,10 @@ def get_skill_analytics(base_dir: Path | None = None) -> list[dict[str, Any]]:
         completed = sum(1 for r in skill_runs if r.get("status") == "completed")
         success_rate = (completed / total * 100) if total > 0 else 0.0
 
-        confidences = [
-            f.get("confidence", 0.0)
-            for r in skill_runs
-            for f in r.get("fields", [])
-        ]
+        confidences = [f.get("confidence", 0.0) for r in skill_runs for f in r.get("fields", [])]
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
-        token_usage = [
-            r.get("token_usage_summary", {})
-            for r in skill_runs
-        ]
+        token_usage = [r.get("token_usage_summary", {}) for r in skill_runs]
         total_tokens = sum(t.get("total_tokens", 0) for t in token_usage)
         total_cost = sum(t.get("total_cost_usd", 0.0) for t in token_usage)
         avg_tokens = total_tokens / total if total > 0 else 0
@@ -74,21 +67,19 @@ def get_skill_analytics(base_dir: Path | None = None) -> list[dict[str, Any]]:
                 if f.get("status") not in ("extracted", "complete"):
                     failing_fields[f.get("name", f.get("id", "unknown"))] += 1
 
-        top_failing = sorted(
-            failing_fields.items(), key=lambda x: x[1], reverse=True
-        )[:5]
+        top_failing = sorted(failing_fields.items(), key=lambda x: x[1], reverse=True)[:5]
 
-        results.append({
-            "skill_id": skill_id,
-            "total_runs": total,
-            "success_rate": round(success_rate, 1),
-            "avg_confidence": round(avg_confidence, 3),
-            "avg_tokens": int(avg_tokens),
-            "avg_cost_usd": round(avg_cost, 6),
-            "top_failing_fields": [
-                {"field": f, "failures": c} for f, c in top_failing
-            ],
-        })
+        results.append(
+            {
+                "skill_id": skill_id,
+                "total_runs": total,
+                "success_rate": round(success_rate, 1),
+                "avg_confidence": round(avg_confidence, 3),
+                "avg_tokens": int(avg_tokens),
+                "avg_cost_usd": round(avg_cost, 6),
+                "top_failing_fields": [{"field": f, "failures": c} for f, c in top_failing],
+            }
+        )
 
     return results
 
@@ -124,10 +115,7 @@ def get_template_analytics(base_dir: Path | None = None) -> list[dict[str, Any]]
                 name = f.get("name", f.get("id", "unknown"))
                 field_confidences[name].append(f.get("confidence", 0.0))
 
-        avg_per_field = {
-            name: round(sum(c) / len(c), 3)
-            for name, c in field_confidences.items()
-        }
+        avg_per_field = {name: round(sum(c) / len(c), 3) for name, c in field_confidences.items()}
 
         # Most missing fields
         missing: dict[str, int] = defaultdict(int)
@@ -145,15 +133,15 @@ def get_template_analytics(base_dir: Path | None = None) -> list[dict[str, Any]]
 
         most_missing = sorted(missing.items(), key=lambda x: x[1], reverse=True)[:5]
 
-        results.append({
-            "template_id": template_id,
-            "total_runs": total,
-            "field_coverage": round(coverage, 1),
-            "avg_confidence_per_field": avg_per_field,
-            "most_missing_fields": [
-                {"field": f, "count": c} for f, c in most_missing
-            ],
-        })
+        results.append(
+            {
+                "template_id": template_id,
+                "total_runs": total,
+                "field_coverage": round(coverage, 1),
+                "avg_confidence_per_field": avg_per_field,
+                "most_missing_fields": [{"field": f, "count": c} for f, c in most_missing],
+            }
+        )
 
     return results
 
@@ -211,7 +199,5 @@ def get_failure_analytics(base_dir: Path | None = None) -> dict[str, Any]:
 
     return {
         "total_failed_or_partial": failed_runs,
-        "top_failing_fields": [
-            {"field": f, "count": c} for f, c in top_failing
-        ],
+        "top_failing_fields": [{"field": f, "count": c} for f, c in top_failing],
     }

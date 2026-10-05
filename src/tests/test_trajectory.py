@@ -33,7 +33,10 @@ from src.templates.invoice import InvoiceTemplate
 
 def _make_gap_report(gap_count: int, is_complete: bool = False) -> GapReport:
     """Build a GapReport with the given number of gaps."""
-    gaps = [FieldGap(field=f"f{i}", gap_type=GapType.MISSING, detail="missing") for i in range(gap_count)]
+    gaps = [
+        FieldGap(field=f"f{i}", gap_type=GapType.MISSING, detail="missing")
+        for i in range(gap_count)
+    ]
     return GapReport(gaps=gaps, satisfied=[], is_complete=is_complete, total_fields=7)
 
 
@@ -73,9 +76,14 @@ def _make_state(
     }
 
 
-def _run_reflect(state: AgentState, new_gap_count: int, is_complete: bool = False) -> dict[str, Any]:
+def _run_reflect(
+    state: AgentState, new_gap_count: int, is_complete: bool = False
+) -> dict[str, Any]:
     """Run reflect_node with a mocked validator returning controlled gap count."""
-    with patch("src.agent.graph.validate_extraction", return_value=_make_gap_report(new_gap_count, is_complete)):
+    with patch(
+        "src.agent.graph.validate_extraction",
+        return_value=_make_gap_report(new_gap_count, is_complete),
+    ):
         return reflect_node(state, skill=InvoiceSkill, validator_config=ValidatorConfig())
 
 
@@ -87,9 +95,11 @@ class TestSSETrajectoryEvents:
         loop = asyncio.new_event_loop()
         events = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(e)
+
             loop.run_until_complete(collect())
         finally:
             loop.close()

@@ -46,9 +46,11 @@ def redact_message(msg: str) -> str:
     redacted = msg
     for pattern in _SENSITIVE_PATTERNS:
         redacted = pattern.sub(
-            lambda m: m.group(0).split("=")[0].split(":")[0] + "=[REDACTED]"
-            if "=" in m.group(0) or ":" in m.group(0)
-            else "[REDACTED]",
+            lambda m: (
+                m.group(0).split("=")[0].split(":")[0] + "=[REDACTED]"
+                if "=" in m.group(0) or ":" in m.group(0)
+                else "[REDACTED]"
+            ),
             redacted,
         )
     return redacted

@@ -54,7 +54,15 @@ def _check_net_pay(e: dict) -> tuple[bool, str]:
 
 _net_pay_check = Invariant(
     name="gross_minus_deductions_equals_net",
-    fields=["gross_pay", "net_pay", "federal_tax", "state_tax", "social_security", "medicare", "deductions"],
+    fields=[
+        "gross_pay",
+        "net_pay",
+        "federal_tax",
+        "state_tax",
+        "social_security",
+        "medicare",
+        "deductions",
+    ],
     fn=_check_net_pay,
 )
 

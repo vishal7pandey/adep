@@ -88,16 +88,13 @@ _total_positive_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Run deskew and denoise first, then detect_layout to find the "
-        "relevant region. Crop and read with OCR. If faded, use VLM.",
-    GapType.LOW_CONFIDENCE:
-        "Re-crop the region, apply threshold to increase contrast, "
-        "and re-read with OCR. If still low, use VLM.",
-    GapType.INVARIANT_FAILED:
-        "Subtotal + tax != total. Re-crop the totals band at the bottom "
-        "of the receipt. Apply threshold for better contrast. Re-read "
-        "subtotal, tax, and total with OCR. If garbled, use VLM.",
+    GapType.MISSING: "Run deskew and denoise first, then detect_layout to find the "
+    "relevant region. Crop and read with OCR. If faded, use VLM.",
+    GapType.LOW_CONFIDENCE: "Re-crop the region, apply threshold to increase contrast, "
+    "and re-read with OCR. If still low, use VLM.",
+    GapType.INVARIANT_FAILED: "Subtotal + tax != total. Re-crop the totals band at the bottom "
+    "of the receipt. Apply threshold for better contrast. Re-read "
+    "subtotal, tax, and total with OCR. If garbled, use VLM.",
 }
 
 

@@ -60,6 +60,7 @@ Rules:
 # Validation helpers
 # ---------------------------------------------------------------------------
 
+
 def _normalize_definition_id(raw_id: str) -> str:
     """Normalize a definition ID to def-snake_case."""
     s = raw_id.lower().strip()
@@ -152,6 +153,7 @@ def _derive_confidence_threshold(skill: dict[str, Any], template: dict[str, Any]
 # Heuristic fallback (no LLM available)
 # ---------------------------------------------------------------------------
 
+
 def _heuristic_definition_config(description: str) -> dict[str, Any]:
     """Generate a basic agent config without an LLM call."""
     name = description.strip().split("\n")[0][:80] if description else "Custom Definition"
@@ -161,7 +163,9 @@ def _heuristic_definition_config(description: str) -> dict[str, Any]:
 
     # Heuristics for complexity
     desc_lower = description.lower()
-    if any(kw in desc_lower for kw in ("multi-page", "multiple pages", "complex", "lease", "audit")):
+    if any(
+        kw in desc_lower for kw in ("multi-page", "multiple pages", "complex", "lease", "audit")
+    ):
         max_cycles_doc = 30
     else:
         max_cycles_doc = 20
@@ -187,6 +191,7 @@ def _heuristic_definition_config(description: str) -> dict[str, Any]:
 # Result dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AgentComposerResult:
     """Result of the Agent Composer pipeline [BLK-069].
@@ -198,10 +203,13 @@ class AgentComposerResult:
         token_usage: Total token usage across all LLM calls.
         errors: List of non-fatal errors/warnings during generation.
     """
+
     definition: dict[str, Any] = field(default_factory=dict)
     skill: dict[str, Any] = field(default_factory=dict)
     template: dict[str, Any] = field(default_factory=dict)
-    token_usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+    token_usage: dict[str, int] = field(
+        default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    )
     errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
@@ -217,6 +225,7 @@ class AgentComposerResult:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def compose_agent(
     description: str,
@@ -301,19 +310,26 @@ def compose_agent(
     def_name = raw_config.get("name", description.strip().split("\n")[0][:80])
     task_type = raw_config.get("task_type", "extraction")
 
-    agent_config = _validate_agent_config({
-        "max_cycles_per_field": raw_config.get("max_cycles_per_field", 5),
-        "max_cycles_per_document": raw_config.get("max_cycles_per_document", 20),
-        "confidence_threshold": raw_config.get("confidence_threshold",
-                                                 _derive_confidence_threshold(skill, template)),
-    })
+    agent_config = _validate_agent_config(
+        {
+            "max_cycles_per_field": raw_config.get("max_cycles_per_field", 5),
+            "max_cycles_per_document": raw_config.get("max_cycles_per_document", 20),
+            "confidence_threshold": raw_config.get(
+                "confidence_threshold", _derive_confidence_threshold(skill, template)
+            ),
+        }
+    )
 
     # Derive tool names from skill and template
     tool_names = _derive_tool_names(skill, template)
 
     # Use skill name as skill_id, template name as template_id
     skill_id = skill.get("name", "custom")
-    template_id = template.get("name", "custom").lower().replace(" ", "_") if template.get("name") else "custom"
+    template_id = (
+        template.get("name", "custom").lower().replace(" ", "_")
+        if template.get("name")
+        else "custom"
+    )
 
     # System prompt override
     system_prompt_override = raw_config.get("system_prompt_override")

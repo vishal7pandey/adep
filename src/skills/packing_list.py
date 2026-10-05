@@ -31,8 +31,7 @@ def _check_total_weight(e: dict) -> tuple[bool, str]:
     if not isinstance(item_list, list) or len(item_list) == 0:
         return True, ""
     weight_sum = sum(
-        i.get("weight", 0) if isinstance(i, dict) else getattr(i, "weight", 0)
-        for i in item_list
+        i.get("weight", 0) if isinstance(i, dict) else getattr(i, "weight", 0) for i in item_list
     )
     if abs(weight_sum - total_weight.value) > 0.01:
         return False, f"sum of item weights ({weight_sum}) != total_weight ({total_weight.value})"

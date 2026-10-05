@@ -103,7 +103,9 @@ def _result_from_run(run_data: dict[str, Any]) -> ExtractedResult:
     )
 
 
-def run_eval(base_url: str, fixtures_root: Path, timeout_seconds: int, report_path: Path) -> dict[str, Any]:
+def run_eval(
+    base_url: str, fixtures_root: Path, timeout_seconds: int, report_path: Path
+) -> dict[str, Any]:
     loaded = _load_ground_truth_samples(fixtures_root)
     results: list[ExtractedResult] = []
     truths: list[GroundTruthSample] = []
@@ -120,12 +122,14 @@ def run_eval(base_url: str, fixtures_root: Path, timeout_seconds: int, report_pa
         run_data = _wait_for_run(base_url, start_payload["id"], timeout_seconds)
         results.append(_result_from_run(run_data))
         truths.append(truth)
-        run_rows.append({
-            "definition_id": definition_id,
-            "document_path": truth.document_path,
-            "run_id": start_payload["id"],
-            "status": run_data.get("status"),
-        })
+        run_rows.append(
+            {
+                "definition_id": definition_id,
+                "document_path": truth.document_path,
+                "run_id": start_payload["id"],
+                "status": run_data.get("status"),
+            }
+        )
 
     report = run_evaluation(results, truths)
     payload = report.to_dict()
@@ -136,7 +140,9 @@ def run_eval(base_url: str, fixtures_root: Path, timeout_seconds: int, report_pa
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run grounded ADE evaluation against the HTTP API.")
+    parser = argparse.ArgumentParser(
+        description="Run grounded ADE evaluation against the HTTP API."
+    )
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--fixtures-root", default="src/tests/fixtures/high_value")
     parser.add_argument("--timeout-seconds", type=int, default=60)
@@ -147,11 +153,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv or sys.argv[1:])
     try:
-        payload = run_eval(args.base_url.rstrip("/"), Path(args.fixtures_root), args.timeout_seconds, Path(args.report_path))
+        payload = run_eval(
+            args.base_url.rstrip("/"),
+            Path(args.fixtures_root),
+            args.timeout_seconds,
+            Path(args.report_path),
+        )
     except Exception as exc:
         print(f"Grounded eval failed: {exc}", file=sys.stderr)
         return 1
-    print(f"Wrote grounded eval report to {args.report_path}; overall_accuracy={payload['overall_accuracy']}")
+    print(
+        f"Wrote grounded eval report to {args.report_path}; overall_accuracy={payload['overall_accuracy']}"
+    )
     return 0
 
 

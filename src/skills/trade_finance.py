@@ -45,8 +45,10 @@ _expiry_after_issue = Invariant(
     name="expiry_date_after_issue_date",
     fields=["issue_date", "expiry_date"],
     fn=lambda e: (
-        (_parse_date(e["expiry_date"].value) > _parse_date(e["issue_date"].value),
-         f"expiry_date ({e['expiry_date'].value}) is not after issue_date ({e['issue_date'].value})")
+        (
+            _parse_date(e["expiry_date"].value) > _parse_date(e["issue_date"].value),
+            f"expiry_date ({e['expiry_date'].value}) is not after issue_date ({e['issue_date'].value})",
+        )
         if _parse_date(e["expiry_date"].value) and _parse_date(e["issue_date"].value)
         else (False, "Cannot compare dates — invalid format")
     ),
@@ -56,8 +58,10 @@ _shipment_before_expiry = Invariant(
     name="latest_shipment_before_expiry",
     fields=["latest_shipment_date", "expiry_date"],
     fn=lambda e: (
-        (_parse_date(e["latest_shipment_date"].value) <= _parse_date(e["expiry_date"].value),
-         f"latest_shipment_date ({e['latest_shipment_date'].value}) is after expiry_date ({e['expiry_date'].value})")
+        (
+            _parse_date(e["latest_shipment_date"].value) <= _parse_date(e["expiry_date"].value),
+            f"latest_shipment_date ({e['latest_shipment_date'].value}) is after expiry_date ({e['expiry_date'].value})",
+        )
         if _parse_date(e["latest_shipment_date"].value) and _parse_date(e["expiry_date"].value)
         else (False, "Cannot compare dates — invalid format")
     ),
@@ -84,14 +88,12 @@ _amount_positive_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "MT700 fields are numbered. Run detect_layout to find the field "
-        "header (e.g. ':20:', ':32B:', ':44A:'), then crop and read it. "
-        "If the message is a degraded telex copy, deskew before OCR.",
-    GapType.INVARIANT_FAILED:
-        "Date arithmetic check failed. Re-crop the date fields and re-read "
-        "with OCR. Ensure dates are in YYYY-MM-DD format. If OCR is garbled, "
-        "use VLM with a targeted question about the specific date field.",
+    GapType.MISSING: "MT700 fields are numbered. Run detect_layout to find the field "
+    "header (e.g. ':20:', ':32B:', ':44A:'), then crop and read it. "
+    "If the message is a degraded telex copy, deskew before OCR.",
+    GapType.INVARIANT_FAILED: "Date arithmetic check failed. Re-crop the date fields and re-read "
+    "with OCR. Ensure dates are in YYYY-MM-DD format. If OCR is garbled, "
+    "use VLM with a targeted question about the specific date field.",
 }
 
 

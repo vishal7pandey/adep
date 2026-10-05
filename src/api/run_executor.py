@@ -211,10 +211,7 @@ class RunExecutor:
     @property
     def active_count(self) -> int:
         """Number of currently running workers."""
-        return sum(
-            1 for ctx in self._runs.values()
-            if ctx.status in ("running", "paused")
-        )
+        return sum(1 for ctx in self._runs.values() if ctx.status in ("running", "paused"))
 
     @property
     def queue_depth(self) -> int:
@@ -284,17 +281,20 @@ class RunExecutor:
 
         # Persist initial state
         store = get_store()
-        store.save_run(run_id, {
-            "id": run_id,
-            "definition_id": definition_id,
-            "document_url": document_path,
-            "status": "queued",
-            "current_cycle": 0,
-            "total_fields": 0,
-            "extracted_fields_count": 0,
-            "fields": [],
-            "created_at": ctx.created_at,
-        })
+        store.save_run(
+            run_id,
+            {
+                "id": run_id,
+                "definition_id": definition_id,
+                "document_url": document_path,
+                "status": "queued",
+                "current_cycle": 0,
+                "total_fields": 0,
+                "extracted_fields_count": 0,
+                "fields": [],
+                "created_at": ctx.created_at,
+            },
+        )
 
         logger.info("Run %s enqueued (definition=%s) [BLK-129]", run_id, definition_id)
         return ctx
@@ -403,15 +403,9 @@ class RunExecutor:
     def get_queue_status(self) -> dict[str, Any]:
         """Get queue depth and worker utilisation for admin endpoint [BLK-129]."""
         active_runs = [
-            ctx.to_dict()
-            for ctx in self._runs.values()
-            if ctx.status in ("running", "paused")
+            ctx.to_dict() for ctx in self._runs.values() if ctx.status in ("running", "paused")
         ]
-        queued_runs = [
-            ctx.to_dict()
-            for ctx in self._runs.values()
-            if ctx.status == "queued"
-        ]
+        queued_runs = [ctx.to_dict() for ctx in self._runs.values() if ctx.status == "queued"]
         return {
             "queue_depth": self.queue_depth,
             "active_workers": self.active_count,
@@ -440,7 +434,8 @@ class RunExecutor:
                 count += 1
                 logger.warning(
                     "Orphaned run %s marked failed (was %s) [BLK-129]",
-                    run["id"], status,
+                    run["id"],
+                    status,
                 )
         if count:
             logger.info("Recovered %d orphaned runs [BLK-129]", count)
@@ -458,7 +453,8 @@ class RunExecutor:
             except Exception as e:
                 logger.error(
                     "Run %s failed in worker: %s [BLK-129]",
-                    ctx.run_id, e,
+                    ctx.run_id,
+                    e,
                 )
                 ctx.status = "failed"
                 ctx.error = str(e)

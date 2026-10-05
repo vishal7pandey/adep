@@ -37,6 +37,7 @@ def _check_lease_term(e: dict) -> tuple[bool, str]:
         months = e["lease_term_months"].value
         # Approximate: add months to commencement, compare to expiration
         from dateutil.relativedelta import relativedelta
+
         expected_exp = comm + relativedelta(months=months)
         diff_days = abs((exp - expected_exp).days)
         if diff_days > 31:  # Allow ~1 month tolerance
@@ -108,14 +109,12 @@ _cam_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Use locate with keywords: 'landlord', 'tenant', 'premises', "
-        "'commencement', 'base rent', 'security deposit', 'renewal', "
-        "'termination'. Crop the matching clause and read with OCR.",
-    GapType.INVARIANT_FAILED:
-        "Lease term date arithmetic failed. Re-crop the commencement "
-        "date, expiration date, and lease term sections. Verify all "
-        "dates are in YYYY-MM-DD format.",
+    GapType.MISSING: "Use locate with keywords: 'landlord', 'tenant', 'premises', "
+    "'commencement', 'base rent', 'security deposit', 'renewal', "
+    "'termination'. Crop the matching clause and read with OCR.",
+    GapType.INVARIANT_FAILED: "Lease term date arithmetic failed. Re-crop the commencement "
+    "date, expiration date, and lease term sections. Verify all "
+    "dates are in YYYY-MM-DD format.",
 }
 
 

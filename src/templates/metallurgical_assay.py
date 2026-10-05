@@ -13,7 +13,9 @@ class MetallurgicalAssayTemplate(Template):
     certificate_number: str = Field(description="Assay certificate number")
     material_grade: str = Field(description="Material grade or specification")
     composition_elements: list[str] = Field(description="Chemical element names (e.g. C, Mn, Si)")
-    composition_values: list[float] = Field(description="Measured composition values (parallel to elements)")
+    composition_values: list[float] = Field(
+        description="Measured composition values (parallel to elements)"
+    )
     spec_min: list[float] = Field(description="Minimum spec values for each element")
     spec_max: list[float] = Field(description="Maximum spec values for each element")
     heat_number: str = Field(description="Heat or batch number for traceability")

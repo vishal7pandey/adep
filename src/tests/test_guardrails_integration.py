@@ -51,6 +51,7 @@ from src.tools.base import FieldValue, Grounding, ToolRegistry, ToolResult, Tool
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
+
 class MockLLMClient:
     """Mock LLM that returns pre-configured actions."""
 
@@ -117,6 +118,7 @@ def _build_test_state(**overrides: Any) -> AgentState:
 # plan_node guardrail tests
 # ---------------------------------------------------------------------------
 
+
 class TestPlanNodeGuardrails:
     """Verify plan_node applies input/output guardrails [BLK-079, BLK-083, BLK-086]."""
 
@@ -127,7 +129,9 @@ class TestPlanNodeGuardrails:
         class CapturingLLM:
             def invoke(self, system_prompt: str, user_prompt: str) -> str:
                 captured_prompts.append(user_prompt)
-                return json.dumps({"thought": "ok", "tool": "ocr", "args": {}, "field": "invoice_number"})
+                return json.dumps(
+                    {"thought": "ok", "tool": "ocr", "args": {}, "field": "invoice_number"}
+                )
 
         state = _build_test_state()
         state["extraction"] = {
@@ -155,7 +159,9 @@ class TestPlanNodeGuardrails:
         class CapturingLLM:
             def invoke(self, system_prompt: str, user_prompt: str) -> str:
                 captured_prompts.append(user_prompt)
-                return json.dumps({"thought": "ok", "tool": "ocr", "args": {}, "field": "invoice_number"})
+                return json.dumps(
+                    {"thought": "ok", "tool": "ocr", "args": {}, "field": "invoice_number"}
+                )
 
         state = _build_test_state()
         state["extraction"] = {
@@ -177,6 +183,7 @@ class TestPlanNodeGuardrails:
 
     def test_output_truncation_guardrail(self):
         """plan_node should truncate overly long LLM output [BLK-079]."""
+
         class LongOutputLLM:
             def invoke(self, system_prompt: str, user_prompt: str) -> str:
                 return "A" * 100000  # Very long output
@@ -193,9 +200,11 @@ class TestPlanNodeGuardrails:
 
     def test_audit_log_written_when_logger_provided(self, tmp_path: Path):
         """plan_node should write audit log entries when audit_logger is provided [BLK-084]."""
-        llm = MockLLMClient([
-            {"thought": "read invoice", "tool": "ocr", "args": {}, "field": "invoice_number"},
-        ])
+        llm = MockLLMClient(
+            [
+                {"thought": "read invoice", "tool": "ocr", "args": {}, "field": "invoice_number"},
+            ]
+        )
         audit_logger = AuditLogger(run_id="test-audit-run", base_dir=tmp_path / ".adep")
 
         state = _build_test_state()
@@ -219,10 +228,12 @@ class TestPlanNodeGuardrails:
 
     def test_audit_log_chain_integrity(self, tmp_path: Path):
         """Multiple plan_node calls should produce a verifiable hash chain [BLK-084]."""
-        llm = MockLLMClient([
-            {"thought": "read invoice", "tool": "ocr", "args": {}, "field": "invoice_number"},
-            {"thought": "read vendor", "tool": "ocr", "args": {}, "field": "vendor_name"},
-        ])
+        llm = MockLLMClient(
+            [
+                {"thought": "read invoice", "tool": "ocr", "args": {}, "field": "invoice_number"},
+                {"thought": "read vendor", "tool": "ocr", "args": {}, "field": "vendor_name"},
+            ]
+        )
         audit_logger = AuditLogger(run_id="test-chain-run", base_dir=tmp_path / ".adep")
 
         state = _build_test_state()
@@ -250,6 +261,7 @@ class TestPlanNodeGuardrails:
 # ---------------------------------------------------------------------------
 # act_node guardrail tests
 # ---------------------------------------------------------------------------
+
 
 class TestActNodeGuardrails:
     """Verify act_node applies tool guardrails [BLK-080]."""
@@ -306,7 +318,9 @@ class TestActNodeGuardrails:
             },
         )
         result = act_node(
-            state, registry=registry, breaker=CircuitBreaker(),
+            state,
+            registry=registry,
+            breaker=CircuitBreaker(),
             rate_limiter=rate_limiter,
         )
         assert result["_tool_result"].ok is True
@@ -315,6 +329,7 @@ class TestActNodeGuardrails:
 # ---------------------------------------------------------------------------
 # reflect_node guardrail tests
 # ---------------------------------------------------------------------------
+
 
 class TestReflectNodeLoopDetection:
     """Verify reflect_node detects and terminates on loops [BLK-082]."""
@@ -325,10 +340,17 @@ class TestReflectNodeLoopDetection:
 
         # Simulate enough repetitive cycles to trigger tool repetition
         for i in range(5):
-            loop_detector.record_cycle("ocr", {"image_path": "test.png"}, "invoice_number", "read it", 1)
+            loop_detector.record_cycle(
+                "ocr", {"image_path": "test.png"}, "invoice_number", "read it", 1
+            )
 
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png"}, "thought": "read it", "field": "invoice_number"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png"},
+                "thought": "read it",
+                "field": "invoice_number",
+            },
             extraction={
                 "invoice_number": FieldValue(
                     name="invoice_number",
@@ -352,7 +374,12 @@ class TestReflectNodeLoopDetection:
         loop_detector = LoopDetector(max_cycles_per_field=5, max_cycles_per_document=30)
 
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "page1.png"}, "thought": "read page 1", "field": "invoice_number"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "page1.png"},
+                "thought": "read page 1",
+                "field": "invoice_number",
+            },
             extraction={
                 "invoice_number": FieldValue(
                     name="invoice_number",
@@ -377,13 +404,19 @@ class TestReflectNodeLoopDetection:
 # observe_node guardrail tests
 # ---------------------------------------------------------------------------
 
+
 class TestObserveNodeHallucinationDetection:
     """Verify observe_node detects hallucinations [BLK-081]."""
 
     def test_ungrounded_field_removed(self):
         """observe_node should remove fields with no grounding when they are the target field [BLK-081]."""
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png"}, "thought": "read", "field": "vendor_name"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png"},
+                "thought": "read",
+                "field": "vendor_name",
+            },
             _tool_result=ToolResult(
                 ok=True,
                 data="ACME Corp",
@@ -400,7 +433,12 @@ class TestObserveNodeHallucinationDetection:
     def test_grounded_field_preserved(self):
         """observe_node should preserve properly grounded fields [BLK-081]."""
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png"}, "thought": "read", "field": "invoice_number"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png"},
+                "thought": "read",
+                "field": "invoice_number",
+            },
             _tool_result=ToolResult(
                 ok=True,
                 data="INV-001",
@@ -421,15 +459,18 @@ class TestObserveNodeHallucinationDetection:
 # build_react_graph integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestBuildReactGraphGuardrails:
     """Verify build_react_graph wires guardrails correctly [SCRUM-149]."""
 
     def test_graph_builds_with_all_guardrails(self, tmp_path: Path):
         """build_react_graph should compile successfully with all guardrail params [SCRUM-149]."""
         registry = _build_registry_with_mock_tools()
-        llm = MockLLMClient([
-            {"thought": "done", "tool": "", "args": {}, "field": None},
-        ])
+        llm = MockLLMClient(
+            [
+                {"thought": "done", "tool": "", "args": {}, "field": None},
+            ]
+        )
         audit_logger = AuditLogger(run_id="test-graph-run", base_dir=tmp_path / ".adep")
 
         graph = build_react_graph(
@@ -446,10 +487,17 @@ class TestBuildReactGraphGuardrails:
     def test_graph_runs_with_guardrails_and_produces_audit_log(self, tmp_path: Path):
         """End-to-end: graph with guardrails should produce audit log entries [SCRUM-149]."""
         registry = _build_registry_with_mock_tools()
-        llm = MockLLMClient([
-            {"thought": "read invoice", "tool": "ocr", "args": {"image_path": "test.png"}, "field": "invoice_number"},
-            {"thought": "done", "tool": "", "args": {}, "field": None},
-        ])
+        llm = MockLLMClient(
+            [
+                {
+                    "thought": "read invoice",
+                    "tool": "ocr",
+                    "args": {"image_path": "test.png"},
+                    "field": "invoice_number",
+                },
+                {"thought": "done", "tool": "", "args": {}, "field": None},
+            ]
+        )
         audit_logger = AuditLogger(run_id="test-e2e-run", base_dir=tmp_path / ".adep")
 
         graph = build_react_graph(

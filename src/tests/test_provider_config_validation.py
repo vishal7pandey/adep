@@ -20,13 +20,17 @@ class TestProviderConfigValidation:
 
     def test_partial_config_endpoint_only_raises(self):
         """Endpoint set but API key missing should raise ValueError."""
-        settings = Settings(azure_api_key="", azure_chat_endpoint="https://example.openai.azure.com")
+        settings = Settings(
+            azure_api_key="", azure_chat_endpoint="https://example.openai.azure.com"
+        )
         with pytest.raises(ValueError, match="Partial Azure OpenAI configuration"):
             settings.validate_provider_config()
 
     def test_partial_config_whitespace_only_treated_as_empty(self):
         """Whitespace-only values should be treated as empty (partial config)."""
-        settings = Settings(azure_api_key="   ", azure_chat_endpoint="https://example.openai.azure.com")
+        settings = Settings(
+            azure_api_key="   ", azure_chat_endpoint="https://example.openai.azure.com"
+        )
         with pytest.raises(ValueError, match="Partial Azure OpenAI configuration"):
             settings.validate_provider_config()
 

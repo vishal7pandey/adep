@@ -47,6 +47,7 @@ class TestOutputContractHierarchy:
 
     def test_existing_templates_subclass_field_extraction_contract(self):
         from src.templates.invoice import InvoiceTemplate
+
         assert issubclass(InvoiceTemplate, FieldExtractionContract)
         assert InvoiceTemplate.model_fields["task_type"].default == "extraction"
 
@@ -77,16 +78,19 @@ class TestRunResultHierarchy:
 class TestNewGapTypes:
     """Verify new GapType enum values [BLK-109]."""
 
-    @pytest.mark.parametrize("gap_type", [
-        GapType.SYMBOL_UNCLASSIFIED,
-        GapType.TAG_UNREADABLE,
-        GapType.CONNECTION_AMBIGUOUS,
-        GapType.TOPOLOGY_VIOLATION,
-        GapType.NODE_MISSING,
-        GapType.EDGE_MISSING,
-        GapType.ATTRIBUTE_MISSING,
-        GapType.SERIALIZATION_FAILED,
-    ])
+    @pytest.mark.parametrize(
+        "gap_type",
+        [
+            GapType.SYMBOL_UNCLASSIFIED,
+            GapType.TAG_UNREADABLE,
+            GapType.CONNECTION_AMBIGUOUS,
+            GapType.TOPOLOGY_VIOLATION,
+            GapType.NODE_MISSING,
+            GapType.EDGE_MISSING,
+            GapType.ATTRIBUTE_MISSING,
+            GapType.SERIALIZATION_FAILED,
+        ],
+    )
     def test_gap_type_exists(self, gap_type: GapType):
         assert gap_type.value  # non-empty string value
 
@@ -103,6 +107,7 @@ class TestAgentDefinitionTaskType:
 
     def test_default_task_type_is_extraction(self):
         from src.definitions.base import AgentDefinition, AgentConfig
+
         defn = AgentDefinition(
             id="test-def",
             name="Test",
@@ -113,6 +118,7 @@ class TestAgentDefinitionTaskType:
 
     def test_task_type_can_be_overridden(self):
         from src.definitions.base import AgentDefinition
+
         defn = AgentDefinition(
             id="test-graph",
             name="Test Graph",
@@ -244,7 +250,9 @@ class TestTaskValidatorDispatch:
             contract=contract,
         )
         assert not gap_report.is_complete
-        serialization_gaps = [g for g in gap_report.gaps if g.gap_type == GapType.SERIALIZATION_FAILED]
+        serialization_gaps = [
+            g for g in gap_report.gaps if g.gap_type == GapType.SERIALIZATION_FAILED
+        ]
         assert len(serialization_gaps) == 1
         assert "dexpi" in serialization_gaps[0].field
 

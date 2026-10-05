@@ -26,6 +26,7 @@ def _value_from(obj: Any, key: str, default: Any = None) -> Any:
         return obj.get(key, default)
     return getattr(obj, key, default)
 
+
 _SYSTEM_PROMPT = """You are an expert skill verifier for an AI document extraction agent. Your job is to analyze a skill's execution trace and identify weaknesses — WITHOUT access to ground-truth labels.
 
 You will receive:
@@ -60,7 +61,9 @@ Return your analysis as JSON with this structure:
 Return ONLY the JSON. Do not use ground truth — base all diagnoses on the trace and skill definition."""
 
 
-def _heuristic_verify(skill: dict[str, Any], trace: list[Any], gap_report: Any, extraction: dict[str, Any]) -> dict[str, Any]:
+def _heuristic_verify(
+    skill: dict[str, Any], trace: list[Any], gap_report: Any, extraction: dict[str, Any]
+) -> dict[str, Any]:
     """Produce a deterministic verifier result when no LLM is available."""
     diagnoses: list[dict[str, Any]] = []
     proposed_tests: list[dict[str, Any]] = []
@@ -76,34 +79,44 @@ def _heuristic_verify(skill: dict[str, Any], trace: list[Any], gap_report: Any, 
     trace_len = len(trace or [])
 
     if trace_len <= 1:
-        diagnoses.append({
-            "type": "tool_selection",
-            "severity": "medium",
-            "message": "Execution trace is shallow; the run likely used a deterministic fallback or failed before multi-step probing.",
-            "field": "",
-        })
+        diagnoses.append(
+            {
+                "type": "tool_selection",
+                "severity": "medium",
+                "message": "Execution trace is shallow; the run likely used a deterministic fallback or failed before multi-step probing.",
+                "field": "",
+            }
+        )
 
     for gap in gaps[:8]:
         gap_type = _value_from(gap, "gap_type", "other")
         field_name = _value_from(gap, "field", "")
         detail = _value_from(gap, "detail", "")
         severity = "high" if gap_type in {"missing", "invariant_failed"} else "medium"
-        diagnoses.append({
-            "type": "failure_action" if gap_type == "missing" else "other",
-            "severity": severity,
-            "message": f"Gap remains for {field_name}: {gap_type}. {detail}".strip(),
-            "field": field_name,
-        })
-        proposed_tests.append({
-            "assertion": f"{field_name} should be extracted with grounding" if field_name else "Missing fields should have grounded values",
-            "reason": f"Run ended with unresolved {gap_type} gap.",
-        })
+        diagnoses.append(
+            {
+                "type": "failure_action" if gap_type == "missing" else "other",
+                "severity": severity,
+                "message": f"Gap remains for {field_name}: {gap_type}. {detail}".strip(),
+                "field": field_name,
+            }
+        )
+        proposed_tests.append(
+            {
+                "assertion": f"{field_name} should be extracted with grounding"
+                if field_name
+                else "Missing fields should have grounded values",
+                "reason": f"Run ended with unresolved {gap_type} gap.",
+            }
+        )
 
     if extraction and not gaps:
-        proposed_tests.append({
-            "assertion": "Extracted values should maintain current field coverage on regression samples",
-            "reason": f"Current run satisfied {len(satisfied)} fields without unresolved gaps.",
-        })
+        proposed_tests.append(
+            {
+                "assertion": "Extracted values should maintain current field coverage on regression samples",
+                "reason": f"Current run satisfied {len(satisfied)} fields without unresolved gaps.",
+            }
+        )
 
     if not skill.get("failure_actions"):
         skill_patch["system_prompt_suggestions"] = (
@@ -216,7 +229,9 @@ def verify_skill(
     response = invoke_llm(_SYSTEM_PROMPT, user_prompt, max_tokens=3000)
 
     if not response.content:
-        return _heuristic_verify(skill=skill, trace=trace, gap_report=gap_report, extraction=extraction)
+        return _heuristic_verify(
+            skill=skill, trace=trace, gap_report=gap_report, extraction=extraction
+        )
 
     # Parse JSON from LLM response
     content = response.content.strip()
@@ -224,12 +239,18 @@ def verify_skill(
         start = content.find("{")
         end = content.rfind("}") + 1
         if start == -1 or end == 0:
-            logger.warning("LLM response contained no JSON object — falling back to heuristic verifier")
-            return _heuristic_verify(skill=skill, trace=trace, gap_report=gap_report, extraction=extraction)
+            logger.warning(
+                "LLM response contained no JSON object — falling back to heuristic verifier"
+            )
+            return _heuristic_verify(
+                skill=skill, trace=trace, gap_report=gap_report, extraction=extraction
+            )
         result = json.loads(content[start:end])
     except (json.JSONDecodeError, ValueError) as e:
         logger.warning("Falling back to heuristic verifier after JSON parse failure: %s", e)
-        return _heuristic_verify(skill=skill, trace=trace, gap_report=gap_report, extraction=extraction)
+        return _heuristic_verify(
+            skill=skill, trace=trace, gap_report=gap_report, extraction=extraction
+        )
 
     # Ensure required keys exist
     result.setdefault("diagnoses", [])

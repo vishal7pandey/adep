@@ -19,6 +19,7 @@ from src.documents.store import MAX_FILE_SIZE_BYTES, _MAX_IMAGE_PIXELS
 # Magic-byte validation unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestValidateMagicBytes:
     """Verify magic-byte detection for each supported format."""
 
@@ -64,6 +65,7 @@ class TestValidateMagicBytes:
 # Integration tests via API endpoint
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def upload_client(tmp_path: Path) -> TestClient:
     """Create a FastAPI TestClient with auth enabled and a temp key store."""
@@ -86,9 +88,11 @@ def upload_client(tmp_path: Path) -> TestClient:
 
     # Capture the bootstrap secret from stdout during create_app()
     import contextlib
+
     captured = io.StringIO()
     with contextlib.redirect_stdout(captured):
         from src.api.main import create_app
+
         app = create_app()
     client = TestClient(app)
 
@@ -128,6 +132,7 @@ class TestUploadValidation:
     def test_valid_png_accepted(self, upload_client: TestClient):
         """A real PNG file should be accepted."""
         from PIL import Image
+
         img = Image.new("RGB", (1, 1), color=(255, 0, 0))
         buf = io.BytesIO()
         img.save(buf, format="PNG")
@@ -196,6 +201,7 @@ class TestUploadValidation:
 # Decompression-bomb guard tests
 # ---------------------------------------------------------------------------
 
+
 class TestDecompressionBombGuard:
     """Verify PIL decompression-bomb protection is active."""
 
@@ -222,6 +228,7 @@ class TestDecompressionBombGuard:
                 b"\x00\x05\xfe\xd4\x00\x00\x00\x00IEND\xaeB`\x82"
             )
             import tempfile
+
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
                 tmp.write(png_bytes)
                 tmp_path = Path(tmp.name)

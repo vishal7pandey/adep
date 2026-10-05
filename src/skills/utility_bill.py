@@ -43,12 +43,16 @@ _usage_decrease_check = Invariant(
 def _check_billing_period(e: dict) -> tuple[bool, str]:
     """Verify billing period is <= 45 days."""
     from datetime import datetime
+
     try:
         start = datetime.strptime(str(e["billing_period_start"].value), "%Y-%m-%d")
         end = datetime.strptime(str(e["billing_period_end"].value), "%Y-%m-%d")
         delta = (end - start).days
         if delta < 0:
-            return False, f"billing_period_start ({e['billing_period_start'].value}) > billing_period_end ({e['billing_period_end'].value})"
+            return (
+                False,
+                f"billing_period_start ({e['billing_period_start'].value}) > billing_period_end ({e['billing_period_end'].value})",
+            )
         if delta > 45:
             return False, f"billing period ({delta} days) exceeds 45 days"
         return True, ""
@@ -80,14 +84,12 @@ _amount_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Run detect_layout to find the relevant region. Account numbers "
-        "are in the header. Usage values may be in a table or chart — "
-        "use read_chart for the consumption history graph.",
-    GapType.LOW_CONFIDENCE:
-        "If OCR confidence is low on numeric fields, crop the region, "
-        "deskew, and re-read. For chart-based consumption history, "
-        "use read_chart (VLM interprets chart geometry directly).",
+    GapType.MISSING: "Run detect_layout to find the relevant region. Account numbers "
+    "are in the header. Usage values may be in a table or chart — "
+    "use read_chart for the consumption history graph.",
+    GapType.LOW_CONFIDENCE: "If OCR confidence is low on numeric fields, crop the region, "
+    "deskew, and re-read. For chart-based consumption history, "
+    "use read_chart (VLM interprets chart geometry directly).",
 }
 
 

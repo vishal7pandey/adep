@@ -64,10 +64,19 @@ _EDGE_TYPES = [
 ]
 
 _TOPOLOGY_RULES = [
-    {"name": "every_valve_connected_to_pipe", "description": "Every valve connected to at least one pipe"},
+    {
+        "name": "every_valve_connected_to_pipe",
+        "description": "Every valve connected to at least one pipe",
+    },
     {"name": "isa_51_tag_format", "description": "Every instrument tag follows ISA-5.1 (XX-NNN)"},
-    {"name": "control_loop_completeness", "description": "Control loops complete: sensor → controller → final_element"},
-    {"name": "no_orphan_pipes", "description": "No orphan pipes (both ends connected or explicitly capped)"},
+    {
+        "name": "control_loop_completeness",
+        "description": "Control loops complete: sensor → controller → final_element",
+    },
+    {
+        "name": "no_orphan_pipes",
+        "description": "No orphan pipes (both ends connected or explicitly capped)",
+    },
 ]
 
 _OUTPUT_FORMATS = ["dexpi_xml", "smart_pid_json", "graphml"]

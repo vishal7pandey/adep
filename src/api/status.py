@@ -29,15 +29,17 @@ MAX_ITERATIONS_REACHED = "max_iterations_reached"
 FAILED = "failed"
 CANCELLED = "cancelled"
 
-ALL_STATUSES = frozenset({
-    QUEUED,
-    RUNNING,
-    PAUSED,
-    COMPLETED,
-    MAX_ITERATIONS_REACHED,
-    FAILED,
-    CANCELLED,
-})
+ALL_STATUSES = frozenset(
+    {
+        QUEUED,
+        RUNNING,
+        PAUSED,
+        COMPLETED,
+        MAX_ITERATIONS_REACHED,
+        FAILED,
+        CANCELLED,
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Internal → frontend mapping

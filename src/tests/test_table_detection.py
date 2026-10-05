@@ -26,6 +26,7 @@ from src.tools.table_detection import detect_tables, read_table_cells
 # Test helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_ruled_table_image(path: str) -> None:
     """Create a synthetic image with a ruled table (visible grid lines)."""
     import cv2
@@ -73,6 +74,7 @@ def _make_blank_image(path: str) -> None:
 # ---------------------------------------------------------------------------
 # detect_tables tests
 # ---------------------------------------------------------------------------
+
 
 class TestDetectTablesRuled:
     """Verify ruled table detection with visible borders."""
@@ -196,6 +198,7 @@ class TestDetectTablesError:
 # read_table_cells tests
 # ---------------------------------------------------------------------------
 
+
 class TestReadTable:
     """Verify read_table_cells composition helper."""
 
@@ -209,16 +212,50 @@ class TestReadTable:
             "n_cols": 2,
             "header_row_index": 0,
             "cells": [
-                {"row": 0, "col": 0, "bbox": (50, 50, 200, 150), "text": "Item", "row_span": 1, "col_span": 1, "confidence": 0.9},
-                {"row": 0, "col": 1, "bbox": (200, 50, 400, 150), "text": "Price", "row_span": 1, "col_span": 1, "confidence": 0.9},
-                {"row": 1, "col": 0, "bbox": (50, 150, 200, 250), "text": None, "row_span": 1, "col_span": 1, "confidence": 0.9},
-                {"row": 1, "col": 1, "bbox": (200, 150, 400, 250), "text": None, "row_span": 1, "col_span": 1, "confidence": 0.9},
+                {
+                    "row": 0,
+                    "col": 0,
+                    "bbox": (50, 50, 200, 150),
+                    "text": "Item",
+                    "row_span": 1,
+                    "col_span": 1,
+                    "confidence": 0.9,
+                },
+                {
+                    "row": 0,
+                    "col": 1,
+                    "bbox": (200, 50, 400, 150),
+                    "text": "Price",
+                    "row_span": 1,
+                    "col_span": 1,
+                    "confidence": 0.9,
+                },
+                {
+                    "row": 1,
+                    "col": 0,
+                    "bbox": (50, 150, 200, 250),
+                    "text": None,
+                    "row_span": 1,
+                    "col_span": 1,
+                    "confidence": 0.9,
+                },
+                {
+                    "row": 1,
+                    "col": 1,
+                    "bbox": (200, 150, 400, 250),
+                    "text": None,
+                    "row_span": 1,
+                    "col_span": 1,
+                    "confidence": 0.9,
+                },
             ],
         }
 
-        with patch("src.config.settings") as mock_settings, \
-             patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.ocr_tesseract.ocr") as mock_ocr:
+        with (
+            patch("src.config.settings") as mock_settings,
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.ocr_tesseract.ocr") as mock_ocr,
+        ):
             mock_settings.ocr_provider = "tesseract"
             mock_crop.return_value = MagicMock(ok=True, data="cropped.png")
             mock_ocr.return_value = MagicMock(ok=True, data="Widget")
@@ -235,9 +272,11 @@ class TestReadTable:
         img_path = str(tmp_path / "ruled_table.png")
         _make_ruled_table_image(img_path)
 
-        with patch("src.config.settings") as mock_settings, \
-             patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.ocr_tesseract.ocr") as mock_ocr:
+        with (
+            patch("src.config.settings") as mock_settings,
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.ocr_tesseract.ocr") as mock_ocr,
+        ):
             mock_settings.ocr_provider = "tesseract"
             mock_crop.return_value = MagicMock(ok=True, data="cropped.png")
             mock_ocr.return_value = MagicMock(ok=True, data="text")

@@ -45,7 +45,11 @@ def _make_skill():
             {"region_type": "footer", "rationale": "Totals in footer"},
         ],
         "invariants": [
-            {"name": "subtotal_check", "fields": ["subtotal", "tax", "total"], "description": "subtotal + tax == total"},
+            {
+                "name": "subtotal_check",
+                "fields": ["subtotal", "tax", "total"],
+                "description": "subtotal + tax == total",
+            },
         ],
         "failure_actions": {"missing": "Re-probe the region"},
         "confidence_overrides": {"invoice_number": 0.9, "total": 0.95, "vendor": 0.8},
@@ -58,15 +62,17 @@ def failing_runs():
     runs = []
     for i in range(10):
         if i < 5:
-            runs.append(_make_run(
-                "failed",
-                gaps=[
-                    {"gap_type": "missing", "field": "invoice_number"},
-                    {"gap_type": "missing", "field": "invoice_number"},
-                    {"gap_type": "low_confidence", "field": "total"},
-                ],
-                cycles=25,
-            ))
+            runs.append(
+                _make_run(
+                    "failed",
+                    gaps=[
+                        {"gap_type": "missing", "field": "invoice_number"},
+                        {"gap_type": "missing", "field": "invoice_number"},
+                        {"gap_type": "low_confidence", "field": "total"},
+                    ],
+                    cycles=25,
+                )
+            )
         else:
             runs.append(_make_run("completed", cycles=12))
     return runs
@@ -145,7 +151,9 @@ class TestHeuristicDecompose:
             avg_cycles_per_run=25.0,
         )
         skill = _make_skill()
-        result = heuristic_decompose(skill, pattern, template_fields=["invoice_number", "total", "vendor", "date"])
+        result = heuristic_decompose(
+            skill, pattern, template_fields=["invoice_number", "total", "vendor", "date"]
+        )
 
         assert len(result.sub_skills) >= 1
         # Failing fields should be isolated
@@ -165,7 +173,9 @@ class TestHeuristicDecompose:
             avg_cycles_per_run=20.0,
         )
         skill = _make_skill()
-        result = heuristic_decompose(skill, pattern, template_fields=["a", "b", "c", "d", "e", "f", "g", "h"])
+        result = heuristic_decompose(
+            skill, pattern, template_fields=["a", "b", "c", "d", "e", "f", "g", "h"]
+        )
 
         # All fields split into groups of 4
         assert len(result.sub_skills) == 2
@@ -210,7 +220,7 @@ class TestLLMDecompose:
         )
         skill = _make_skill()
 
-        mock_response = '''{
+        mock_response = """{
             "rationale": "Split by visual proximity: header vs table vs footer",
             "estimated_improvement": 0.2,
             "sub_skills": [
@@ -231,10 +241,12 @@ class TestLLMDecompose:
                     "validation_criteria": ["total is numeric"]
                 }
             ]
-        }'''
+        }"""
 
         with patch("src.ai.query_rewriter.invoke_llm", return_value=mock_response):
-            result = decompose_skill(skill, pattern, template_fields=["invoice_number", "vendor", "total"])
+            result = decompose_skill(
+                skill, pattern, template_fields=["invoice_number", "vendor", "total"]
+            )
 
         assert len(result.sub_skills) == 2
         assert result.sub_skills[0].name == "extract_header"
@@ -291,9 +303,7 @@ class TestRewriteFailingSkill:
         skill = _make_skill()
         with patch("src.ai.query_rewriter.invoke_llm") as mock_llm:
             mock_llm.return_value = '{"rationale": "test", "estimated_improvement": 0.1, "sub_skills": [{"name": "s1", "description": "d", "system_prompt": "p", "field_subset": ["a"], "probe_order": [], "validation_criteria": []}]}'
-            result = rewrite_failing_skill(
-                "def-invoice", failing_runs, skill, use_llm=True
-            )
+            result = rewrite_failing_skill("def-invoice", failing_runs, skill, use_llm=True)
 
         assert result is not None
         assert result.original_definition_id == "def-invoice"
@@ -301,17 +311,13 @@ class TestRewriteFailingSkill:
 
     def test_rewrite_returns_none_for_low_failure(self, passing_runs):
         skill = _make_skill()
-        result = rewrite_failing_skill(
-            "def-invoice", passing_runs, skill, use_llm=False
-        )
+        result = rewrite_failing_skill("def-invoice", passing_runs, skill, use_llm=False)
         assert result is None
 
     def test_rewrite_heuristic_fallback(self, failing_runs):
         skill = _make_skill()
         with patch("src.ai.query_rewriter.invoke_llm", side_effect=Exception("API error")):
-            result = rewrite_failing_skill(
-                "def-invoice", failing_runs, skill, use_llm=True
-            )
+            result = rewrite_failing_skill("def-invoice", failing_runs, skill, use_llm=True)
 
         # Should fall back to heuristic
         assert result is not None
@@ -320,8 +326,6 @@ class TestRewriteFailingSkill:
 
     def test_rewrite_heuristic_only(self, failing_runs):
         skill = _make_skill()
-        result = rewrite_failing_skill(
-            "def-invoice", failing_runs, skill, use_llm=False
-        )
+        result = rewrite_failing_skill("def-invoice", failing_runs, skill, use_llm=False)
         assert result is not None
         assert len(result.sub_skills) > 0

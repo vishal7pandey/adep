@@ -62,9 +62,8 @@ class BudgetStatus:
         """Whether either token or cost limit is exceeded."""
         if self.limit_tokens == 0 and self.limit_cost_usd == 0.0:
             return False
-        return (
-            (self.limit_tokens > 0 and self.consumed_tokens >= self.limit_tokens)
-            or (self.limit_cost_usd > 0 and self.consumed_cost_usd >= self.limit_cost_usd)
+        return (self.limit_tokens > 0 and self.consumed_tokens >= self.limit_tokens) or (
+            self.limit_cost_usd > 0 and self.consumed_cost_usd >= self.limit_cost_usd
         )
 
     @property

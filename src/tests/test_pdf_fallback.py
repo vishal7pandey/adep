@@ -29,6 +29,7 @@ from src.agent.validator import ValidatorConfig
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def validator_config() -> ValidatorConfig:
     return ValidatorConfig()
@@ -38,6 +39,7 @@ def validator_config() -> ValidatorConfig:
 def fake_pdf(tmp_path: Path) -> Path:
     """Create a minimal fake PDF file."""
     import fitz
+
     pdf_path = tmp_path / "test_doc.pdf"
     doc = fitz.open()
     page = doc.new_page()
@@ -50,6 +52,7 @@ def fake_pdf(tmp_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 # run_pdf_fallback unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestRunPdfFallback:
     """Verify run_pdf_fallback behavior [BLK-264]."""
@@ -66,7 +69,9 @@ class TestRunPdfFallback:
         )
         assert result is None
 
-    def test_returns_none_for_unsupported_skill(self, fake_pdf: Path, validator_config: ValidatorConfig):
+    def test_returns_none_for_unsupported_skill(
+        self, fake_pdf: Path, validator_config: ValidatorConfig
+    ):
         """Fallback should return None for skills without a registered parser."""
         # Invoice is not in _PARSERS
         assert "invoice" not in _PARSERS
@@ -78,7 +83,9 @@ class TestRunPdfFallback:
         )
         assert result is None
 
-    def test_returns_result_for_supported_skill(self, fake_pdf: Path, validator_config: ValidatorConfig):
+    def test_returns_result_for_supported_skill(
+        self, fake_pdf: Path, validator_config: ValidatorConfig
+    ):
         """Fallback should return a result for supported skills with PDF documents."""
         assert "bank_statement" in _PARSERS
         result = run_pdf_fallback(
@@ -115,6 +122,7 @@ class TestRunPdfFallback:
 # Fallback gating logic tests
 # ---------------------------------------------------------------------------
 
+
 class TestFallbackGating:
     """Verify _execute_run_inner gates fallback correctly [BLK-264]."""
 
@@ -130,8 +138,7 @@ class TestFallbackGating:
         try:
             # Verify the gating condition
             llm_configured = bool(
-                config_module.settings.azure_api_key
-                and config_module.settings.azure_chat_endpoint
+                config_module.settings.azure_api_key and config_module.settings.azure_chat_endpoint
             )
             use_fast_path = False
             assert llm_configured is True
@@ -150,8 +157,7 @@ class TestFallbackGating:
         config_module.settings.azure_chat_endpoint = ""
         try:
             llm_configured = bool(
-                config_module.settings.azure_api_key
-                and config_module.settings.azure_chat_endpoint
+                config_module.settings.azure_api_key and config_module.settings.azure_chat_endpoint
             )
             use_fast_path = False
             assert llm_configured is False
@@ -170,8 +176,7 @@ class TestFallbackGating:
         config_module.settings.azure_chat_endpoint = "test-endpoint"
         try:
             llm_configured = bool(
-                config_module.settings.azure_api_key
-                and config_module.settings.azure_chat_endpoint
+                config_module.settings.azure_api_key and config_module.settings.azure_chat_endpoint
             )
             use_fast_path = True
             assert llm_configured is True
@@ -202,20 +207,26 @@ class TestFallbackGating:
             old_store = store_module._store
             store = DefinitionStore(base_dir=tmp_path / ".adep")
             store_module._store = store
-            store.create("definitions", "def-test", {
-                "id": "def-test",
-                "name": "Test",
-                "skill_id": "invoice",
-                "template_id": "invoice",
-            })
+            store.create(
+                "definitions",
+                "def-test",
+                {
+                    "id": "def-test",
+                    "name": "Test",
+                    "skill_id": "invoice",
+                    "template_id": "invoice",
+                },
+            )
 
             try:
                 with pytest.raises(RuntimeError, match="No LLM provider configured"):
-                    asyncio.run(engine._execute_run_inner(
-                        definition_id="def-test",
-                        document_path=str(txt_path),
-                        store=store,
-                    ))
+                    asyncio.run(
+                        engine._execute_run_inner(
+                            definition_id="def-test",
+                            document_path=str(txt_path),
+                            store=store,
+                        )
+                    )
             finally:
                 store_module._store = old_store
         finally:
@@ -226,6 +237,7 @@ class TestFallbackGating:
 # ---------------------------------------------------------------------------
 # Fallback transparency tests [BLK-287]
 # ---------------------------------------------------------------------------
+
 
 class TestFallbackTransparency:
     """Verify fallback runs are distinguishable from agent runs in SSE and serialized output [BLK-287]."""
@@ -285,11 +297,17 @@ class TestFallbackTransparency:
         )
 
         serialized = serialize_extraction_result(
-            "test-run", "def-test", "/path/to/doc.pdf", result, {},
+            "test-run",
+            "def-test",
+            "/path/to/doc.pdf",
+            result,
+            {},
         )
         assert serialized["execution_mode"] == "agent"
 
-    def test_fallback_serialized_result_has_fallback_mode(self, fake_pdf: Path, validator_config: ValidatorConfig):
+    def test_fallback_serialized_result_has_fallback_mode(
+        self, fake_pdf: Path, validator_config: ValidatorConfig
+    ):
         """When fallback runs, serialized result should have execution_mode=fallback [BLK-287]."""
         from src.api.run_engine import serialize_extraction_result
 
@@ -302,7 +320,11 @@ class TestFallbackTransparency:
         assert result is not None
 
         serialized = serialize_extraction_result(
-            "test-run", "def-test", str(fake_pdf), result, {"trace": result.trace},
+            "test-run",
+            "def-test",
+            str(fake_pdf),
+            result,
+            {"trace": result.trace},
         )
         # serialize_extraction_result defaults to "agent" — the caller must override
         assert serialized["execution_mode"] == "agent"

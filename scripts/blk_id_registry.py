@@ -203,11 +203,13 @@ class BlkIdRegistry:
 
         for blk_id, locations in scan_result["file_locations"].items():
             if blk_id not in registered:
-                issues.append({
-                    "blk_id": blk_id,
-                    "issue": "unregistered",
-                    "locations": locations,
-                })
+                issues.append(
+                    {
+                        "blk_id": blk_id,
+                        "issue": "unregistered",
+                        "locations": locations,
+                    }
+                )
 
         return issues
 
@@ -234,10 +236,12 @@ class BlkIdRegistry:
             # If the BLK-ID appears in more than 3 unrelated files, flag it
             # (1 impl + 1 test + 1 test docstring = 3 is normal)
             if len(unique_files) > 3:
-                duplicates.append({
-                    "blk_id": blk_id,
-                    "file_count": len(unique_files),
-                    "locations": locations,
-                })
+                duplicates.append(
+                    {
+                        "blk_id": blk_id,
+                        "file_count": len(unique_files),
+                        "locations": locations,
+                    }
+                )
 
         return duplicates

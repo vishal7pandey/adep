@@ -38,6 +38,7 @@ from src.eval.benchmark_suite import (
 # Unit tests — data structures
 # ---------------------------------------------------------------------------
 
+
 class TestProviderResult:
     """ProviderResult serialization and defaults."""
 
@@ -125,6 +126,7 @@ class TestBenchmarkSuiteReport:
 # ---------------------------------------------------------------------------
 # Unit tests — comparison and regression
 # ---------------------------------------------------------------------------
+
 
 class TestComparisonMatrix:
     """_build_comparison produces correct side-by-side metrics."""
@@ -226,6 +228,7 @@ class TestRegressionDetection:
 # Unit tests — provider env switching
 # ---------------------------------------------------------------------------
 
+
 class TestProviderEnvSwitching:
     """_set_provider_env and _restore_env manage env vars correctly."""
 
@@ -251,6 +254,7 @@ class TestProviderEnvSwitching:
 # Integration tests — API endpoints
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def client(tmp_path: Path) -> TestClient:
     """Create a FastAPI TestClient with a temporary store."""
@@ -263,6 +267,7 @@ def client(tmp_path: Path) -> TestClient:
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     test_client = TestClient(app)
 
@@ -293,7 +298,9 @@ class TestBenchmarkAPI:
         assert data["count"] == 0
         assert data["reports"] == []
 
-    def test_list_benchmarks_with_saved_report(self, client: TestClient, tmp_path: Path, monkeypatch):
+    def test_list_benchmarks_with_saved_report(
+        self, client: TestClient, tmp_path: Path, monkeypatch
+    ):
         """GET /admin/benchmarks returns saved reports."""
         monkeypatch.chdir(tmp_path)
 

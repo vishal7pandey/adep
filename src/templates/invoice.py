@@ -35,9 +35,7 @@ class InvoiceTemplate(Template):
     invoice_date: str = Field(description="Issue date in ISO YYYY-MM-DD format")
     due_date: str = Field(description="Payment due date in ISO YYYY-MM-DD format")
     vendor: str = Field(description="Name of the issuing company or vendor")
-    line_items: list[LineItem] = Field(
-        description="Itemized charges on the invoice"
-    )
+    line_items: list[LineItem] = Field(description="Itemized charges on the invoice")
     subtotal: float = Field(description="Sum of line item amounts before tax")
     tax: float = Field(description="Total tax charged")
     total: float = Field(description="Total amount due (subtotal + tax)")

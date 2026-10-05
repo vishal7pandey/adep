@@ -44,9 +44,7 @@ ISA_MODIFIERS = {
 }
 
 # ISA-5.1 tag pattern: function letters, optional modifier, dash, number
-_TAG_PATTERN = re.compile(
-    r"^([A-Z]{1,4})-?(\d+)$"
-)
+_TAG_PATTERN = re.compile(r"^([A-Z]{1,4})-?(\d+)$")
 
 
 def parse_isa_tag(tag: str) -> dict[str, Any]:
@@ -91,9 +89,7 @@ def parse_isa_tag(tag: str) -> dict[str, Any]:
         if len(modifier) == 1:
             modifier_meaning = ISA_MODIFIERS.get(modifier, "Unknown")
         else:
-            modifier_meaning = "+".join(
-                ISA_MODIFIERS.get(m, "Unknown") for m in modifier
-            )
+            modifier_meaning = "+".join(ISA_MODIFIERS.get(m, "Unknown") for m in modifier)
 
     return {
         "tag": tag,

@@ -25,6 +25,5 @@ class UtilityBillTemplate(Template):
     amount_due: float = Field(description="Total amount due")
     due_date: str = Field(description="Payment due date (YYYY-MM-DD)")
     consumption_history: list[dict] = Field(
-        description="12-month consumption history from chart: "
-        "[{'month': 'Jan', 'usage': 350}, ...]"
+        description="12-month consumption history from chart: [{'month': 'Jan', 'usage': 350}, ...]"
     )

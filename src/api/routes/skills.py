@@ -14,19 +14,24 @@ router = APIRouter(tags=["skills"])
 
 class ProbeStep(BaseModel):
     """A single probe step in a skill's probe order."""
+
     region_type: str = Field(description="Region type to probe")
     rationale: str = Field(description="Why this region is probed")
 
 
 class InvariantSpec(BaseModel):
     """Declarative invariant specification (metadata only, not executable)."""
+
     name: str = Field(description="Invariant name")
-    fields: list[str] = Field(default_factory=list, description="Field paths this invariant depends on")
+    fields: list[str] = Field(
+        default_factory=list, description="Field paths this invariant depends on"
+    )
     description: str = Field(default="", description="What this invariant checks")
 
 
 class CreateSkillRequest(BaseModel):
     """Request body for creating a skill [BLK-121]."""
+
     id: str = Field(description="Unique skill identifier")
     name: str
     description: str = ""
@@ -48,6 +53,7 @@ class UpdateSkillRequest(BaseModel):
     All fields optional — only provided fields are updated.
     Fields not in the request are preserved.
     """
+
     name: str | None = None
     description: str | None = None
     system_prompt: str | None = None
@@ -80,9 +86,9 @@ async def list_skills(
     if q:
         q_lower = q.lower()
         items = [
-            s for s in items
-            if q_lower in s.get("name", "").lower()
-            or q_lower in s.get("description", "").lower()
+            s
+            for s in items
+            if q_lower in s.get("name", "").lower() or q_lower in s.get("description", "").lower()
         ]
 
     if tool:
@@ -138,6 +144,7 @@ async def delete_skill(skill_id: str) -> Response:
 
 class VerifySkillRequest(BaseModel):
     """Request body for Surrogate Verifier [BLK-070]."""
+
     trace: list[dict[str, Any]] = Field(default_factory=list, description="Execution trace entries")
     gap_report: dict[str, Any] = Field(default_factory=dict, description="Gap report from the run")
     extraction: dict[str, Any] = Field(default_factory=dict, description="Extracted field values")
@@ -177,19 +184,29 @@ async def verify_skill(skill_id: str, req: VerifySkillRequest) -> dict[str, Any]
 class ComposeSkillRequest(BaseModel):
     """Request body for AI Skill Composer [BLK-068]."""
 
-    description: str = Field(description="Natural language description of the document type and what to extract")
-    sample_fields: list[str] = Field(default_factory=list, description="Field names from the template schema")
-    sample_document_summary: str | None = Field(default=None, description="Optional summary of a sample document")
+    description: str = Field(
+        description="Natural language description of the document type and what to extract"
+    )
+    sample_fields: list[str] = Field(
+        default_factory=list, description="Field names from the template schema"
+    )
+    sample_document_summary: str | None = Field(
+        default=None, description="Optional summary of a sample document"
+    )
 
 
 class CoEvolveSkillRequest(BaseModel):
     """Request body for co-evolution loop [BLK-068, BLK-070]."""
 
     description: str = Field(description="Natural language description of the document type")
-    trace: list[dict[str, Any]] = Field(default_factory=list, description="Execution trace from a sample run")
+    trace: list[dict[str, Any]] = Field(
+        default_factory=list, description="Execution trace from a sample run"
+    )
     gap_report: dict[str, Any] = Field(default_factory=dict, description="Gap report from the run")
     extraction: dict[str, Any] = Field(default_factory=dict, description="Extracted field values")
-    sample_fields: list[str] = Field(default_factory=list, description="Field names from the template schema")
+    sample_fields: list[str] = Field(
+        default_factory=list, description="Field names from the template schema"
+    )
     max_iterations: int = Field(default=3, ge=1, le=10, description="Max co-evolution iterations")
 
 
@@ -239,14 +256,24 @@ class OptimizeSkillRequest(BaseModel):
     """Request body for GEPA prompt evolution [BLK-071]."""
 
     seed_skill: dict[str, Any] = Field(description="The initial skill dict to optimize")
-    traces: list[list[dict[str, Any]]] = Field(description="List of execution traces (one per sample)")
+    traces: list[list[dict[str, Any]]] = Field(
+        description="List of execution traces (one per sample)"
+    )
     gap_reports: list[dict[str, Any]] = Field(description="List of gap reports (one per sample)")
-    extractions: list[dict[str, Any]] = Field(description="List of extraction dicts (one per sample)")
+    extractions: list[dict[str, Any]] = Field(
+        description="List of extraction dicts (one per sample)"
+    )
     max_iterations: int = Field(default=10, ge=1, le=50, description="Max GEPA iterations")
     population_size: int = Field(default=6, ge=2, le=20, description="Max population size")
-    merge_probability: float = Field(default=0.2, ge=0.0, le=1.0, description="Probability of merge vs mutation")
-    convergence_threshold: float = Field(default=0.01, ge=0.0, le=1.0, description="Fitness plateau threshold")
-    token_usages: list[dict[str, int]] | None = Field(default=None, description="Per-sample token usage")
+    merge_probability: float = Field(
+        default=0.2, ge=0.0, le=1.0, description="Probability of merge vs mutation"
+    )
+    convergence_threshold: float = Field(
+        default=0.01, ge=0.0, le=1.0, description="Fitness plateau threshold"
+    )
+    token_usages: list[dict[str, int]] | None = Field(
+        default=None, description="Per-sample token usage"
+    )
     rng_seed: int | None = Field(default=None, description="Random seed for reproducibility")
 
 
@@ -279,9 +306,13 @@ async def optimize_skill(req: OptimizeSkillRequest) -> dict[str, Any]:
 class OptimizeWorkflowRequest(BaseModel):
     """Request body for MCTS workflow optimization [BLK-072]."""
 
-    seed_workflow: dict[str, Any] | None = Field(default=None, description="Seed workflow topology (defaults to standard ReAct)")
+    seed_workflow: dict[str, Any] | None = Field(
+        default=None, description="Seed workflow topology (defaults to standard ReAct)"
+    )
     max_iterations: int = Field(default=20, ge=1, le=100, description="Max MCTS iterations")
-    convergence_threshold: float = Field(default=0.005, ge=0.0, le=1.0, description="Score plateau threshold")
+    convergence_threshold: float = Field(
+        default=0.005, ge=0.0, le=1.0, description="Score plateau threshold"
+    )
     rng_seed: int | None = Field(default=None, description="Random seed for reproducibility")
 
 
@@ -313,7 +344,9 @@ class RewriteSkillRequest(BaseModel):
     definition_id: str = Field(description="Agent definition ID to analyze for rewriting")
     use_llm: bool = Field(default=True, description="Use LLM for decomposition (vs heuristic)")
     min_sample: int = Field(default=5, ge=1, description="Minimum runs to trigger analysis")
-    failure_threshold: float = Field(default=0.4, ge=0.0, le=1.0, description="Failure rate threshold")
+    failure_threshold: float = Field(
+        default=0.4, ge=0.0, le=1.0, description="Failure rate threshold"
+    )
 
 
 @router.post("/rewrite")
@@ -413,8 +446,12 @@ class OneFlowCostEstimateRequest(BaseModel):
     """Request body for OneFlow cost estimation [BLK-074]."""
 
     num_cycles: int = Field(default=10, ge=1, le=100, description="Expected number of ReAct cycles")
-    input_tokens_per_call: int = Field(default=3000, ge=1, description="Avg input tokens per LLM call")
-    output_tokens_per_call: int = Field(default=500, ge=1, description="Avg output tokens per LLM call")
+    input_tokens_per_call: int = Field(
+        default=3000, ge=1, description="Avg input tokens per LLM call"
+    )
+    output_tokens_per_call: int = Field(
+        default=500, ge=1, description="Avg output tokens per LLM call"
+    )
 
 
 @router.post("/oneflow/estimate")

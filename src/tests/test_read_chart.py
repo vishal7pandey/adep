@@ -27,12 +27,14 @@ class TestReadChartStructured:
     @patch("src.providers.vlm_azure.Grounding")
     def test_returns_structured_dict(self, mock_grounding, mock_vlm):
         """read_chart returns a dict with series, x_axis, y_axis, chart_type."""
-        mock_vlm.return_value = json.dumps({
-            "series": [{"label": "Consumption", "values": [100, 200, 150]}],
-            "x_axis": ["Jan", "Feb", "Mar"],
-            "y_axis": {"label": "kWh", "min": 0, "max": 250},
-            "chart_type": "bar",
-        })
+        mock_vlm.return_value = json.dumps(
+            {
+                "series": [{"label": "Consumption", "values": [100, 200, 150]}],
+                "x_axis": ["Jan", "Feb", "Mar"],
+                "y_axis": {"label": "kWh", "min": 0, "max": 250},
+                "chart_type": "bar",
+            }
+        )
         mock_grounding.return_value = MagicMock()
 
         result = read_chart("test.png")
@@ -48,16 +50,19 @@ class TestReadChartStructured:
     def test_grounding_set_from_image(self, mock_vlm, tmp_path: Path):
         """Grounding bbox should be set from image dimensions."""
         from PIL import Image
+
         # Create a small test image
         img_path = tmp_path / "chart.png"
         Image.new("RGB", (400, 300), "white").save(img_path)
 
-        mock_vlm.return_value = json.dumps({
-            "series": [{"label": "A", "values": [1, 2]}],
-            "x_axis": ["x", "y"],
-            "y_axis": {"label": "val", "min": 0, "max": 2},
-            "chart_type": "line",
-        })
+        mock_vlm.return_value = json.dumps(
+            {
+                "series": [{"label": "A", "values": [1, 2]}],
+                "x_axis": ["x", "y"],
+                "y_axis": {"label": "val", "min": 0, "max": 2},
+                "chart_type": "line",
+            }
+        )
 
         result = read_chart(str(img_path))
         assert result.ok is True
@@ -68,12 +73,14 @@ class TestReadChartStructured:
     @patch("src.providers.vlm_azure._call_vlm")
     def test_chart_type_hint_in_prompt(self, mock_vlm):
         """Chart type hint should be included in the VLM prompt."""
-        mock_vlm.return_value = json.dumps({
-            "series": [{"label": "A", "values": [1]}],
-            "x_axis": ["x"],
-            "y_axis": {"label": "y", "min": 0, "max": 1},
-            "chart_type": "pie",
-        })
+        mock_vlm.return_value = json.dumps(
+            {
+                "series": [{"label": "A", "values": [1]}],
+                "x_axis": ["x"],
+                "y_axis": {"label": "y", "min": 0, "max": 1},
+                "chart_type": "pie",
+            }
+        )
 
         read_chart("test.png", chart_type="pie")
         call_args = mock_vlm.call_args
@@ -83,12 +90,14 @@ class TestReadChartStructured:
     @patch("src.providers.vlm_azure._call_vlm")
     def test_question_appended_to_prompt(self, mock_vlm):
         """Optional question should be appended to the prompt."""
-        mock_vlm.return_value = json.dumps({
-            "series": [{"label": "A", "values": [1]}],
-            "x_axis": ["x"],
-            "y_axis": {"label": "y", "min": 0, "max": 1},
-            "chart_type": "bar",
-        })
+        mock_vlm.return_value = json.dumps(
+            {
+                "series": [{"label": "A", "values": [1]}],
+                "x_axis": ["x"],
+                "y_axis": {"label": "y", "min": 0, "max": 1},
+                "chart_type": "bar",
+            }
+        )
 
         read_chart("test.png", question="What is the peak value?")
         call_args = mock_vlm.call_args
@@ -147,6 +156,7 @@ class TestReadChartRegistry:
     def test_read_chart_registered(self):
         """read_chart should be in the registry when vlm_provider=azure."""
         from src.run import build_tool_registry
+
         registry = build_tool_registry()
         names = registry.names()
         assert "read_chart" in names
@@ -154,6 +164,7 @@ class TestReadChartRegistry:
     def test_read_chart_spec_has_chart_type(self):
         """ToolSpec should include chart_type in arg_schema."""
         from src.run import build_tool_registry
+
         registry = build_tool_registry()
         specs = {s.name: s for s in registry.specs()}
         assert "read_chart" in specs
@@ -162,6 +173,7 @@ class TestReadChartRegistry:
     def test_read_chart_spec_description_mentions_vlm(self):
         """ToolSpec description should mention VLM and bypassing OCR."""
         from src.run import build_tool_registry
+
         registry = build_tool_registry()
         specs = {s.name: s for s in registry.specs()}
         desc = specs["read_chart"].description.lower()
@@ -176,15 +188,17 @@ class TestReadChartMultipleSeries:
     @patch("src.providers.vlm_azure.Grounding")
     def test_multiple_series(self, mock_grounding, mock_vlm):
         """read_chart handles multiple data series."""
-        mock_vlm.return_value = json.dumps({
-            "series": [
-                {"label": "2024", "values": [100, 200, 150]},
-                {"label": "2025", "values": [120, 210, 180]},
-            ],
-            "x_axis": ["Jan", "Feb", "Mar"],
-            "y_axis": {"label": "kWh", "min": 0, "max": 250},
-            "chart_type": "stacked_area",
-        })
+        mock_vlm.return_value = json.dumps(
+            {
+                "series": [
+                    {"label": "2024", "values": [100, 200, 150]},
+                    {"label": "2025", "values": [120, 210, 180]},
+                ],
+                "x_axis": ["Jan", "Feb", "Mar"],
+                "y_axis": {"label": "kWh", "min": 0, "max": 250},
+                "chart_type": "stacked_area",
+            }
+        )
         mock_grounding.return_value = MagicMock()
 
         result = read_chart("test.png")

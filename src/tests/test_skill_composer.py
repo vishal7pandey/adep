@@ -36,6 +36,7 @@ from src.ai.skill_composer import (
 # Unit tests — validation helpers
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeName:
     def test_simple(self):
         assert _normalize_name("Invoice") == "invoice"
@@ -99,7 +100,11 @@ class TestValidateProbeOrder:
 class TestValidateInvariants:
     def test_valid_invariants(self):
         raw = [
-            {"name": "sum_check", "fields": ["subtotal", "tax", "total"], "description": "subtotal + tax == total"},
+            {
+                "name": "sum_check",
+                "fields": ["subtotal", "tax", "total"],
+                "description": "subtotal + tax == total",
+            },
         ]
         result = _validate_invariants(raw)
         assert len(result) == 1
@@ -125,8 +130,15 @@ class TestValidateInvariants:
 class TestValidateFailureActions:
     def test_fills_defaults_for_all_gap_types(self):
         result = _validate_failure_actions({})
-        for gt in ("missing", "type_error", "format_error", "ungrounded",
-                   "low_confidence", "invariant_failed", "semantic_fail"):
+        for gt in (
+            "missing",
+            "type_error",
+            "format_error",
+            "ungrounded",
+            "low_confidence",
+            "invariant_failed",
+            "semantic_fail",
+        ):
             assert gt in result
             assert len(result[gt]) > 0
 
@@ -167,6 +179,7 @@ class TestValidateConfidenceOverrides:
 # Unit tests — heuristic fallback
 # ---------------------------------------------------------------------------
 
+
 class TestHeuristicSkill:
     def test_invoice_keyword(self):
         skill = _heuristic_skill("Extract invoice fields from commercial invoices")
@@ -202,6 +215,7 @@ class TestHeuristicSkill:
 # Unit tests — generate_skill (with mocked LLM)
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateSkill:
     def test_empty_description_returns_error(self):
         result = generate_skill("")
@@ -215,7 +229,9 @@ class TestGenerateSkill:
     def test_falls_back_to_heuristic_when_no_llm(self):
         """When invoke_llm returns empty content, should fall back to heuristic."""
         with patch("src.ai.skill_composer.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             result = generate_skill("Extract invoice fields")
             assert result["name"] != ""
             assert "system_prompt" in result
@@ -251,8 +267,15 @@ class TestGenerateSkill:
             assert len(result["probe_order"]) == 1
             assert len(result["invariants"]) == 1
             # All gap types should be present (defaults filled)
-            for gt in ("missing", "type_error", "format_error", "ungrounded",
-                       "low_confidence", "invariant_failed", "semantic_fail"):
+            for gt in (
+                "missing",
+                "type_error",
+                "format_error",
+                "ungrounded",
+                "low_confidence",
+                "invariant_failed",
+                "semantic_fail",
+            ):
                 assert gt in result["failure_actions"]
             assert result["confidence_overrides"]["total"] == 0.90
             assert result["_token_usage"]["total_tokens"] == 300
@@ -271,7 +294,9 @@ class TestGenerateSkill:
 
     def test_with_sample_fields(self):
         with patch("src.ai.skill_composer.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             result = generate_skill("Extract data", sample_fields=["amount", "date"])
             # Heuristic should include sample fields in confidence overrides
             assert "amount" in result["confidence_overrides"]
@@ -281,6 +306,7 @@ class TestGenerateSkill:
 # ---------------------------------------------------------------------------
 # Unit tests — apply_skill_patch
 # ---------------------------------------------------------------------------
+
 
 class TestApplySkillPatch:
     def _base_skill(self) -> dict[str, Any]:
@@ -387,12 +413,17 @@ class TestApplySkillPatch:
 # Unit tests — co_evolve_skill
 # ---------------------------------------------------------------------------
 
+
 class TestCoEvolveSkill:
     def test_converges_immediately_when_no_diagnoses(self):
         """If verifier returns no diagnoses, co-evolution should stop after 1 iteration."""
-        with patch("src.ai.skill_composer.invoke_llm") as mock_llm, \
-             patch("src.ai.surrogate_verifier.verify_skill") as mock_verify:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.skill_composer.invoke_llm") as mock_llm,
+            patch("src.ai.surrogate_verifier.verify_skill") as mock_verify,
+        ):
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             mock_verify.return_value = {
                 "diagnoses": [],
                 "proposed_tests": [],
@@ -414,11 +445,17 @@ class TestCoEvolveSkill:
         """When verifier returns diagnoses + patches, should iterate."""
         verifier_calls = [
             {
-                "diagnoses": [{"type": "invariant", "severity": "high", "message": "Missing sum check"}],
+                "diagnoses": [
+                    {"type": "invariant", "severity": "high", "message": "Missing sum check"}
+                ],
                 "proposed_tests": [],
                 "skill_patch": {
                     "invariants_to_add": [
-                        {"name": "sum_check", "fields": ["subtotal", "tax", "total"], "description": "subtotal + tax == total"},
+                        {
+                            "name": "sum_check",
+                            "fields": ["subtotal", "tax", "total"],
+                            "description": "subtotal + tax == total",
+                        },
                     ],
                     "failure_actions_to_add": {},
                     "probe_order_adjustments": [],
@@ -433,9 +470,13 @@ class TestCoEvolveSkill:
                 "_token_usage": {"input_tokens": 30, "output_tokens": 30, "total_tokens": 60},
             },
         ]
-        with patch("src.ai.skill_composer.invoke_llm") as mock_llm, \
-             patch("src.ai.surrogate_verifier.verify_skill") as mock_verify:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.skill_composer.invoke_llm") as mock_llm,
+            patch("src.ai.surrogate_verifier.verify_skill") as mock_verify,
+        ):
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             mock_verify.side_effect = verifier_calls
             result = co_evolve_skill(
                 description="Extract invoice data",
@@ -457,16 +498,22 @@ class TestCoEvolveSkill:
             "diagnoses": [{"type": "other", "severity": "low", "message": "Issue"}],
             "proposed_tests": [],
             "skill_patch": {
-                "invariants_to_add": [{"name": "persistent_check", "fields": [], "description": ""}],
+                "invariants_to_add": [
+                    {"name": "persistent_check", "fields": [], "description": ""}
+                ],
                 "failure_actions_to_add": {},
                 "probe_order_adjustments": [],
                 "system_prompt_suggestions": "Keep improving.",
             },
             "_token_usage": {"input_tokens": 10, "output_tokens": 10, "total_tokens": 20},
         }
-        with patch("src.ai.skill_composer.invoke_llm") as mock_llm, \
-             patch("src.ai.surrogate_verifier.verify_skill") as mock_verify:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.skill_composer.invoke_llm") as mock_llm,
+            patch("src.ai.surrogate_verifier.verify_skill") as mock_verify,
+        ):
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             mock_verify.return_value = always_patch
             result = co_evolve_skill(
                 description="Extract data",
@@ -479,10 +526,15 @@ class TestCoEvolveSkill:
             assert len(result.verifier_reports) == 2
 
     def test_token_usage_accumulated(self):
-        with patch("src.ai.skill_composer.invoke_llm") as mock_llm, \
-             patch("src.ai.surrogate_verifier.verify_skill") as mock_verify:
+        with (
+            patch("src.ai.skill_composer.invoke_llm") as mock_llm,
+            patch("src.ai.surrogate_verifier.verify_skill") as mock_verify,
+        ):
             mock_llm.return_value = MagicMock(
-                content="", input_tokens=100, output_tokens=50, total_tokens=150,
+                content="",
+                input_tokens=100,
+                output_tokens=50,
+                total_tokens=150,
             )
             mock_verify.return_value = {
                 "diagnoses": [],
@@ -505,6 +557,7 @@ class TestCoEvolveSkill:
 # Integration tests — API endpoints
 # ---------------------------------------------------------------------------
 
+
 class TestSkillComposerAPI:
     @pytest.fixture
     def client(self, tmp_path) -> TestClient:
@@ -519,6 +572,7 @@ class TestSkillComposerAPI:
         config_module.settings.auth_enabled = False
 
         from src.api.main import create_app
+
         app = create_app()
         test_client = TestClient(app)
 
@@ -529,11 +583,16 @@ class TestSkillComposerAPI:
 
     def test_compose_endpoint(self, client: TestClient):
         with patch("src.ai.skill_composer.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
-            response = client.post("/api/v1/skills/compose", json={
-                "description": "Extract invoice number, date, and total from commercial invoices",
-                "sample_fields": ["invoice_number", "invoice_date", "total"],
-            })
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
+            response = client.post(
+                "/api/v1/skills/compose",
+                json={
+                    "description": "Extract invoice number, date, and total from commercial invoices",
+                    "sample_fields": ["invoice_number", "invoice_date", "total"],
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert "name" in data
@@ -542,28 +601,38 @@ class TestSkillComposerAPI:
             assert "failure_actions" in data
 
     def test_compose_endpoint_empty_description(self, client: TestClient):
-        response = client.post("/api/v1/skills/compose", json={
-            "description": "",
-        })
+        response = client.post(
+            "/api/v1/skills/compose",
+            json={
+                "description": "",
+            },
+        )
         assert response.status_code == 400
 
     def test_co_evolve_endpoint(self, client: TestClient):
-        with patch("src.ai.skill_composer.invoke_llm") as mock_llm, \
-             patch("src.ai.surrogate_verifier.verify_skill") as mock_verify:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.skill_composer.invoke_llm") as mock_llm,
+            patch("src.ai.surrogate_verifier.verify_skill") as mock_verify,
+        ):
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             mock_verify.return_value = {
                 "diagnoses": [],
                 "proposed_tests": [],
                 "skill_patch": {},
                 "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
             }
-            response = client.post("/api/v1/skills/co-evolve", json={
-                "description": "Extract invoice fields",
-                "trace": [],
-                "gap_report": {},
-                "extraction": {},
-                "max_iterations": 2,
-            })
+            response = client.post(
+                "/api/v1/skills/co-evolve",
+                json={
+                    "description": "Extract invoice fields",
+                    "trace": [],
+                    "gap_report": {},
+                    "extraction": {},
+                    "max_iterations": 2,
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert "skill" in data
