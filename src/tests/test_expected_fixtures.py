@@ -49,7 +49,10 @@ KNOWN_DEFINITION_IDS = {
 # Expected fixture count per type (minimum)
 EXPECTED_TYPES = {
     "invoices": 4,
-    "bank-statements": 2,
+    # Lowered from 2 to 1 in ADE-9: the second statement was a byte-identical copy of the first PDF with
+    # invented expected values, so it added no coverage. Raise back to 2 (ADE-10) once a genuinely
+    # different bank statement with verified expected values is added.
+    "bank-statements": 1,
     "utility-bills": 2,
     "purchase-order": 2,
     "pay-stub": 2,
@@ -128,7 +131,7 @@ class TestFixtureContent:
 
     def test_bank_statement_fixtures_have_core_fields(self, all_fixtures: list[ExpectedFixture]):
         bs_fixtures = [f for f in all_fixtures if f.definition_id == "def-bank-statement"]
-        assert len(bs_fixtures) >= 2
+        assert len(bs_fixtures) >= 1  # was 2; see ADE-9 / ADE-10 (the second one was a duplicate)
         for f in bs_fixtures:
             for field in ("bank_name", "account_number", "opening_balance", "closing_balance"):
                 assert field in f.expected, (
@@ -186,7 +189,7 @@ class TestBenchmarkSuiteWithRealFixtures:
 
     def test_load_fixtures_from_bank_statements_dir(self):
         fixtures = load_expected_fixtures(SAMPLE_DATA_DIR / "bank-statements")
-        assert len(fixtures) >= 2
+        assert len(fixtures) >= 1  # was 2; see ADE-9 / ADE-10 (the second one was a duplicate)
         for f in fixtures:
             assert f.definition_id == "def-bank-statement"
 
