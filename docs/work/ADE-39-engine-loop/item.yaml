@@ -2,7 +2,7 @@ id: ADE-39
 type: feature
 title: "Engine: the loop itself — pydantic-ai agent wiring the skill loader, budget, validation, tools and history together"
 slug: engine-loop
-status: plan-approved
+status: in-review
 risk: high
 jira: ADE-39
 branch: feature/ade-39-engine-loop
