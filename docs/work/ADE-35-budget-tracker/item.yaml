@@ -1,0 +1,17 @@
+id: ADE-35
+type: feature
+title: "Engine: budget tracker — turns/cost/time accounting with recommendations"
+slug: budget-tracker
+status: in-review
+risk: low
+jira: ADE-35
+branch: feature/ade-35-budget-tracker
+created: 2026-10-05
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: 2026-10-05
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: 2026-10-05
+pr: null
