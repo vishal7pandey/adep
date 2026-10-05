@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PidDexpiDigitizerSchema",
+  "type": "object",
+  "properties": {
+    "header": {
+      "type": "object",
+      "properties": {
+        "drawing_number": { "type": "string" },
+        "drawing_title": { "type": "string" },
+        "revision": { "type": "string" },
+        "project_name": { "type": "string" },
+        "unit_area": { "type": "string" }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tag": { "type": "string" },
+          "type": { "type": "string" },
+          "nozzles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "direction": { "type": "string" },
+                "nominal_diameter": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["id", "tag", "type"]
+      }
+    },
+    "valves": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tag": { "type": "string" },
+          "valve_type": { "type": "string" },
+          "fail_position": { "type": "string" },
+          "actuator": { "type": "string" },
+          "line_number": { "type": "string" }
+        }
+      }
+    },
+    "instruments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tag": { "type": "string" },
+          "function_code": { "type": "string" },
+          "loop_number": { "type": "string" },
+          "location": { "type": "string" },
+          "signal_to": { "type": "string" }
+        }
+      }
+    },
+    "off_page_connectors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "tag": { "type": "string" },
+          "label": { "type": "string" },
+          "direction": { "type": "string" }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "from_id": { "type": "string" },
+          "to_id": { "type": "string" },
+          "edge_type": { "type": "string" },
+          "line_number": { "type": "string" },
+          "diameter": { "type": "string" },
+          "piping_class": { "type": "string" }
+        },
+        "required": ["id", "from_id", "to_id"]
+      }
+    },
+    "dexpi_xml": {
+      "type": "string",
+      "description": "Serialized DEXPI 1.3 / Proteus XML, once to_dexpi_xml is available (ADE-14)"
+    }
+  },
+  "required": ["nodes", "edges"]
+}
