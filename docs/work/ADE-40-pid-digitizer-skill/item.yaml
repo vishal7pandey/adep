@@ -2,7 +2,7 @@ id: ADE-40
 type: feature
 title: "Engine: P&ID digitizer skill content + end-to-end vertical-slice proof on a real sample document"
 slug: pid-digitizer-skill
-status: plan-approved
+status: in-review
 risk: medium
 jira: ADE-40
 branch: feature/ade-40-pid-digitizer-skill
