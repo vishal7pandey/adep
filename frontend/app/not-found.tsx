@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { FileQuestion, ArrowLeft, Home } from 'lucide-react';
-import { AdeButton } from '@/components/ui/AdeButton';
+import { Button } from '@/components/ui/Button';
 
 export default function NotFound() {
   return (
@@ -22,9 +22,9 @@ export default function NotFound() {
 
       <div className="pt-2">
         <Link href="/">
-          <AdeButton variant="primary">
+          <Button variant="primary">
             <Home className="w-4 h-4" /> Return to Workbench
-          </AdeButton>
+          </Button>
         </Link>
       </div>
     </div>

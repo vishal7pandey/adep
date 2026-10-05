@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Loader2, AlertCircle, Check, Plus, Trash2, Wand2 } from 'lucide-react';
 import { generateTemplate, GeneratedTemplate, ApiError } from '@/lib/api';
-import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 interface AiTemplateComposerProps {
   onApply: (template: GeneratedTemplate) => void;
@@ -230,10 +230,10 @@ export const AiTemplateComposer: React.FC<AiTemplateComposerProps> = ({ onApply,
 
               {/* Field count badge */}
               <div className="flex items-center gap-2">
-                <AdeBadge variant="info">{generated.fields.length} Fields</AdeBadge>
-                <AdeBadge variant="tool">
+                <Badge variant="info">{generated.fields.length} Fields</Badge>
+                <Badge variant="tool">
                   {generated.fields.filter((f) => f.required).length} Required
-                </AdeBadge>
+                </Badge>
               </div>
 
               {/* Editable fields */}
@@ -312,9 +312,9 @@ export const AiTemplateComposer: React.FC<AiTemplateComposerProps> = ({ onApply,
                   </div>
                 ))}
 
-                <AdeButton variant="secondary" size="sm" onClick={addField}>
+                <Button variant="secondary" size="sm" onClick={addField}>
                   <Plus className="w-3.5 h-3.5" /> Add Field
-                </AdeButton>
+                </Button>
               </div>
             </>
           )}
@@ -328,11 +328,11 @@ export const AiTemplateComposer: React.FC<AiTemplateComposerProps> = ({ onApply,
               : 'The AI generates a draft schema for you to review and refine'}
           </div>
           <div className="flex items-center gap-2">
-            <AdeButton variant="tertiary" size="sm" onClick={onClose}>
+            <Button variant="tertiary" size="sm" onClick={onClose}>
               Cancel
-            </AdeButton>
+            </Button>
             {!generated && (
-              <AdeButton
+              <Button
                 variant="primary"
                 size="sm"
                 onClick={handleGenerate}
@@ -347,20 +347,20 @@ export const AiTemplateComposer: React.FC<AiTemplateComposerProps> = ({ onApply,
                     <Wand2 className="w-3.5 h-3.5" /> Generate
                   </>
                 )}
-              </AdeButton>
+              </Button>
             )}
             {generated && (
               <>
-                <AdeButton
+                <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => { setGenerated(null); setError(null); }}
                 >
                   Start Over
-                </AdeButton>
-                <AdeButton variant="primary" size="sm" onClick={handleApply}>
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleApply}>
                   <Check className="w-3.5 h-3.5" /> Apply to Editor
-                </AdeButton>
+                </Button>
               </>
             )}
           </div>

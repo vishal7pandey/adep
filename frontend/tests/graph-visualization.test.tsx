@@ -15,10 +15,10 @@ vi.mock('@/context/ActiveHighlightContext', () => ({
   }),
 }));
 
-// Mock AdeBadge to simplify assertions
-vi.mock('@/components/ui/AdeBadge', () => ({
-  AdeBadge: ({ children }: { children: React.ReactNode }) => (
-    <span data-testid="adep-badge">{children}</span>
+// Mock Badge to simplify assertions
+vi.mock('@/components/ui/Badge', () => ({
+  Badge: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid="badge">{children}</span>
   ),
 }));
 
