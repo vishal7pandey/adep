@@ -40,8 +40,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 DEFAULT_FAILURE_THRESHOLD = 0.4  # Trigger rewriting when >40% of runs fail
-DEFAULT_MIN_SAMPLE_SIZE = 5      # Need at least 5 runs to trigger
-DEFAULT_SLIDING_WINDOW = 20      # Look at last 20 runs
+DEFAULT_MIN_SAMPLE_SIZE = 5  # Need at least 5 runs to trigger
+DEFAULT_SLIDING_WINDOW = 20  # Look at last 20 runs
 
 
 # ---------------------------------------------------------------------------
@@ -139,7 +139,9 @@ def analyze_failures(
     if len(runs) < min_sample:
         logger.debug(
             "Skipping failure analysis for %s: only %d runs (need %d)",
-            definition_id, len(runs), min_sample,
+            definition_id,
+            len(runs),
+            min_sample,
         )
         return None
 
@@ -149,7 +151,9 @@ def analyze_failures(
     if failure_rate < failure_threshold:
         logger.debug(
             "Failure rate %.2f for %s below threshold %.2f",
-            failure_rate, definition_id, failure_threshold,
+            failure_rate,
+            definition_id,
+            failure_threshold,
         )
         return None
 
@@ -255,31 +259,32 @@ def decompose_skill(
     Returns:
         RewriteResult with decomposed sub-skills and rewritten skill.
     """
-    field_list = template_fields or list(
-        skill.get("confidence_overrides", {}).keys()
-    )
+    field_list = template_fields or list(skill.get("confidence_overrides", {}).keys())
     if not field_list:
         # Try to infer from probe order or system prompt
         field_list = [p.get("region_type", "") for p in skill.get("probe_order", [])]
 
-    user_prompt = json.dumps({
-        "skill_name": skill.get("name", "unknown"),
-        "skill_description": skill.get("description", ""),
-        "system_prompt": skill.get("system_prompt", ""),
-        "probe_order": skill.get("probe_order", []),
-        "invariants": skill.get("invariants", []),
-        "failure_actions": skill.get("failure_actions", {}),
-        "confidence_overrides": skill.get("confidence_overrides", {}),
-        "template_fields": field_list,
-        "failure_analysis": {
-            "failure_rate": failure_pattern.failure_rate,
-            "total_runs": failure_pattern.total_runs,
-            "failed_runs": failure_pattern.failed_runs,
-            "gap_type_counts": failure_pattern.gap_type_counts,
-            "failing_fields": failure_pattern.failing_fields,
-            "avg_cycles_per_run": failure_pattern.avg_cycles_per_run,
+    user_prompt = json.dumps(
+        {
+            "skill_name": skill.get("name", "unknown"),
+            "skill_description": skill.get("description", ""),
+            "system_prompt": skill.get("system_prompt", ""),
+            "probe_order": skill.get("probe_order", []),
+            "invariants": skill.get("invariants", []),
+            "failure_actions": skill.get("failure_actions", {}),
+            "confidence_overrides": skill.get("confidence_overrides", {}),
+            "template_fields": field_list,
+            "failure_analysis": {
+                "failure_rate": failure_pattern.failure_rate,
+                "total_runs": failure_pattern.total_runs,
+                "failed_runs": failure_pattern.failed_runs,
+                "gap_type_counts": failure_pattern.gap_type_counts,
+                "failing_fields": failure_pattern.failing_fields,
+                "avg_cycles_per_run": failure_pattern.avg_cycles_per_run,
+            },
         },
-    }, indent=2)
+        indent=2,
+    )
 
     try:
         response = invoke_llm(
@@ -300,7 +305,7 @@ def decompose_skill(
         result = json.loads(response)
     except json.JSONDecodeError:
         # Try to extract JSON from response
-        match = re.search(r'\{[\s\S]*\}', response)
+        match = re.search(r"\{[\s\S]*\}", response)
         if match:
             try:
                 result = json.loads(match.group())
@@ -322,14 +327,16 @@ def decompose_skill(
     # Parse sub-skills
     sub_skills = []
     for ss in result.get("sub_skills", []):
-        sub_skills.append(SubSkill(
-            name=ss.get("name", "unknown"),
-            description=ss.get("description", ""),
-            system_prompt=ss.get("system_prompt", ""),
-            field_subset=ss.get("field_subset", []),
-            probe_order=ss.get("probe_order", []),
-            validation_criteria=ss.get("validation_criteria", []),
-        ))
+        sub_skills.append(
+            SubSkill(
+                name=ss.get("name", "unknown"),
+                description=ss.get("description", ""),
+                system_prompt=ss.get("system_prompt", ""),
+                field_subset=ss.get("field_subset", []),
+                probe_order=ss.get("probe_order", []),
+                validation_criteria=ss.get("validation_criteria", []),
+            )
+        )
 
     # Build rewritten skill dict
     rewritten = dict(skill)
@@ -381,9 +388,7 @@ def heuristic_decompose(
     Returns:
         RewriteResult with heuristic sub-skills.
     """
-    field_list = template_fields or list(
-        skill.get("confidence_overrides", {}).keys()
-    )
+    field_list = template_fields or list(skill.get("confidence_overrides", {}).keys())
     if not field_list:
         field_list = [p.get("region_type", "") for p in skill.get("probe_order", [])]
 
@@ -397,44 +402,49 @@ def heuristic_decompose(
 
     # Group 1: Failing fields (each gets focused attention)
     if failing_fields:
-        sub_skills.append(SubSkill(
-            name="extract_failing_fields",
-            description=f"Focused extraction of frequently failing fields: {', '.join(failing_fields)}",
-            system_prompt=(
-                f"You are extracting specific fields that have been failing: {', '.join(failing_fields)}. "
-                "Focus on these fields with maximum attention. Use VLM for any ambiguous regions. "
-                "Double-check grounding for every value extracted."
-            ),
-            field_subset=list(failing_fields),
-            probe_order=[
-                {"region_type": "full_page", "rationale": "Scan entire page for failing fields"},
-            ],
-            validation_criteria=[
-                f"Field '{f}' must have a non-empty value" for f in failing_fields
-            ],
-        ))
+        sub_skills.append(
+            SubSkill(
+                name="extract_failing_fields",
+                description=f"Focused extraction of frequently failing fields: {', '.join(failing_fields)}",
+                system_prompt=(
+                    f"You are extracting specific fields that have been failing: {', '.join(failing_fields)}. "
+                    "Focus on these fields with maximum attention. Use VLM for any ambiguous regions. "
+                    "Double-check grounding for every value extracted."
+                ),
+                field_subset=list(failing_fields),
+                probe_order=[
+                    {
+                        "region_type": "full_page",
+                        "rationale": "Scan entire page for failing fields",
+                    },
+                ],
+                validation_criteria=[
+                    f"Field '{f}' must have a non-empty value" for f in failing_fields
+                ],
+            )
+        )
 
     # Group 2: Remaining fields (split into chunks of 3-5)
     remaining = [f for f in field_list if f not in failing_fields]
     chunk_size = 4
     for i in range(0, len(remaining), chunk_size):
-        chunk = remaining[i:i + chunk_size]
+        chunk = remaining[i : i + chunk_size]
         if not chunk:
             continue
-        sub_skills.append(SubSkill(
-            name=f"extract_fields_group_{i // chunk_size + 1}",
-            description=f"Extract fields: {', '.join(chunk)}",
-            system_prompt=(
-                f"You are extracting these fields: {', '.join(chunk)}. "
-                "Use OCR for text fields and VLM for complex regions. "
-                "Ensure every value has proper grounding."
-            ),
-            field_subset=chunk,
-            probe_order=skill.get("probe_order", [])[:3],
-            validation_criteria=[
-                f"Field '{f}' must be grounded with a bbox" for f in chunk
-            ],
-        ))
+        sub_skills.append(
+            SubSkill(
+                name=f"extract_fields_group_{i // chunk_size + 1}",
+                description=f"Extract fields: {', '.join(chunk)}",
+                system_prompt=(
+                    f"You are extracting these fields: {', '.join(chunk)}. "
+                    "Use OCR for text fields and VLM for complex regions. "
+                    "Ensure every value has proper grounding."
+                ),
+                field_subset=chunk,
+                probe_order=skill.get("probe_order", [])[:3],
+                validation_criteria=[f"Field '{f}' must be grounded with a bbox" for f in chunk],
+            )
+        )
 
     # Build rewritten skill
     rewritten = dict(skill)
@@ -496,9 +506,7 @@ def rewrite_failing_skill(
     Returns:
         RewriteResult if rewriting was triggered, None if no action needed.
     """
-    pattern = analyze_failures(
-        definition_id, runs, min_sample, failure_threshold
-    )
+    pattern = analyze_failures(definition_id, runs, min_sample, failure_threshold)
     if pattern is None:
         return None
 

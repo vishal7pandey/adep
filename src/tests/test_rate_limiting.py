@@ -35,6 +35,7 @@ from src.api.rate_limit import (
 # TokenBucket unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestTokenBucket:
     """Token bucket core logic [BLK-123]."""
 
@@ -85,8 +86,10 @@ class TestTokenBucket:
 # RateLimiter unit tests
 # ---------------------------------------------------------------------------
 
-def _make_request(method: str = "GET", path: str = "/api/v1/runs",
-                  api_key=None, client_ip: str = "127.0.0.1") -> MagicMock:
+
+def _make_request(
+    method: str = "GET", path: str = "/api/v1/runs", api_key=None, client_ip: str = "127.0.0.1"
+) -> MagicMock:
     """Create a mock Request for rate limiting tests."""
     request = MagicMock(spec=Request)
     request.method = method
@@ -206,6 +209,7 @@ class TestRateLimiter:
 # SSE concurrency cap tests
 # ---------------------------------------------------------------------------
 
+
 class TestSSEConcurrency:
     """Concurrent SSE cap with slot release [BLK-123]."""
 
@@ -268,6 +272,7 @@ class TestSSEConcurrency:
 # Idle bucket eviction tests
 # ---------------------------------------------------------------------------
 
+
 class TestBucketEviction:
     """Idle bucket eviction [BLK-123]."""
 
@@ -312,12 +317,14 @@ class TestBucketEviction:
 # Integration tests with FastAPI
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimitMiddleware:
     """Integration: rate limiting middleware with FastAPI [BLK-123]."""
 
     def _create_app(self, enabled: bool = True) -> FastAPI:
         """Create a test app with rate limiting enabled."""
         from src.config import settings
+
         original = settings.rate_limit_enabled
         settings.rate_limit_enabled = enabled
 
@@ -400,16 +407,19 @@ class TestRateLimitMiddleware:
 # Config tests
 # ---------------------------------------------------------------------------
 
+
 class TestRateLimitConfig:
     """Config settings [BLK-123]."""
 
     def test_rate_limit_enabled_by_default(self):
         from src.config import Settings
+
         s = Settings()
         assert s.rate_limit_enabled is True  # secure by default [SCRUM-63]
 
     def test_tier_limits_have_defaults(self):
         from src.config import Settings
+
         s = Settings()
         assert s.rate_limit_post_runs_per_min == 10
         assert s.rate_limit_post_documents_per_min == 20
@@ -419,5 +429,6 @@ class TestRateLimitConfig:
 
     def test_eviction_interval_default(self):
         from src.config import Settings
+
         s = Settings()
         assert s.rate_limit_eviction_interval_seconds == 300

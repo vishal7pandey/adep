@@ -84,8 +84,8 @@ def _every_valve_connected(e: dict) -> tuple[bool, str]:
     # Check at least one connection to a pipe
     for vid in valve_ids:
         has_pipe = any(
-            (edge["source"] == vid and edge["target"] in pipe_ids) or
-            (edge["target"] == vid and edge["source"] in pipe_ids)
+            (edge["source"] == vid and edge["target"] in pipe_ids)
+            or (edge["target"] == vid and edge["source"] in pipe_ids)
             for edge in edges
         )
         if not has_pipe:
@@ -123,7 +123,8 @@ def _control_loop_completeness(e: dict) -> tuple[bool, str]:
     edges = g.get("edges", [])
     # Find controllers (instruments with 'C' in tag function letters)
     controllers = [
-        n for n in nodes
+        n
+        for n in nodes
         if n.get("type") == "instrument" and n.get("tag") and "C" in n["tag"].split("-")[0]
     ]
     if not controllers:
@@ -133,15 +134,14 @@ def _control_loop_completeness(e: dict) -> tuple[bool, str]:
         ctrl_id = ctrl["id"]
         # Check for upstream sensor (instrument with T as second letter, e.g. FT, PT, LT)
         has_sensor = any(
-            edge["target"] == ctrl_id and
-            node_map.get(edge["source"], {}).get("type") == "instrument" and
-            _is_sensor_tag(node_map.get(edge["source"], {}).get("tag", ""))
+            edge["target"] == ctrl_id
+            and node_map.get(edge["source"], {}).get("type") == "instrument"
+            and _is_sensor_tag(node_map.get(edge["source"], {}).get("tag", ""))
             for edge in edges
         )
         # Check for downstream final element (valve)
         has_final = any(
-            edge["source"] == ctrl_id and
-            node_map.get(edge["target"], {}).get("type") == "valve"
+            edge["source"] == ctrl_id and node_map.get(edge["target"], {}).get("type") == "valve"
             for edge in edges
         )
         if not has_sensor or not has_final:

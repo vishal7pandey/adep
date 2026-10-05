@@ -25,15 +25,19 @@ router = APIRouter(tags=["api-keys"])
 
 class CreateKeyRequest(BaseModel):
     """Request body for creating an API key."""
+
     name: str = Field(description="Human-readable label for the key")
     scopes: list[str] = Field(default_factory=list, description="Scopes granted to this key")
     expires_at: str | None = Field(default=None, description="ISO 8601 expiry timestamp")
     budget_daily_tokens: int | None = Field(default=None, description="Per-key daily token budget")
-    budget_daily_cost_usd: float | None = Field(default=None, description="Per-key daily cost budget")
+    budget_daily_cost_usd: float | None = Field(
+        default=None, description="Per-key daily cost budget"
+    )
 
 
 class UpdateKeyRequest(BaseModel):
     """Request body for updating an API key."""
+
     name: str | None = None
     scopes: list[str] | None = None
     expires_at: str | None = None
@@ -44,6 +48,7 @@ class UpdateKeyRequest(BaseModel):
 
 class KeyResponse(BaseModel):
     """Response model for an API key (never includes the hash or secret)."""
+
     key_id: str
     name: str
     scopes: list[str]
@@ -57,6 +62,7 @@ class KeyResponse(BaseModel):
 
 class CreateKeyResponse(KeyResponse):
     """Response for key creation — includes the raw secret (shown once)."""
+
     secret: str = Field(description="Raw API key secret — shown only once")
 
 

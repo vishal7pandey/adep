@@ -15,6 +15,8 @@ class StoreAuditTemplate(Template):
     inspector_name: str = Field(description="Name of the auditor/inspector")
     cleanliness_score: int = Field(description="Cleanliness rating on 1-5 scale")
     compliance_items: list[bool] = Field(description="Boolean pass/fail for each checklist item")
-    photo_evidence_count: int = Field(default=0, description="Number of photos/figures in the report")
+    photo_evidence_count: int = Field(
+        default=0, description="Number of photos/figures in the report"
+    )
     violations: list[str] = Field(default_factory=list, description="List of identified violations")
     overall_pass: bool = Field(description="Derived: true if all mandatory items pass")

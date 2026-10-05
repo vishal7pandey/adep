@@ -3,12 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { 
-  Sparkles, 
-  Database, 
-  Sun, 
-  Moon, 
-  ChevronLeft, 
+import {
+  Sparkles,
+  Database,
+  Sun,
+  Moon,
+  ChevronLeft,
   ChevronRight,
   Layers,
   ShieldCheck,

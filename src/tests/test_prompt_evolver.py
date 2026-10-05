@@ -40,6 +40,7 @@ from src.ai.prompt_evolver import (
 # Test fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_skill(name: str = "test", system_prompt: str = "Extract data.") -> dict[str, Any]:
     return {
         "name": name,
@@ -56,7 +57,13 @@ def _make_skill(name: str = "test", system_prompt: str = "Extract data.") -> dic
 
 def _make_trace(steps: int = 3) -> list[dict[str, Any]]:
     return [
-        {"step": i + 1, "tool_name": "ocr", "thought": f"Step {i+1}", "tool_args": {}, "result": "ok"}
+        {
+            "step": i + 1,
+            "tool_name": "ocr",
+            "thought": f"Step {i + 1}",
+            "tool_args": {},
+            "result": "ok",
+        }
         for i in range(steps)
     ]
 
@@ -65,20 +72,22 @@ def _make_gap_report(satisfied: int = 3, gaps: int = 1) -> dict[str, Any]:
     return {
         "total_fields": satisfied + gaps,
         "satisfied": [{"field": f"field_{i}"} for i in range(satisfied)],
-        "gaps": [{"field": f"gap_{i}", "gap_type": "missing", "detail": "Not found"} for i in range(gaps)],
+        "gaps": [
+            {"field": f"gap_{i}", "gap_type": "missing", "detail": "Not found"} for i in range(gaps)
+        ],
     }
 
 
 def _make_extraction(fields: int = 3) -> dict[str, Any]:
     return {
-        f"field_{i}": {"value": f"val_{i}", "confidence": 0.85 + i * 0.03}
-        for i in range(fields)
+        f"field_{i}": {"value": f"val_{i}", "confidence": 0.85 + i * 0.03} for i in range(fields)
     }
 
 
 # ---------------------------------------------------------------------------
 # Unit tests — Candidate
 # ---------------------------------------------------------------------------
+
 
 class TestCandidate:
     def test_fitness_default(self):
@@ -88,7 +97,12 @@ class TestCandidate:
     def test_fitness_with_scores(self):
         c = Candidate(
             skill={},
-            scores={"field_coverage": 0.8, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.2},
+            scores={
+                "field_coverage": 0.8,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.2,
+            },
         )
         # 0.8*0.4 + 0.9*0.3 + 0.01*0.2 - 0.2*0.1 = 0.32 + 0.27 + 0.002 - 0.02 = 0.572
         assert abs(c.fitness() - 0.572) < 0.001
@@ -114,6 +128,7 @@ class TestCandidate:
 # ---------------------------------------------------------------------------
 # Unit tests — Evaluation
 # ---------------------------------------------------------------------------
+
 
 class TestEvaluateCandidate:
     def test_basic_evaluation(self):
@@ -168,39 +183,136 @@ class TestEvaluateCandidate:
 # Unit tests — Pareto front
 # ---------------------------------------------------------------------------
 
+
 class TestDominates:
     def test_a_dominates_b(self):
-        a = Candidate(skill={}, scores={"field_coverage": 0.9, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.1})
-        b = Candidate(skill={}, scores={"field_coverage": 0.5, "avg_confidence": 0.7, "token_efficiency": 0.005, "gap_severity": 0.3})
+        a = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.9,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        b = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.5,
+                "avg_confidence": 0.7,
+                "token_efficiency": 0.005,
+                "gap_severity": 0.3,
+            },
+        )
         assert _dominates(a, b)
 
     def test_b_does_not_dominate_a(self):
-        a = Candidate(skill={}, scores={"field_coverage": 0.9, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.1})
-        b = Candidate(skill={}, scores={"field_coverage": 0.5, "avg_confidence": 0.7, "token_efficiency": 0.005, "gap_severity": 0.3})
+        a = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.9,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        b = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.5,
+                "avg_confidence": 0.7,
+                "token_efficiency": 0.005,
+                "gap_severity": 0.3,
+            },
+        )
         assert not _dominates(b, a)
 
     def test_non_dominated(self):
-        a = Candidate(skill={}, scores={"field_coverage": 0.9, "avg_confidence": 0.7, "token_efficiency": 0.01, "gap_severity": 0.1})
-        b = Candidate(skill={}, scores={"field_coverage": 0.5, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.1})
+        a = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.9,
+                "avg_confidence": 0.7,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        b = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.5,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
         assert not _dominates(a, b)
         assert not _dominates(b, a)
 
     def test_equal_scores_no_domination(self):
-        a = Candidate(skill={}, scores={"field_coverage": 0.8, "avg_confidence": 0.8, "token_efficiency": 0.01, "gap_severity": 0.1})
-        b = Candidate(skill={}, scores={"field_coverage": 0.8, "avg_confidence": 0.8, "token_efficiency": 0.01, "gap_severity": 0.1})
+        a = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.8,
+                "avg_confidence": 0.8,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        b = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.8,
+                "avg_confidence": 0.8,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
         assert not _dominates(a, b)
 
 
 class TestComputeParetoRanks:
     def test_single_candidate(self):
-        c = Candidate(skill={}, scores={"field_coverage": 0.8, "avg_confidence": 0.8, "token_efficiency": 0.01, "gap_severity": 0.1})
+        c = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.8,
+                "avg_confidence": 0.8,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
         _compute_pareto_ranks([c])
         assert c.pareto_rank == 0
 
     def test_two_fronts(self):
-        a = Candidate(skill={}, scores={"field_coverage": 0.9, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.1})
-        b = Candidate(skill={}, scores={"field_coverage": 0.9, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.1})
-        c = Candidate(skill={}, scores={"field_coverage": 0.5, "avg_confidence": 0.5, "token_efficiency": 0.005, "gap_severity": 0.3})
+        a = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.9,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        b = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.9,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        c = Candidate(
+            skill={},
+            scores={
+                "field_coverage": 0.5,
+                "avg_confidence": 0.5,
+                "token_efficiency": 0.005,
+                "gap_severity": 0.3,
+            },
+        )
         _compute_pareto_ranks([a, b, c])
         assert a.pareto_rank == 0
         assert b.pareto_rank == 0
@@ -209,11 +321,28 @@ class TestComputeParetoRanks:
 
 class TestSelectFromPareto:
     def test_selects_from_best_front(self):
-        a = Candidate(skill={"name": "a"}, scores={"field_coverage": 0.9, "avg_confidence": 0.9, "token_efficiency": 0.01, "gap_severity": 0.1})
-        b = Candidate(skill={"name": "b"}, scores={"field_coverage": 0.5, "avg_confidence": 0.5, "token_efficiency": 0.005, "gap_severity": 0.3})
+        a = Candidate(
+            skill={"name": "a"},
+            scores={
+                "field_coverage": 0.9,
+                "avg_confidence": 0.9,
+                "token_efficiency": 0.01,
+                "gap_severity": 0.1,
+            },
+        )
+        b = Candidate(
+            skill={"name": "b"},
+            scores={
+                "field_coverage": 0.5,
+                "avg_confidence": 0.5,
+                "token_efficiency": 0.005,
+                "gap_severity": 0.3,
+            },
+        )
         _compute_pareto_ranks([a, b])
 
         import random
+
         rng = random.Random(42)
         selected = _select_from_pareto([a, b], rng)
         assert selected.pareto_rank == 0
@@ -226,6 +355,7 @@ class TestSelectFromPareto:
 # ---------------------------------------------------------------------------
 # Unit tests — Reflection
 # ---------------------------------------------------------------------------
+
 
 class TestReflect:
     def test_reflect_with_llm(self):
@@ -241,14 +371,18 @@ class TestReflect:
 
         mock_reflection = {
             "lessons": ["Add more specific probe order", "Improve failure actions"],
-            "diagnoses": [{"type": "system_prompt", "severity": "high", "message": "Too vague", "field": ""}],
+            "diagnoses": [
+                {"type": "system_prompt", "severity": "high", "message": "Too vague", "field": ""}
+            ],
             "proposed_mutations": {"system_prompt_hint": "Be more specific"},
         }
 
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps(mock_reflection),
-                input_tokens=100, output_tokens=200, total_tokens=300,
+                input_tokens=100,
+                output_tokens=200,
+                total_tokens=300,
             )
             result = _reflect(candidate, eval_result)
 
@@ -261,7 +395,9 @@ class TestReflect:
         eval_result = EvaluationResult(scores={}, side_info="No data")
 
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             result = _reflect(candidate, eval_result)
 
             assert result["lessons"] == []
@@ -272,7 +408,9 @@ class TestReflect:
         eval_result = EvaluationResult(scores={}, side_info="No data")
 
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="not json", input_tokens=10, output_tokens=20, total_tokens=30)
+            mock_llm.return_value = MagicMock(
+                content="not json", input_tokens=10, output_tokens=20, total_tokens=30
+            )
             result = _reflect(candidate, eval_result)
 
             assert result["lessons"] == []
@@ -281,6 +419,7 @@ class TestReflect:
 # ---------------------------------------------------------------------------
 # Unit tests — Mutation
 # ---------------------------------------------------------------------------
+
 
 class TestMutate:
     def test_mutate_with_llm(self):
@@ -295,7 +434,9 @@ class TestMutate:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps(mutated_skill),
-                input_tokens=100, output_tokens=200, total_tokens=300,
+                input_tokens=100,
+                output_tokens=200,
+                total_tokens=300,
             )
             new_skill, tu = _mutate(candidate, reflection)
 
@@ -307,7 +448,9 @@ class TestMutate:
         reflection = {"lessons": [], "proposed_mutations": {}}
 
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             new_skill, tu = _mutate(candidate, reflection)
 
             assert new_skill["system_prompt"] == "Original"
@@ -322,7 +465,9 @@ class TestMutate:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps(partial),
-                input_tokens=0, output_tokens=0, total_tokens=0,
+                input_tokens=0,
+                output_tokens=0,
+                total_tokens=0,
             )
             new_skill, _ = _mutate(candidate, reflection)
 
@@ -336,6 +481,7 @@ class TestMutate:
 # ---------------------------------------------------------------------------
 # Unit tests — Merge
 # ---------------------------------------------------------------------------
+
 
 class TestHeuristicMerge:
     def test_merges_tool_preferences(self):
@@ -396,7 +542,9 @@ class TestMergeCandidates:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps(merged_skill),
-                input_tokens=50, output_tokens=100, total_tokens=150,
+                input_tokens=50,
+                output_tokens=100,
+                total_tokens=150,
             )
             result, tu = _merge_candidates(a, b)
 
@@ -408,7 +556,9 @@ class TestMergeCandidates:
         b = Candidate(skill=_make_skill(name="b"), scores={})
 
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             result, _ = _merge_candidates(a, b)
 
             # Heuristic merge should have union of tool_preferences
@@ -418,6 +568,7 @@ class TestMergeCandidates:
 # ---------------------------------------------------------------------------
 # Unit tests — optimize_skill (full loop)
 # ---------------------------------------------------------------------------
+
 
 class TestOptimizeSkill:
     def test_empty_seed_returns_empty(self):
@@ -435,8 +586,12 @@ class TestOptimizeSkill:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             # Reflection returns lessons, mutation returns same skill (no improvement)
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"lessons": ["lesson"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {"lessons": ["lesson"], "diagnoses": [], "proposed_mutations": {}}
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -460,8 +615,12 @@ class TestOptimizeSkill:
         """Test that the loop stops when fitness plateaus."""
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"lessons": ["lesson"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {"lessons": ["lesson"], "diagnoses": [], "proposed_mutations": {}}
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -481,7 +640,9 @@ class TestOptimizeSkill:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps({"lessons": ["l"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=100, output_tokens=200, total_tokens=300,
+                input_tokens=100,
+                output_tokens=200,
+                total_tokens=300,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -500,7 +661,9 @@ class TestOptimizeSkill:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps({"lessons": ["l"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -518,7 +681,9 @@ class TestOptimizeSkill:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps({"lessons": ["l"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -536,7 +701,9 @@ class TestOptimizeSkill:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps({"lessons": ["l"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -556,7 +723,9 @@ class TestOptimizeSkill:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps({"lessons": ["l"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_skill(
                 seed_skill=_make_skill(),
@@ -581,6 +750,7 @@ class TestOptimizeSkill:
 # Integration tests — API endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizeSkillAPI:
     @pytest.fixture
     def client(self, tmp_path) -> TestClient:
@@ -595,6 +765,7 @@ class TestOptimizeSkillAPI:
         config_module.settings.auth_enabled = False
 
         from src.api.main import create_app
+
         app = create_app()
         test_client = TestClient(app)
 
@@ -607,16 +778,21 @@ class TestOptimizeSkillAPI:
         with patch("src.ai.prompt_evolver.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps({"lessons": ["l"], "diagnoses": [], "proposed_mutations": {}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
-            response = client.post("/api/v1/skills/optimize", json={
-                "seed_skill": _make_skill(),
-                "traces": [_make_trace(3)],
-                "gap_reports": [_make_gap_report(3, 1)],
-                "extractions": [_make_extraction(3)],
-                "max_iterations": 2,
-                "rng_seed": 42,
-            })
+            response = client.post(
+                "/api/v1/skills/optimize",
+                json={
+                    "seed_skill": _make_skill(),
+                    "traces": [_make_trace(3)],
+                    "gap_reports": [_make_gap_report(3, 1)],
+                    "extractions": [_make_extraction(3)],
+                    "max_iterations": 2,
+                    "rng_seed": 42,
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert "best_candidate" in data
@@ -625,12 +801,15 @@ class TestOptimizeSkillAPI:
             assert "convergence_reason" in data
 
     def test_optimize_endpoint_empty_seed(self, client: TestClient):
-        response = client.post("/api/v1/skills/optimize", json={
-            "seed_skill": {},
-            "traces": [_make_trace(3)],
-            "gap_reports": [_make_gap_report(3, 1)],
-            "extractions": [_make_extraction(3)],
-        })
+        response = client.post(
+            "/api/v1/skills/optimize",
+            json={
+                "seed_skill": {},
+                "traces": [_make_trace(3)],
+                "gap_reports": [_make_gap_report(3, 1)],
+                "extractions": [_make_extraction(3)],
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["best_candidate"] is None

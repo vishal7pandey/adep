@@ -101,6 +101,7 @@ Rules:
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Candidate:
     """A candidate skill in the GEPA population.
@@ -115,6 +116,7 @@ class Candidate:
         pareto_rank: Rank on Pareto front (0 = non-dominated, lower is better).
         trace_summary: Summary of execution traces from last evaluation.
     """
+
     skill: dict[str, Any]
     scores: dict[str, float] = field(default_factory=dict)
     lessons: list[str] = field(default_factory=list)
@@ -155,6 +157,7 @@ class EvaluationResult:
         side_info: Actionable side information (ASI) — diagnostic feedback for the reflection model.
         trace_summary: Human-readable summary of execution traces.
     """
+
     scores: dict[str, float] = field(default_factory=dict)
     side_info: str = ""
     trace_summary: str = ""
@@ -173,12 +176,15 @@ class GEPAResult:
         token_usage: Total token usage across all LLM calls.
         convergence_reason: Why the loop terminated.
     """
+
     best_candidate: Candidate | None = None
     population: list[Candidate] = field(default_factory=list)
     pareto_front: list[Candidate] = field(default_factory=list)
     iterations: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
-    token_usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+    token_usage: dict[str, int] = field(
+        default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    )
     convergence_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -197,6 +203,7 @@ class GEPAResult:
 # ---------------------------------------------------------------------------
 # Evaluation — computes scores from execution data
 # ---------------------------------------------------------------------------
+
 
 def _evaluate_candidate(
     skill: dict[str, Any],
@@ -226,19 +233,29 @@ def _evaluate_candidate(
     total_tokens = 0
     trace_summaries: list[str] = []
 
-    _severity_weights = {"missing": 1.0, "invariant_failed": 0.9, "type_error": 0.7,
-                         "format_error": 0.6, "semantic_fail": 0.8, "low_confidence": 0.4,
-                         "ungrounded": 0.5}
+    _severity_weights = {
+        "missing": 1.0,
+        "invariant_failed": 0.9,
+        "type_error": 0.7,
+        "format_error": 0.6,
+        "semantic_fail": 0.8,
+        "low_confidence": 0.4,
+        "ungrounded": 0.5,
+    }
 
     for i, (trace, gap_report, extraction) in enumerate(zip(traces, gap_reports, extractions)):
         # Trace summary
         trace_len = len(trace or [])
-        trace_summaries.append(f"Sample {i+1}: {trace_len} steps")
+        trace_summaries.append(f"Sample {i + 1}: {trace_len} steps")
 
         # Gap report metrics
         gaps = _value_from(gap_report, "gaps", []) if gap_report else []
         satisfied = _value_from(gap_report, "satisfied", []) if gap_report else []
-        total_fields += _value_from(gap_report, "total_fields", len(satisfied) + len(gaps)) if gap_report else len(extraction)
+        total_fields += (
+            _value_from(gap_report, "total_fields", len(satisfied) + len(gaps))
+            if gap_report
+            else len(extraction)
+        )
         satisfied_fields += len(satisfied)
         total_gaps += len(gaps)
 
@@ -289,7 +306,7 @@ def _evaluate_candidate(
             field_name = _value_from(gap, "field", "unknown")
             gap_type = _value_from(gap, "gap_type", "other")
             detail = _value_from(gap, "detail", "")
-            side_info_parts.append(f"  Sample {i+1} gap: {field_name} ({gap_type}) — {detail}")
+            side_info_parts.append(f"  Sample {i + 1} gap: {field_name} ({gap_type}) — {detail}")
 
     return EvaluationResult(
         scores=scores,
@@ -301,6 +318,7 @@ def _evaluate_candidate(
 # ---------------------------------------------------------------------------
 # Pareto front management
 # ---------------------------------------------------------------------------
+
 
 def _dominates(a: Candidate, b: Candidate) -> bool:
     """Check if candidate a dominates candidate b (Pareto dominance).
@@ -408,6 +426,7 @@ def _select_from_pareto(candidates: list[Candidate], rng: random.Random | None =
 # Reflection — LLM reads traces and produces lessons
 # ---------------------------------------------------------------------------
 
+
 def _reflect(
     candidate: Candidate,
     eval_result: EvaluationResult,
@@ -418,7 +437,9 @@ def _reflect(
         Dict with 'lessons', 'diagnoses', and 'proposed_mutations'.
     """
     skill_json = json.dumps(candidate.skill, default=str, indent=2)
-    lessons_str = "\n".join(f"- {l}" for l in candidate.lessons) if candidate.lessons else "No prior lessons."
+    lessons_str = (
+        "\n".join(f"- {l}" for l in candidate.lessons) if candidate.lessons else "No prior lessons."
+    )
 
     user_prompt = (
         f"## Current Skill Definition\n{skill_json}\n\n"
@@ -473,6 +494,7 @@ def _reflect(
 # Mutation — LLM produces an improved skill variant
 # ---------------------------------------------------------------------------
 
+
 def _mutate(
     candidate: Candidate,
     reflection: dict[str, Any],
@@ -518,8 +540,16 @@ def _mutate(
         return candidate.skill, token_usage
 
     # Ensure required keys exist (inherit from parent if missing)
-    for key in ("name", "system_prompt", "tool_preferences", "probe_order",
-                "invariants", "failure_actions", "known_failures", "confidence_overrides"):
+    for key in (
+        "name",
+        "system_prompt",
+        "tool_preferences",
+        "probe_order",
+        "invariants",
+        "failure_actions",
+        "known_failures",
+        "confidence_overrides",
+    ):
         if key not in new_skill:
             new_skill[key] = candidate.skill.get(key)
 
@@ -622,8 +652,7 @@ def _heuristic_merge(skill_a: dict[str, Any], skill_b: dict[str, Any]) -> dict[s
 
     # Combine known_failures
     merged["known_failures"] = (
-        f"{skill_a.get('known_failures', '')}\n"
-        f"{skill_b.get('known_failures', '')}"
+        f"{skill_a.get('known_failures', '')}\n{skill_b.get('known_failures', '')}"
     ).strip()
 
     # Longer system prompt (heuristic: take the longer one as it's more detailed)
@@ -638,6 +667,7 @@ def _heuristic_merge(skill_a: dict[str, Any], skill_b: dict[str, Any]) -> dict[s
 # Utility
 # ---------------------------------------------------------------------------
 
+
 def _value_from(obj: Any, key: str, default: Any = None) -> Any:
     """Read a value from either a dict key or an object attribute."""
     if isinstance(obj, dict):
@@ -648,6 +678,7 @@ def _value_from(obj: Any, key: str, default: Any = None) -> Any:
 # ---------------------------------------------------------------------------
 # Main optimization loop
 # ---------------------------------------------------------------------------
+
 
 def optimize_skill(
     seed_skill: dict[str, Any],
@@ -705,19 +736,23 @@ def optimize_skill(
     population: list[Candidate] = [seed_candidate]
     _compute_pareto_ranks(population)
 
-    result.history.append({
-        "iteration": 0,
-        "event": "seed_evaluated",
-        "scores": seed_candidate.scores,
-        "fitness": seed_candidate.fitness(),
-    })
+    result.history.append(
+        {
+            "iteration": 0,
+            "event": "seed_evaluated",
+            "scores": seed_candidate.scores,
+            "fitness": seed_candidate.fitness(),
+        }
+    )
 
     # Track convergence
     best_fitness_history: list[float] = [seed_candidate.fitness()]
     candidate_counter = 0
 
     for iteration in range(1, max_iterations + 1):
-        logger.info("GEPA iteration %d/%d — population=%d", iteration, max_iterations, len(population))
+        logger.info(
+            "GEPA iteration %d/%d — population=%d", iteration, max_iterations, len(population)
+        )
 
         # Step 2: Select a parent from the Pareto front
         parent = _select_from_pareto(population, rng)
@@ -734,13 +769,11 @@ def optimize_skill(
         accumulated_lessons = parent.lessons + new_lessons
 
         # Step 4: Mutate or merge
-        do_merge = (rng.random() < merge_probability and len(population) >= 2)
+        do_merge = rng.random() < merge_probability and len(population) >= 2
 
         if do_merge:
             # Select a second parent from the Pareto front
-            other_parent = _select_from_pareto(
-                [c for c in population if c is not parent], rng
-            )
+            other_parent = _select_from_pareto([c for c in population if c is not parent], rng)
             if other_parent:
                 new_skill, tu = _merge_candidates(parent, other_parent)
                 event = "merge"
@@ -775,11 +808,17 @@ def optimize_skill(
 
         if new_fitness > parent_fitness:
             population.append(new_candidate)
-            logger.info("GEPA: Accepted new candidate (fitness=%.4f > parent=%.4f)",
-                       new_fitness, parent_fitness)
+            logger.info(
+                "GEPA: Accepted new candidate (fitness=%.4f > parent=%.4f)",
+                new_fitness,
+                parent_fitness,
+            )
         else:
-            logger.info("GEPA: Rejected new candidate (fitness=%.4f <= parent=%.4f)",
-                       new_fitness, parent_fitness)
+            logger.info(
+                "GEPA: Rejected new candidate (fitness=%.4f <= parent=%.4f)",
+                new_fitness,
+                parent_fitness,
+            )
             # Still keep it in the population with some probability (for diversity)
             if rng.random() < 0.3 and len(population) < population_size:
                 population.append(new_candidate)
@@ -795,17 +834,19 @@ def optimize_skill(
         # Record history
         best = max(population, key=lambda c: c.fitness())
         best_fitness_history.append(best.fitness())
-        result.history.append({
-            "iteration": iteration,
-            "event": event,
-            "parent": parent.candidate_id,
-            "new_candidate": new_candidate.candidate_id,
-            "new_scores": new_candidate.scores,
-            "new_fitness": new_fitness,
-            "accepted": new_fitness > parent_fitness,
-            "best_fitness": best.fitness(),
-            "population_size": len(population),
-        })
+        result.history.append(
+            {
+                "iteration": iteration,
+                "event": event,
+                "parent": parent.candidate_id,
+                "new_candidate": new_candidate.candidate_id,
+                "new_scores": new_candidate.scores,
+                "new_fitness": new_fitness,
+                "accepted": new_fitness > parent_fitness,
+                "best_fitness": best.fitness(),
+                "population_size": len(population),
+            }
+        )
 
         # Step 9: Check convergence
         if len(best_fitness_history) >= 4:

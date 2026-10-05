@@ -72,13 +72,15 @@ def load_expected_fixtures(fixture_dir: str | Path) -> list[ExpectedFixture]:
             if not Path(doc_path).is_absolute():
                 doc_path = str(expected_file.parent / doc_path)
 
-            fixtures.append(ExpectedFixture(
-                document_path=doc_path,
-                definition_id=data.get("definition_id", ""),
-                expected=data.get("expected", {}),
-                tolerances=data.get("tolerances", {}),
-                min_confidence=data.get("min_confidence", {}),
-            ))
+            fixtures.append(
+                ExpectedFixture(
+                    document_path=doc_path,
+                    definition_id=data.get("definition_id", ""),
+                    expected=data.get("expected", {}),
+                    tolerances=data.get("tolerances", {}),
+                    min_confidence=data.get("min_confidence", {}),
+                )
+            )
         except (json.JSONDecodeError, KeyError) as e:
             logger.error("Failed to load fixture %s: %s", expected_file, e)
 

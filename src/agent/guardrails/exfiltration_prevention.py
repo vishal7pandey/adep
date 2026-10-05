@@ -173,36 +173,44 @@ def detect_encoded_data(text: str) -> list[EncodingDetection]:
     detections: list[EncodingDetection] = []
 
     for match in BASE64_PATTERN.finditer(text):
-        detections.append(EncodingDetection(
-            encoding_type="base64",
-            matched_text=match.group()[:50] + "...",
-            start=match.start(),
-            end=match.end(),
-        ))
+        detections.append(
+            EncodingDetection(
+                encoding_type="base64",
+                matched_text=match.group()[:50] + "...",
+                start=match.start(),
+                end=match.end(),
+            )
+        )
 
     for match in HEX_PATTERN.finditer(text):
-        detections.append(EncodingDetection(
-            encoding_type="hex",
-            matched_text=match.group()[:50] + "...",
-            start=match.start(),
-            end=match.end(),
-        ))
+        detections.append(
+            EncodingDetection(
+                encoding_type="hex",
+                matched_text=match.group()[:50] + "...",
+                start=match.start(),
+                end=match.end(),
+            )
+        )
 
     for match in URL_ENCODED_PATTERN.finditer(text):
-        detections.append(EncodingDetection(
-            encoding_type="url_encoded",
-            matched_text=match.group()[:50] + "...",
-            start=match.start(),
-            end=match.end(),
-        ))
+        detections.append(
+            EncodingDetection(
+                encoding_type="url_encoded",
+                matched_text=match.group()[:50] + "...",
+                start=match.start(),
+                end=match.end(),
+            )
+        )
 
     for match in UNICODE_ESCAPE_PATTERN.finditer(text):
-        detections.append(EncodingDetection(
-            encoding_type="unicode_escape",
-            matched_text=match.group(),
-            start=match.start(),
-            end=match.end(),
-        ))
+        detections.append(
+            EncodingDetection(
+                encoding_type="unicode_escape",
+                matched_text=match.group(),
+                start=match.start(),
+                end=match.end(),
+            )
+        )
 
     return detections
 
@@ -227,7 +235,11 @@ def strip_encoded_data(text: str) -> tuple[str, list[str]]:
     # Sort by position descending for safe replacement
     detections.sort(key=lambda d: d.start, reverse=True)
     for detection in detections:
-        result = result[:detection.start] + f"[ENCODED:{detection.encoding_type}]" + result[detection.end:]
+        result = (
+            result[: detection.start]
+            + f"[ENCODED:{detection.encoding_type}]"
+            + result[detection.end :]
+        )
 
     logger.warning(
         "Encoded data stripped from LLM output: %s [BLK-086]",
@@ -249,7 +261,10 @@ def check_tool_arg_size(args: dict[str, Any]) -> tuple[bool, str]:
     for key, value in args.items():
         serialized = str(value)
         if len(serialized) > MAX_TOOL_ARG_SIZE:
-            return False, f"Argument '{key}' exceeds size limit ({len(serialized)} > {MAX_TOOL_ARG_SIZE} bytes)"
+            return (
+                False,
+                f"Argument '{key}' exceeds size limit ({len(serialized)} > {MAX_TOOL_ARG_SIZE} bytes)",
+            )
     return True, ""
 
 

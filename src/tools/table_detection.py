@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 # detect_tables
 # ---------------------------------------------------------------------------
 
+
 def detect_tables(
     image_path: str,
     region: BBox | None = None,
@@ -182,15 +183,17 @@ def _detect_ruled_tables(
                 int(col_positions[col_idx + 1] + offset_x),
                 int(row_positions[row_idx + 1] + offset_y),
             )
-            cells.append({
-                "row": row_idx,
-                "col": col_idx,
-                "row_span": 1,
-                "col_span": 1,
-                "bbox": cell_bbox,
-                "text": None,
-                "confidence": 0.95,
-            })
+            cells.append(
+                {
+                    "row": row_idx,
+                    "col": col_idx,
+                    "row_span": 1,
+                    "col_span": 1,
+                    "bbox": cell_bbox,
+                    "text": None,
+                    "confidence": 0.95,
+                }
+            )
 
     # Detect header row (first row with darker background or distinct from data)
     header_row_index = 0 if len(row_positions) > 2 else None
@@ -198,14 +201,16 @@ def _detect_ruled_tables(
     n_rows = len(row_positions) - 1
     n_cols = len(col_positions) - 1
 
-    tables = [{
-        "bbox": table_bbox,
-        "confidence": 0.92,
-        "n_rows": n_rows,
-        "n_cols": n_cols,
-        "header_row_index": header_row_index,
-        "cells": cells,
-    }]
+    tables = [
+        {
+            "bbox": table_bbox,
+            "confidence": 0.92,
+            "n_rows": n_rows,
+            "n_cols": n_cols,
+            "header_row_index": header_row_index,
+            "cells": cells,
+        }
+    ]
 
     return tables, "ruled"
 
@@ -273,15 +278,17 @@ def _detect_unruled_tables(
                 int(col_boundaries[col_idx + 1] + offset_x),
                 int(row_boundaries[row_idx + 1] + offset_y),
             )
-            cells.append({
-                "row": row_idx,
-                "col": col_idx,
-                "row_span": 1,
-                "col_span": 1,
-                "bbox": cell_bbox,
-                "text": None,
-                "confidence": 0.75,
-            })
+            cells.append(
+                {
+                    "row": row_idx,
+                    "col": col_idx,
+                    "row_span": 1,
+                    "col_span": 1,
+                    "bbox": cell_bbox,
+                    "text": None,
+                    "confidence": 0.75,
+                }
+            )
 
     table_bbox = (
         int(col_boundaries[0] + offset_x),
@@ -292,14 +299,16 @@ def _detect_unruled_tables(
 
     header_row_index = 0 if n_rows > 2 else None
 
-    tables = [{
-        "bbox": table_bbox,
-        "confidence": 0.70,
-        "n_rows": n_rows,
-        "n_cols": n_cols,
-        "header_row_index": header_row_index,
-        "cells": cells,
-    }]
+    tables = [
+        {
+            "bbox": table_bbox,
+            "confidence": 0.70,
+            "n_rows": n_rows,
+            "n_cols": n_cols,
+            "header_row_index": header_row_index,
+            "cells": cells,
+        }
+    ]
 
     return tables, "unruled"
 
@@ -360,6 +369,7 @@ def _detect_tables_vml(
 # read_table composition helper
 # ---------------------------------------------------------------------------
 
+
 def read_table_cells(
     image_path: str,
     table: dict[str, Any] | None = None,
@@ -404,6 +414,7 @@ def read_table_cells(
 
     # Determine OCR provider
     from src.config import settings
+
     ocr_func = _get_ocr_func(settings.ocr_provider)
     if ocr_func is None:
         return ToolResult(
@@ -461,9 +472,11 @@ def read_table_cells(
 # OpenCV helper functions
 # ---------------------------------------------------------------------------
 
+
 def cv2_threshold_otsu(gray: "np.ndarray") -> "np.ndarray | None":
     """Apply Otsu thresholding and return binary image."""
     import numpy as np
+
     try:
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
         return binary
@@ -557,9 +570,11 @@ def _get_ocr_func(provider: str):
     try:
         if provider == "tesseract":
             from src.providers.ocr_tesseract import ocr
+
             return ocr
         elif provider == "paddle":
             from src.providers.ocr_paddle import ocr
+
             return ocr
     except ImportError:
         return None
@@ -574,6 +589,7 @@ def _crop_and_ocr(
     """Crop a region from the image and OCR it."""
     try:
         from src.providers.image_cv import crop
+
         crop_result = crop(image_path=image_path, bbox=bbox)
         if not crop_result.ok:
             return None

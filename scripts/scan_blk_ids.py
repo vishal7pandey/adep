@@ -6,6 +6,7 @@ from pathlib import Path
 
 BLK_PATTERN = re.compile(r"BLK-(\d{3})")
 
+
 def scan_blk_ids(root: str = ".") -> dict:
     root_path = Path(root)
     all_ids = []
@@ -14,7 +15,10 @@ def scan_blk_ids(root: str = ".") -> dict:
     for ext in ("*.py", "*.ts", "*.tsx", "*.md"):
         for filepath in root_path.rglob(ext):
             # Skip common irrelevant dirs
-            if any(part in {".venv", "node_modules", "__pycache__", ".git", ".next"} for part in filepath.parts):
+            if any(
+                part in {".venv", "node_modules", "__pycache__", ".git", ".next"}
+                for part in filepath.parts
+            ):
                 continue
             try:
                 text = filepath.read_text(encoding="utf-8", errors="ignore")

@@ -29,6 +29,7 @@ from src.agent.webhooks import (
 # BLK-152: SSRF protection
 # ---------------------------------------------------------------------------
 
+
 class TestSSRFValidation:
     """Verify webhook URL validation blocks SSRF vectors [BLK-152]."""
 
@@ -93,6 +94,7 @@ class TestSSRFValidation:
     def test_dispatch_blocked_returns_no_leak(self):
         """Verify dispatch doesn't leak status codes for blocked targets."""
         from src.agent.webhooks import dispatch_webhook
+
         config = WebhookConfig(id="bad", url="https://127.0.0.1/webhook")
         result = dispatch_webhook(config, "run.completed", {"run_id": "test"})
         assert not result["delivered"]
@@ -104,11 +106,13 @@ class TestSSRFValidation:
 # BLK-153: Auth enabled by default
 # ---------------------------------------------------------------------------
 
+
 class TestAuthDefault:
     """Verify auth is enabled by default [BLK-153]."""
 
     def test_auth_enabled_default_is_true(self):
         from src.config import Settings
+
         s = Settings(_env_file=None)  # Check default, not .env override
         assert s.auth_enabled is True
 
@@ -126,6 +130,7 @@ class TestAuthDefault:
 # ---------------------------------------------------------------------------
 # BLK-154: CI pipeline uses uv
 # ---------------------------------------------------------------------------
+
 
 class TestCIPipeline:
     """Verify CI pipeline uses uv, not pip [BLK-154]."""
@@ -153,6 +158,7 @@ class TestCIPipeline:
 # BLK-155: Atomic writes
 # ---------------------------------------------------------------------------
 
+
 class TestAtomicWrites:
     """Verify atomic write helpers [BLK-155]."""
 
@@ -176,6 +182,7 @@ class TestAtomicWrites:
 
     def test_definition_store_create_uses_atomic(self, tmp_path: Path):
         from src.definitions.store import DefinitionStore
+
         store = DefinitionStore(base_dir=tmp_path / ".adep")
         store.create("definitions", "test-def", {"id": "test-def", "name": "Test"})
         data = store.read("definitions", "test-def")
@@ -187,6 +194,7 @@ class TestAtomicWrites:
 
     def test_definition_store_update_uses_atomic(self, tmp_path: Path):
         from src.definitions.store import DefinitionStore
+
         store = DefinitionStore(base_dir=tmp_path / ".adep")
         store.create("definitions", "test-def", {"id": "test-def", "name": "Test"})
         store.update("definitions", "test-def", {"id": "test-def", "name": "Updated"})
@@ -196,6 +204,7 @@ class TestAtomicWrites:
     def test_definition_store_create_atomic_excl(self, tmp_path: Path):
         """Verify O_EXCL prevents TOCTOU race in create."""
         from src.definitions.store import DefinitionStore
+
         store = DefinitionStore(base_dir=tmp_path / ".adep")
         store.create("definitions", "dup", {"id": "dup"})
         with pytest.raises(FileExistsError):

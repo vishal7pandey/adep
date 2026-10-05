@@ -140,6 +140,7 @@ def _required_scope(method: str, path: str) -> str | None:
 # API Key model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ApiKey:
     """An API key with scopes and optional per-key budgets [BLK-122].
@@ -147,6 +148,7 @@ class ApiKey:
     The raw secret is NEVER stored — only a SHA-256 hash.
     The key_id is a public identifier; the secret is presented once at creation.
     """
+
     key_id: str
     key_hash: str
     name: str
@@ -184,6 +186,7 @@ class ApiKey:
 # Key hashing (SHA-256 with constant-time comparison)
 # ---------------------------------------------------------------------------
 
+
 def _hash_secret(secret: str) -> str:
     """Hash a raw secret using SHA-256."""
     return hashlib.sha256(secret.encode("utf-8")).hexdigest()
@@ -207,6 +210,7 @@ def _generate_secret() -> str:
 # ---------------------------------------------------------------------------
 # API Key Store
 # ---------------------------------------------------------------------------
+
 
 class ApiKeyStore:
     """File-based store for API keys under .adep/api_keys/ [BLK-122].
@@ -328,6 +332,7 @@ def reset_key_store(base_dir: str | Path | None = None) -> ApiKeyStore:
 # Bootstrap
 # ---------------------------------------------------------------------------
 
+
 def bootstrap_admin_key(store: ApiKeyStore) -> str:
     """Create a bootstrap admin key if no keys exist.
 
@@ -376,6 +381,7 @@ def bootstrap_admin_key(store: ApiKeyStore) -> str:
 # Auth middleware
 # ---------------------------------------------------------------------------
 
+
 def install_auth_middleware(app: FastAPI) -> None:
     """Install the auth middleware on the FastAPI app [BLK-122].
 
@@ -421,7 +427,9 @@ def install_auth_middleware(app: FastAPI) -> None:
         if not auth_header.startswith("Bearer "):
             return JSONResponse(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Missing or invalid Authorization header. Expected: Bearer <key>"},
+                content={
+                    "detail": "Missing or invalid Authorization header. Expected: Bearer <key>"
+                },
             )
 
         secret = auth_header[7:]  # Strip "Bearer "

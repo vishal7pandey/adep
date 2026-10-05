@@ -39,6 +39,7 @@ from src.tools.base import FieldValue, Grounding
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_result(
     field_values: dict[str, FieldValue],
     is_complete: bool = True,
@@ -48,7 +49,9 @@ def _make_result(
         is_complete=is_complete,
         values=None,
         field_values=field_values,
-        gap_report=GapReport(gaps=[], satisfied=[], is_complete=is_complete, total_fields=len(field_values)),
+        gap_report=GapReport(
+            gaps=[], satisfied=[], is_complete=is_complete, total_fields=len(field_values)
+        ),
         trace=[],
         total_cycles=5,
         status="complete" if is_complete else "partial",
@@ -67,6 +70,7 @@ def _make_fv(value, confidence: float, bbox=None) -> FieldValue:
 # ---------------------------------------------------------------------------
 # BBox IoU tests
 # ---------------------------------------------------------------------------
+
 
 class TestBBoxIoU:
     """Verify IoU computation."""
@@ -107,6 +111,7 @@ class TestBBoxIoU:
 # Value matching tests
 # ---------------------------------------------------------------------------
 
+
 class TestValuesMatch:
     """Verify value matching with type coercion."""
 
@@ -142,6 +147,7 @@ class TestValuesMatch:
 # BBox overlap tests
 # ---------------------------------------------------------------------------
 
+
 class TestBBoxOverlaps:
     """Verify bbox overlap detection."""
 
@@ -166,14 +172,17 @@ class TestBBoxOverlaps:
 # Evaluate extraction tests
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateExtraction:
     """Verify single sample evaluation."""
 
     def test_all_correct(self):
-        result = _make_result({
-            "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
-            "total": _make_fv(1500.0, 0.92, bbox=(10, 200, 200, 240)),
-        })
+        result = _make_result(
+            {
+                "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
+                "total": _make_fv(1500.0, 0.92, bbox=(10, 200, 200, 240)),
+            }
+        )
         truth = GroundTruthSample(
             document_path="test.png",
             fields=[
@@ -186,9 +195,11 @@ class TestEvaluateExtraction:
         assert evals["total"][:3] == (True, True, 0.92)
 
     def test_value_correct_bbox_wrong(self):
-        result = _make_result({
-            "invoice_number": _make_fv("INV-001", 0.9, bbox=(10, 10, 200, 50)),
-        })
+        result = _make_result(
+            {
+                "invoice_number": _make_fv("INV-001", 0.9, bbox=(10, 10, 200, 50)),
+            }
+        )
         truth = GroundTruthSample(
             document_path="test.png",
             fields=[
@@ -199,9 +210,11 @@ class TestEvaluateExtraction:
         assert evals["invoice_number"][:3] == (True, False, 0.9)
 
     def test_value_wrong(self):
-        result = _make_result({
-            "invoice_number": _make_fv("WRONG", 0.7, bbox=(10, 10, 200, 50)),
-        })
+        result = _make_result(
+            {
+                "invoice_number": _make_fv("WRONG", 0.7, bbox=(10, 10, 200, 50)),
+            }
+        )
         truth = GroundTruthSample(
             document_path="test.png",
             fields=[
@@ -224,9 +237,11 @@ class TestEvaluateExtraction:
 
     def test_no_grounding_on_truth(self):
         """Ground truth has no bbox — only value accuracy matters."""
-        result = _make_result({
-            "vendor": _make_fv("ACME Corp", 0.88, bbox=(10, 10, 200, 50)),
-        })
+        result = _make_result(
+            {
+                "vendor": _make_fv("ACME Corp", 0.88, bbox=(10, 10, 200, 50)),
+            }
+        )
         truth = GroundTruthSample(
             document_path="test.png",
             fields=[
@@ -234,36 +249,51 @@ class TestEvaluateExtraction:
             ],
         )
         evals = evaluate_extraction(result, truth)
-        assert evals["vendor"][:3] == (True, False, 0.88)  # grounded_correct=False because truth bbox is None
+        assert evals["vendor"][:3] == (
+            True,
+            False,
+            0.88,
+        )  # grounded_correct=False because truth bbox is None
 
 
 # ---------------------------------------------------------------------------
 # Full evaluation report tests
 # ---------------------------------------------------------------------------
 
+
 class TestRunEvaluation:
     """Verify multi-sample evaluation reports."""
 
     def test_report_accuracy(self):
         results = [
-            _make_result({
-                "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
-                "total": _make_fv(1500.0, 0.90, bbox=(10, 200, 200, 240)),
-            }),
-            _make_result({
-                "invoice_number": _make_fv("INV-002", 0.92, bbox=(10, 10, 200, 50)),
-                "total": _make_fv(2000.0, 0.85, bbox=(10, 200, 200, 240)),
-            }),
+            _make_result(
+                {
+                    "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
+                    "total": _make_fv(1500.0, 0.90, bbox=(10, 200, 200, 240)),
+                }
+            ),
+            _make_result(
+                {
+                    "invoice_number": _make_fv("INV-002", 0.92, bbox=(10, 10, 200, 50)),
+                    "total": _make_fv(2000.0, 0.85, bbox=(10, 200, 200, 240)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test1.png", [
-                GroundTruthField("invoice_number", "INV-001", bbox=(10, 10, 200, 50)),
-                GroundTruthField("total", 1500.0, bbox=(10, 200, 200, 240)),
-            ]),
-            GroundTruthSample("test2.png", [
-                GroundTruthField("invoice_number", "INV-002", bbox=(10, 10, 200, 50)),
-                GroundTruthField("total", 2000.0, bbox=(10, 200, 200, 240)),
-            ]),
+            GroundTruthSample(
+                "test1.png",
+                [
+                    GroundTruthField("invoice_number", "INV-001", bbox=(10, 10, 200, 50)),
+                    GroundTruthField("total", 1500.0, bbox=(10, 200, 200, 240)),
+                ],
+            ),
+            GroundTruthSample(
+                "test2.png",
+                [
+                    GroundTruthField("invoice_number", "INV-002", bbox=(10, 10, 200, 50)),
+                    GroundTruthField("total", 2000.0, bbox=(10, 200, 200, 240)),
+                ],
+            ),
         ]
 
         report = run_evaluation(results, truths)
@@ -275,20 +305,30 @@ class TestRunEvaluation:
 
     def test_report_partial_accuracy(self):
         results = [
-            _make_result({
-                "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
-            }),
-            _make_result({
-                "invoice_number": _make_fv("WRONG", 0.7, bbox=(10, 10, 200, 50)),
-            }),
+            _make_result(
+                {
+                    "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
+                }
+            ),
+            _make_result(
+                {
+                    "invoice_number": _make_fv("WRONG", 0.7, bbox=(10, 10, 200, 50)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test1.png", [
-                GroundTruthField("invoice_number", "INV-001", bbox=(10, 10, 200, 50)),
-            ]),
-            GroundTruthSample("test2.png", [
-                GroundTruthField("invoice_number", "INV-002", bbox=(10, 10, 200, 50)),
-            ]),
+            GroundTruthSample(
+                "test1.png",
+                [
+                    GroundTruthField("invoice_number", "INV-001", bbox=(10, 10, 200, 50)),
+                ],
+            ),
+            GroundTruthSample(
+                "test2.png",
+                [
+                    GroundTruthField("invoice_number", "INV-002", bbox=(10, 10, 200, 50)),
+                ],
+            ),
         ]
 
         report = run_evaluation(results, truths)
@@ -299,14 +339,19 @@ class TestRunEvaluation:
     def test_calibration_error(self):
         """High confidence + wrong → high calibration error."""
         results = [
-            _make_result({
-                "field": _make_fv("WRONG", 0.95, bbox=(0, 0, 100, 50)),
-            }),
+            _make_result(
+                {
+                    "field": _make_fv("WRONG", 0.95, bbox=(0, 0, 100, 50)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test.png", [
-                GroundTruthField("field", "RIGHT", bbox=(0, 0, 100, 50)),
-            ]),
+            GroundTruthSample(
+                "test.png",
+                [
+                    GroundTruthField("field", "RIGHT", bbox=(0, 0, 100, 50)),
+                ],
+            ),
         ]
 
         report = run_evaluation(results, truths)
@@ -316,14 +361,19 @@ class TestRunEvaluation:
     def test_perfect_calibration(self):
         """Confidence matches correctness → zero calibration error."""
         results = [
-            _make_result({
-                "field": _make_fv("RIGHT", 1.0, bbox=(0, 0, 100, 50)),
-            }),
+            _make_result(
+                {
+                    "field": _make_fv("RIGHT", 1.0, bbox=(0, 0, 100, 50)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test.png", [
-                GroundTruthField("field", "RIGHT", bbox=(0, 0, 100, 50)),
-            ]),
+            GroundTruthSample(
+                "test.png",
+                [
+                    GroundTruthField("field", "RIGHT", bbox=(0, 0, 100, 50)),
+                ],
+            ),
         ]
 
         report = run_evaluation(results, truths)
@@ -339,19 +389,25 @@ class TestRunEvaluation:
 # Report serialization tests
 # ---------------------------------------------------------------------------
 
+
 class TestReportSerialization:
     """Verify JSON report output."""
 
     def test_to_json(self):
         results = [
-            _make_result({
-                "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
-            }),
+            _make_result(
+                {
+                    "invoice_number": _make_fv("INV-001", 0.95, bbox=(10, 10, 200, 50)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test.png", [
-                GroundTruthField("invoice_number", "INV-001", bbox=(10, 10, 200, 50)),
-            ]),
+            GroundTruthSample(
+                "test.png",
+                [
+                    GroundTruthField("invoice_number", "INV-001", bbox=(10, 10, 200, 50)),
+                ],
+            ),
         ]
         report = run_evaluation(results, truths)
         json_str = report.to_json()
@@ -363,14 +419,19 @@ class TestReportSerialization:
 
     def test_save_to_file(self, tmp_path: Path):
         results = [
-            _make_result({
-                "field": _make_fv("val", 0.9, bbox=(0, 0, 100, 50)),
-            }),
+            _make_result(
+                {
+                    "field": _make_fv("val", 0.9, bbox=(0, 0, 100, 50)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test.png", [
-                GroundTruthField("field", "val", bbox=(0, 0, 100, 50)),
-            ]),
+            GroundTruthSample(
+                "test.png",
+                [
+                    GroundTruthField("field", "val", bbox=(0, 0, 100, 50)),
+                ],
+            ),
         ]
         report = run_evaluation(results, truths)
         out_path = tmp_path / "report.json"
@@ -381,16 +442,21 @@ class TestReportSerialization:
 
     def test_to_dict_structure(self):
         results = [
-            _make_result({
-                "f1": _make_fv("v1", 0.9, bbox=(0, 0, 100, 50)),
-                "f2": _make_fv("v2", 0.8, bbox=(0, 0, 100, 50)),
-            }),
+            _make_result(
+                {
+                    "f1": _make_fv("v1", 0.9, bbox=(0, 0, 100, 50)),
+                    "f2": _make_fv("v2", 0.8, bbox=(0, 0, 100, 50)),
+                }
+            ),
         ]
         truths = [
-            GroundTruthSample("test.png", [
-                GroundTruthField("f1", "v1", bbox=(0, 0, 100, 50)),
-                GroundTruthField("f2", "v2", bbox=(0, 0, 100, 50)),
-            ]),
+            GroundTruthSample(
+                "test.png",
+                [
+                    GroundTruthField("f1", "v1", bbox=(0, 0, 100, 50)),
+                    GroundTruthField("f2", "v2", bbox=(0, 0, 100, 50)),
+                ],
+            ),
         ]
         report = run_evaluation(results, truths)
         d = report.to_dict()
@@ -409,6 +475,7 @@ class TestReportSerialization:
 # ---------------------------------------------------------------------------
 # Fixture loading tests
 # ---------------------------------------------------------------------------
+
 
 class TestLoadFixtures:
     """Verify fixture loading from JSON files."""

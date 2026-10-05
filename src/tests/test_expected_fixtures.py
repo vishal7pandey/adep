@@ -149,7 +149,8 @@ class TestFixtureContent:
 
     def test_purchase_order_fixtures_have_core_fields(self, all_fixtures: list[ExpectedFixture]):
         po_fixtures = [
-            f for f in all_fixtures
+            f
+            for f in all_fixtures
             if f.definition_id in ("def-purchase-order", "def-purchase-order-sf1449")
         ]
         assert len(po_fixtures) >= 2

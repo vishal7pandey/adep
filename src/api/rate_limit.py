@@ -46,6 +46,7 @@ EXEMPT_PATHS = {
 # Token Bucket
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenBucket:
     """In-memory token bucket for rate limiting [BLK-123].
@@ -94,6 +95,7 @@ class TokenBucket:
 # ---------------------------------------------------------------------------
 # Rate Limiter
 # ---------------------------------------------------------------------------
+
 
 class RateLimiter:
     """Manages token buckets per key and SSE concurrency tracking [BLK-123]."""
@@ -261,6 +263,7 @@ def reset_limiter() -> RateLimiter:
 # ---------------------------------------------------------------------------
 # Middleware installation
 # ---------------------------------------------------------------------------
+
 
 def install_rate_limit_middleware(app: FastAPI) -> None:
     """Install rate limiting middleware on the FastAPI app [BLK-123].

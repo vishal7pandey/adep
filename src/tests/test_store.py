@@ -93,11 +93,14 @@ class TestDefinitionStore:
         assert "sk-2" in ids
 
     def test_create_and_read_template(self, store: DefinitionStore):
-        store.create_template("tmpl-test", {
-            "id": "tmpl-test",
-            "name": "Test Template",
-            "fields": [{"name": "total", "type": "number", "required": True}],
-        })
+        store.create_template(
+            "tmpl-test",
+            {
+                "id": "tmpl-test",
+                "name": "Test Template",
+                "fields": [{"name": "total", "type": "number", "required": True}],
+            },
+        )
         result = store.get_template("tmpl-test")
         assert result["name"] == "Test Template"
         assert len(result["fields"]) == 1

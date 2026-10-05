@@ -24,6 +24,7 @@ def client(tmp_path, monkeypatch):
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     return TestClient(app)
 
@@ -223,9 +224,7 @@ class TestBatchListing:
 class TestBatchCancel:
     """Tests for POST /batches/{id}/cancel."""
 
-    def test_cancel_batch(
-        self, client, mock_executor, mock_document_store, mock_definition_store
-    ):
+    def test_cancel_batch(self, client, mock_executor, mock_document_store, mock_definition_store):
         """Cancelling a batch cancels all its runs."""
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
         files = [
@@ -251,9 +250,7 @@ class TestBatchCancel:
 class TestBatchDelete:
     """Tests for DELETE /batches/{id}."""
 
-    def test_delete_batch(
-        self, client, mock_executor, mock_document_store, mock_definition_store
-    ):
+    def test_delete_batch(self, client, mock_executor, mock_document_store, mock_definition_store):
         """Deleting a batch removes its metadata file."""
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
         files = [("files", ("test.png", io.BytesIO(png_bytes), "image/png"))]
@@ -279,9 +276,7 @@ class TestBatchDelete:
 class TestBatchExport:
     """Tests for export endpoints."""
 
-    def test_export_json(
-        self, client, mock_executor, mock_document_store, mock_definition_store
-    ):
+    def test_export_json(self, client, mock_executor, mock_document_store, mock_definition_store):
         """Export batch as JSON returns all run results."""
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
         files = [("files", ("test.png", io.BytesIO(png_bytes), "image/png"))]
@@ -297,9 +292,7 @@ class TestBatchExport:
         assert len(results) == 1
         assert results[0]["filename"] == "test.png"
 
-    def test_export_csv(
-        self, client, mock_executor, mock_document_store, mock_definition_store
-    ):
+    def test_export_csv(self, client, mock_executor, mock_document_store, mock_definition_store):
         """Export batch as CSV returns CSV content."""
         png_bytes = b"\x89PNG\r\n\x1a\n" + b"\x00" * 100
         files = [("files", ("test.png", io.BytesIO(png_bytes), "image/png"))]
@@ -374,6 +367,7 @@ class TestBatchDocumentIdResolution:
 
         # Create a real document store with a document
         from src.documents.store import DocumentStore
+
         doc_store = DocumentStore(base_dir=tmp_path / ".adep")
         doc_dir = doc_store.get_doc_dir("testdoc123456")
         doc_dir.mkdir(parents=True, exist_ok=True)
@@ -381,16 +375,21 @@ class TestBatchDocumentIdResolution:
         page_path.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 100)
 
         import json as _json
-        (doc_dir / "meta.json").write_text(_json.dumps({
-            "document_id": "testdoc123456",
-            "original_filename": "test.png",
-            "format": "png",
-            "total_pages": 1,
-            "page_dimensions": [{"width": 100, "height": 100}],
-            "page_paths": [str(page_path)],
-            "thumbnail": "",
-            "created_at": "2025-01-01T00:00:00+00:00",
-        }))
+
+        (doc_dir / "meta.json").write_text(
+            _json.dumps(
+                {
+                    "document_id": "testdoc123456",
+                    "original_filename": "test.png",
+                    "format": "png",
+                    "total_pages": 1,
+                    "page_dimensions": [{"width": 100, "height": 100}],
+                    "page_paths": [str(page_path)],
+                    "thumbnail": "",
+                    "created_at": "2025-01-01T00:00:00+00:00",
+                }
+            )
+        )
 
         # Mock definition store
         mock_store = MagicMock()
@@ -445,7 +444,9 @@ class TestBatchDocumentIdResolution:
 
         # The document_path should have been resolved to the actual file path
         assert "value" in captured_path, "build_initial_state was never called"
-        assert captured_path["value"] != "testdoc123456", \
+        assert captured_path["value"] != "testdoc123456", (
             "document_id was not resolved — still passed as-is"
-        assert str(page_path) in captured_path["value"], \
+        )
+        assert str(page_path) in captured_path["value"], (
             f"document_path was not resolved to page_paths[0]: {captured_path['value']}"
+        )

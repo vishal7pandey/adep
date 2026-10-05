@@ -14,7 +14,13 @@ uv run mypy src/ --ignore-missing-imports             # types: FAILS today (183 
 uv run uvicorn src.api.main:app --reload --port 8000  # backend (make dev); GET /health -> {"status":"ok"}
 cd frontend && pnpm install && pnpm test && pnpm run build   # frontend (Next.js, vitest)
 cd frontend && pnpm lint                              # FAILS today (22 errors, ADE-28)
+uv run pre-commit install                            # once per clone: git hook (ADE-5)
+uv run pre-commit run --all-files                    # run all hooks by hand
 ```
+
+Pre-commit hooks (`.pre-commit-config.yaml`): ruff-format, trailing-whitespace, end-of-file-fixer, check-yaml,
+check-added-large-files; they rewrite files, so re-stage and commit again after a hook changes something. They
+exclude `sample-data/` and the lockfiles. The ruff lint and mypy hooks are disabled until ADE-20 / ADE-21.
 
 Verified by running each on 2026-10-05 (Windows, Git Bash). Notes from that run:
 

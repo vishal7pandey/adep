@@ -33,11 +33,15 @@ Principles:
 def _check_date_order(e: dict) -> tuple[bool, str]:
     """Verify service_date_from <= service_date_to."""
     from datetime import datetime
+
     try:
         d_from = datetime.strptime(str(e["service_date_from"].value), "%Y-%m-%d")
         d_to = datetime.strptime(str(e["service_date_to"].value), "%Y-%m-%d")
         if d_from > d_to:
-            return False, f"service_date_from ({e['service_date_from'].value}) > service_date_to ({e['service_date_to'].value})"
+            return (
+                False,
+                f"service_date_from ({e['service_date_from'].value}) > service_date_to ({e['service_date_to'].value})",
+            )
         return True, ""
     except (ValueError, TypeError):
         return False, "Invalid date format for date comparison"
@@ -85,17 +89,14 @@ _billed_amount_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "CMS-1500 fields are in fixed positions. Run detect_layout to "
-        "find the field box, crop it, and read with OCR. For handwritten "
-        "fields, use VLM directly.",
-    GapType.FORMAT_ERROR:
-        "Re-crop the field and re-read. NPI must be 10 digits. ICD-10 "
-        "codes start with a letter. CPT codes are 5 digits. Use VLM "
-        "if OCR garbles the code.",
-    GapType.INVARIANT_FAILED:
-        "Date or code format check failed. Re-crop the specific field "
-        "and re-read. Ensure dates are YYYY-MM-DD.",
+    GapType.MISSING: "CMS-1500 fields are in fixed positions. Run detect_layout to "
+    "find the field box, crop it, and read with OCR. For handwritten "
+    "fields, use VLM directly.",
+    GapType.FORMAT_ERROR: "Re-crop the field and re-read. NPI must be 10 digits. ICD-10 "
+    "codes start with a letter. CPT codes are 5 digits. Use VLM "
+    "if OCR garbles the code.",
+    GapType.INVARIANT_FAILED: "Date or code format check failed. Re-crop the specific field "
+    "and re-read. Ensure dates are YYYY-MM-DD.",
 }
 
 

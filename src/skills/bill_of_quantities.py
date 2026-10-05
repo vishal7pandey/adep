@@ -43,10 +43,7 @@ def _check_line_items(e: dict) -> tuple[bool, str]:
         rate = item.get("rate", 0)
         total = item.get("total", 0)
         if abs((qty * rate) - total) > 0.01:
-            return False, (
-                f"Line item {i}: quantity ({qty}) × rate ({rate}) "
-                f"!= total ({total})"
-            )
+            return False, (f"Line item {i}: quantity ({qty}) × rate ({rate}) != total ({total})")
     return True, ""
 
 
@@ -97,14 +94,12 @@ _line_items_subtotal_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "BOQ documents are table-heavy. Run detect_layout to find the table "
-        "region, then use read_table to extract structured line items. "
-        "If the scan is degraded, deskew and denoise first.",
-    GapType.INVARIANT_FAILED:
-        "Math check failed. Re-crop the relevant line items or totals band. "
-        "Use read_table for structured extraction. If OCR is garbled, "
-        "use VLM to extract the specific numeric values.",
+    GapType.MISSING: "BOQ documents are table-heavy. Run detect_layout to find the table "
+    "region, then use read_table to extract structured line items. "
+    "If the scan is degraded, deskew and denoise first.",
+    GapType.INVARIANT_FAILED: "Math check failed. Re-crop the relevant line items or totals band. "
+    "Use read_table for structured extraction. If OCR is garbled, "
+    "use VLM to extract the specific numeric values.",
 }
 
 

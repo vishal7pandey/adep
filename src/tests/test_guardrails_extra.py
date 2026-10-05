@@ -44,13 +44,16 @@ from src.agent.guardrails.exfiltration_prevention import (
 # BLK-081: Hallucination detection & grounding enforcement
 # ---------------------------------------------------------------------------
 
+
 class TestCheckGrounding:
     """Verify grounding checks [BLK-081]."""
 
     def test_grounded_field(self):
         result = check_grounding(
-            "vendor", "ACME Corp",
-            bbox=(10, 20, 100, 50), page=0,
+            "vendor",
+            "ACME Corp",
+            bbox=(10, 20, 100, 50),
+            page=0,
             ocr_text="ACME Corp",
             claimed_confidence=0.95,
         )
@@ -59,16 +62,20 @@ class TestCheckGrounding:
 
     def test_ungrounded_no_bbox(self):
         result = check_grounding(
-            "vendor", "ACME Corp",
-            bbox=None, page=None,
+            "vendor",
+            "ACME Corp",
+            bbox=None,
+            page=None,
         )
         assert result.status == "ungrounded"
         assert result.confidence == 0.0
 
     def test_hallucination_suspected(self):
         result = check_grounding(
-            "vendor", "Totally Fake Company Name",
-            bbox=(10, 20, 100, 50), page=0,
+            "vendor",
+            "Totally Fake Company Name",
+            bbox=(10, 20, 100, 50),
+            page=0,
             ocr_text="ACME Corp",
             claimed_confidence=0.95,
         )
@@ -77,8 +84,10 @@ class TestCheckGrounding:
 
     def test_fuzzy_match_within_threshold(self):
         result = check_grounding(
-            "total", "1500.00",
-            bbox=(10, 20, 100, 50), page=0,
+            "total",
+            "1500.00",
+            bbox=(10, 20, 100, 50),
+            page=0,
             ocr_text="1500.0",
             claimed_confidence=0.9,
         )
@@ -86,8 +95,10 @@ class TestCheckGrounding:
 
     def test_substring_match(self):
         result = check_grounding(
-            "vendor", "ACME",
-            bbox=(10, 20, 100, 50), page=0,
+            "vendor",
+            "ACME",
+            bbox=(10, 20, 100, 50),
+            page=0,
             ocr_text="ACME Corporation Inc.",
             claimed_confidence=0.9,
         )
@@ -95,8 +106,10 @@ class TestCheckGrounding:
 
     def test_no_ocr_text_passes(self):
         result = check_grounding(
-            "vendor", "ACME",
-            bbox=(10, 20, 100, 50), page=0,
+            "vendor",
+            "ACME",
+            bbox=(10, 20, 100, 50),
+            page=0,
             ocr_text=None,
             claimed_confidence=0.9,
         )
@@ -122,7 +135,10 @@ class TestInvariantCheck:
         invariant = InvariantCheck(
             name="total_check",
             fields=["subtotal", "tax", "total"],
-            check_fn=lambda f: (f["subtotal"] + f["tax"] == f["total"], f"Mismatch: {f['subtotal']} + {f['tax']} != {f['total']}"),
+            check_fn=lambda f: (
+                f["subtotal"] + f["tax"] == f["total"],
+                f"Mismatch: {f['subtotal']} + {f['tax']} != {f['total']}",
+            ),
         )
         violations = check_invariants(
             {"subtotal": 100, "tax": 20, "total": 150},
@@ -171,6 +187,7 @@ class TestHallucinationRate:
 # ---------------------------------------------------------------------------
 # BLK-083: PII redaction & content filtering
 # ---------------------------------------------------------------------------
+
 
 class TestDetectPII:
     """Verify PII detection [BLK-083]."""
@@ -255,6 +272,7 @@ class TestProviderRestriction:
 # BLK-084: LLM call audit logging & trace integrity
 # ---------------------------------------------------------------------------
 
+
 class TestAuditLogger:
     """Verify audit logging [BLK-084]."""
 
@@ -262,22 +280,28 @@ class TestAuditLogger:
         logger = AuditLogger("test-run", base_dir=tmp_path / ".adep")
 
         entry1 = AuditLogEntry(
-            run_id="test-run", cycle=1, node="plan",
+            run_id="test-run",
+            cycle=1,
+            node="plan",
             system_prompt_hash="abc123",
             user_prompt="Extract vendor",
             llm_response='{"vendor": "ACME"}',
-            input_tokens=100, output_tokens=50,
+            input_tokens=100,
+            output_tokens=50,
             cost_usd=0.005,
         )
         hash1 = logger.log_llm_call(entry1)
         assert hash1 != ""
 
         entry2 = AuditLogEntry(
-            run_id="test-run", cycle=2, node="plan",
+            run_id="test-run",
+            cycle=2,
+            node="plan",
             system_prompt_hash="abc123",
             user_prompt="Extract total",
             llm_response='{"total": 1500}',
-            input_tokens=120, output_tokens=40,
+            input_tokens=120,
+            output_tokens=40,
             cost_usd=0.004,
         )
         hash2 = logger.log_llm_call(entry2)
@@ -291,7 +315,9 @@ class TestAuditLogger:
         logger = AuditLogger("test-run", base_dir=tmp_path / ".adep")
 
         entry = AuditLogEntry(
-            run_id="test-run", cycle=1, node="plan",
+            run_id="test-run",
+            cycle=1,
+            node="plan",
             user_prompt="test",
         )
         logger.log_llm_call(entry)
@@ -312,7 +338,9 @@ class TestAuditLogger:
         logger = AuditLogger("test-run", base_dir=tmp_path / ".adep")
 
         entry = AuditLogEntry(
-            run_id="test-run", cycle=1, node="plan",
+            run_id="test-run",
+            cycle=1,
+            node="plan",
             user_prompt="test",
         )
         logger.log_llm_call(entry)
@@ -326,7 +354,9 @@ class TestAuditLogger:
         logger = AuditLogger("test-run", base_dir=tmp_path / ".adep")
 
         entry = AuditLogEntry(
-            run_id="test-run", cycle=1, node="plan",
+            run_id="test-run",
+            cycle=1,
+            node="plan",
             user_prompt="test",
         )
         logger.log_llm_call(entry)
@@ -366,6 +396,7 @@ class TestAuditLogger:
 # ---------------------------------------------------------------------------
 # BLK-086: Data exfiltration prevention
 # ---------------------------------------------------------------------------
+
 
 class TestSanitizeInput:
     """Verify input sanitization [BLK-086]."""

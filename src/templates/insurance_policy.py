@@ -9,13 +9,17 @@ from src.templates.base import Template
 
 class CoverageLine(Template):
     """A single coverage line on an insurance policy declaration."""
-    coverage_type: str = Field(description="Type of coverage (e.g. Liability, Collision, Comprehensive)")
+
+    coverage_type: str = Field(
+        description="Type of coverage (e.g. Liability, Collision, Comprehensive)"
+    )
     limit: str = Field(description="Coverage limit (e.g. $100,000 or $500 deductible)")
     premium: float = Field(description="Premium amount for this coverage")
 
 
 class InsurancePolicyTemplate(Template):
     """Outcome schema for insurance policy declaration page extraction."""
+
     policy_number: str = Field(description="Policy number")
     policy_period_start: str = Field(description="Policy effective date (ISO YYYY-MM-DD)")
     policy_period_end: str = Field(description="Policy expiration date (ISO YYYY-MM-DD)")

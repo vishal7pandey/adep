@@ -30,6 +30,7 @@ from src.templates.base import Template
 
 class FakeTemplate(Template):
     """Minimal template for testing."""
+
     pass
 
 
@@ -59,7 +60,9 @@ class TestBuildInitialStateMultiPage:
     def test_single_page_no_page_paths(self, fake_skill, fake_image):
         """Without page_paths, defaults to single-page handle (backward compat)."""
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
         )
         handle = state["document"]
         assert handle.pages == 1
@@ -75,7 +78,9 @@ class TestBuildInitialStateMultiPage:
             str(fake_image),
         ]
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
             page_paths=page_paths,
         )
         handle = state["document"]
@@ -89,7 +94,9 @@ class TestBuildInitialStateMultiPage:
     def test_empty_page_paths_falls_back_to_single(self, fake_skill, fake_image):
         """Empty page_paths list falls back to single-page."""
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
             page_paths=[],
         )
         handle = state["document"]
@@ -99,7 +106,9 @@ class TestBuildInitialStateMultiPage:
     def test_none_page_paths_falls_back_to_single(self, fake_skill, fake_image):
         """None page_paths falls back to single-page."""
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
             page_paths=None,
         )
         handle = state["document"]
@@ -109,7 +118,9 @@ class TestBuildInitialStateMultiPage:
         """Two-page document gets correct handle and state."""
         page_paths = [str(fake_image), str(fake_image)]
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
             page_paths=page_paths,
         )
         handle = state["document"]
@@ -121,7 +132,9 @@ class TestBuildInitialStateMultiPage:
         """DocumentState pages list length matches page_paths length."""
         page_paths = [str(fake_image)] * 5
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
             page_paths=page_paths,
         )
         assert len(state["document_state"].pages) == 5
@@ -136,7 +149,9 @@ class TestBuildInitialStateMultiPage:
             "/data/doc/page_003.png",
         ]
         state = build_initial_state(
-            str(fake_image), FakeTemplate, fake_skill,
+            str(fake_image),
+            FakeTemplate,
+            fake_skill,
             page_paths=page_paths,
         )
         assert state["document"].page_paths == page_paths

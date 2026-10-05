@@ -27,6 +27,7 @@ from src.tools.base import FieldValue, Region, ToolResult
 # Trace entries (the rolling window) [§12.3]
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TraceEntry:
     """A single act/observe cycle in the ReAct trace.
@@ -75,6 +76,7 @@ class TraceEntry:
 # Token usage tracking [BLK-050, §15]
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class TokenUsage:
     """Token consumption for a single LLM call [BLK-050].
@@ -120,6 +122,7 @@ class TokenUsage:
 # Document handle (never pixels) [§2.7]
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocumentHandle:
     """A reference to a document on disk, never its pixels.
@@ -143,6 +146,7 @@ class DocumentHandle:
 # ---------------------------------------------------------------------------
 # Multi-page hierarchical state [BLK-041, §12.1]
 # ---------------------------------------------------------------------------
+
 
 class PageStatus(str, Enum):
     """Status of a single page in the document hierarchy."""
@@ -245,10 +249,7 @@ class DocumentState:
 
     def pages_with_field(self, field_path: str) -> list[int]:
         """Get page numbers that have already extracted the given field."""
-        return [
-            p.page_number for p in self.pages
-            if field_path in p.fields_extracted
-        ]
+        return [p.page_number for p in self.pages if field_path in p.fields_extracted]
 
     def summary(self) -> str:
         """Brief text summary of document state for plan node context."""
@@ -266,6 +267,7 @@ class DocumentState:
 # ---------------------------------------------------------------------------
 # The LangGraph State
 # ---------------------------------------------------------------------------
+
 
 class AgentState(TypedDict, total=False):
     """The full state of a single extraction run.
@@ -336,6 +338,7 @@ class AgentState(TypedDict, total=False):
 # Run status constants
 # ---------------------------------------------------------------------------
 
+
 class RunStatus:
     """Status values for the run lifecycle."""
 
@@ -344,15 +347,16 @@ class RunStatus:
     OBSERVING = "observing"
     REFLECTING = "reflecting"
     COMPLETE = "complete"
-    PARTIAL = "partial"       # give-up: some fields unresolved [§2.6]
-    PAUSED = "paused"         # auto-pause or manual pause [BLK-049, BLK-095]
+    PARTIAL = "partial"  # give-up: some fields unresolved [§2.6]
+    PAUSED = "paused"  # auto-pause or manual pause [BLK-049, BLK-095]
     ERROR = "error"
-    CANCELLED = "cancelled"   # user-requested cancellation [BLK-129]
+    CANCELLED = "cancelled"  # user-requested cancellation [BLK-129]
 
 
 # ---------------------------------------------------------------------------
 # Trace compaction helper [§12.3]
 # ---------------------------------------------------------------------------
+
 
 def compact_trace(
     trace: list[TraceEntry],
@@ -375,8 +379,5 @@ def compact_trace(
         The compacted trace (last ``window_size`` entries, excluding those
         targeting resolved fields).
     """
-    pruned = [
-        entry for entry in trace
-        if entry.field not in resolved_fields
-    ]
+    pruned = [entry for entry in trace if entry.field not in resolved_fields]
     return pruned[-window_size:] if len(pruned) > window_size else pruned

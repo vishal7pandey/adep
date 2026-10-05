@@ -48,6 +48,7 @@ from src.observability.tracing import span, mark_error, get_tracer
 # Context propagation tests
 # ---------------------------------------------------------------------------
 
+
 class TestContextPropagation:
     """contextvars for request_id, run_id, cycle [BLK-130]."""
 
@@ -90,6 +91,7 @@ class TestContextPropagation:
 # ---------------------------------------------------------------------------
 # JSON formatter tests
 # ---------------------------------------------------------------------------
+
 
 class TestStructuredJsonFormatter:
     """JSON log formatter with context injection [BLK-130]."""
@@ -143,10 +145,16 @@ class TestStructuredJsonFormatter:
             raise ValueError("test error")
         except ValueError:
             import sys
+
             exc_info = sys.exc_info()
         record = logging.LogRecord(
-            name="src.test", level=logging.ERROR, pathname="test.py",
-            lineno=1, msg="failed", args=(), exc_info=exc_info,
+            name="src.test",
+            level=logging.ERROR,
+            pathname="test.py",
+            lineno=1,
+            msg="failed",
+            args=(),
+            exc_info=exc_info,
         )
         output = fmt.format(record)
         data = json.loads(output)
@@ -157,6 +165,7 @@ class TestStructuredJsonFormatter:
 # ---------------------------------------------------------------------------
 # Console formatter tests
 # ---------------------------------------------------------------------------
+
 
 class TestConsoleFormatter:
     """Console formatter for dev readability [BLK-130]."""
@@ -202,6 +211,7 @@ class TestConsoleFormatter:
 # configure_logging tests
 # ---------------------------------------------------------------------------
 
+
 class TestConfigureLogging:
     """Logging configuration [BLK-130]."""
 
@@ -230,6 +240,7 @@ class TestConfigureLogging:
 # ---------------------------------------------------------------------------
 # PII redaction tests
 # ---------------------------------------------------------------------------
+
 
 class TestRedaction:
     """PII redaction utilities [BLK-130, BLK-083]."""
@@ -312,6 +323,7 @@ class TestRedaction:
 # OpenTelemetry tracing tests
 # ---------------------------------------------------------------------------
 
+
 class TestTracing:
     """OpenTelemetry tracing wrapper [BLK-130]."""
 
@@ -358,6 +370,7 @@ class TestTracing:
 # ---------------------------------------------------------------------------
 # Integration: logging with context
 # ---------------------------------------------------------------------------
+
 
 class TestLoggingIntegration:
     """Integration: structured logs carry context [BLK-130]."""

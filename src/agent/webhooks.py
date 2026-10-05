@@ -33,19 +33,53 @@ RETRY_BACKOFF_BASE = 2  # seconds
 
 # BLK-152: SSRF protection — blocked IP ranges
 _BLOCKED_IP_PREFIXES = (
-    "127.",           # loopback
-    "169.254.",       # link-local (includes 169.254.169.254 cloud metadata)
-    "10.",            # RFC1918
-    "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",  # RFC1918
-    "192.168.",       # RFC1918
-    "0.",             # current network
-    "224.", "225.", "226.", "227.", "228.", "229.", "230.", "231.", "232.", "233.", "234.", "235.", "236.", "237.", "238.", "239.",  # multicast
+    "127.",  # loopback
+    "169.254.",  # link-local (includes 169.254.169.254 cloud metadata)
+    "10.",  # RFC1918
+    "172.16.",
+    "172.17.",
+    "172.18.",
+    "172.19.",
+    "172.20.",
+    "172.21.",
+    "172.22.",
+    "172.23.",
+    "172.24.",
+    "172.25.",
+    "172.26.",
+    "172.27.",
+    "172.28.",
+    "172.29.",
+    "172.30.",
+    "172.31.",  # RFC1918
+    "192.168.",  # RFC1918
+    "0.",  # current network
+    "224.",
+    "225.",
+    "226.",
+    "227.",
+    "228.",
+    "229.",
+    "230.",
+    "231.",
+    "232.",
+    "233.",
+    "234.",
+    "235.",
+    "236.",
+    "237.",
+    "238.",
+    "239.",  # multicast
 )
 
 # Allowed URL schemes for webhook targets
 _ALLOWED_SCHEMES = frozenset({"https"})
 # http allowed only for localhost dev (controlled by env var)
-_DEV_HTTP_ALLOWED = os.environ.get("ADE_WEBHOOK_ALLOW_HTTP", "false").lower() in ("true", "1", "yes")
+_DEV_HTTP_ALLOWED = os.environ.get("ADE_WEBHOOK_ALLOW_HTTP", "false").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
 
 class SSRFError(ValueError):
@@ -144,13 +178,15 @@ class WebhookEvent:
     BUDGET_WARNING = "budget.warning"
     BUDGET_EXCEEDED = "budget.exceeded"
 
-    ALL = frozenset({
-        RUN_COMPLETED,
-        RUN_PARTIAL,
-        RUN_FAILED,
-        BUDGET_WARNING,
-        BUDGET_EXCEEDED,
-    })
+    ALL = frozenset(
+        {
+            RUN_COMPLETED,
+            RUN_PARTIAL,
+            RUN_FAILED,
+            BUDGET_WARNING,
+            BUDGET_EXCEEDED,
+        }
+    )
 
 
 @dataclass
@@ -371,11 +407,13 @@ def dispatch_webhook(
             last_error = str(e)
 
         if attempt < MAX_RETRIES - 1:
-            time.sleep(RETRY_BACKOFF_BASE ** attempt)
+            time.sleep(RETRY_BACKOFF_BASE**attempt)
 
     logger.warning(
         "Webhook %s failed after %d attempts: %s [BLK-064]",
-        config.id, attempts, last_error,
+        config.id,
+        attempts,
+        last_error,
     )
     return {
         "delivered": False,
@@ -446,10 +484,7 @@ async def emit_webhook_event_async(
     if not configs:
         return []
 
-    tasks = [
-        asyncio.to_thread(dispatch_webhook, config, event, payload)
-        for config in configs
-    ]
+    tasks = [asyncio.to_thread(dispatch_webhook, config, event, payload) for config in configs]
     results_raw = await asyncio.gather(*tasks, return_exceptions=True)
 
     results = []
@@ -457,15 +492,18 @@ async def emit_webhook_event_async(
         if isinstance(raw, Exception):
             logger.warning(
                 "Webhook %s dispatch raised: %s [BLK-242]",
-                config.id, raw,
+                config.id,
+                raw,
             )
-            results.append({
-                "webhook_id": config.id,
-                "delivered": False,
-                "status_code": 0,
-                "attempts": 0,
-                "error": str(raw),
-            })
+            results.append(
+                {
+                    "webhook_id": config.id,
+                    "delivered": False,
+                    "status_code": 0,
+                    "attempts": 0,
+                    "error": str(raw),
+                }
+            )
         else:
             raw["webhook_id"] = config.id
             results.append(raw)

@@ -31,8 +31,7 @@ def _check_ss_tax(e: dict) -> tuple[bool, str]:
     expected = wages.value * 0.062
     if abs(expected - tax.value) > 0.50:
         return False, (
-            f"SS tax ({tax.value}) != 6.2% of SS wages ({wages.value}), "
-            f"expected ~{expected:.2f}"
+            f"SS tax ({tax.value}) != 6.2% of SS wages ({wages.value}), expected ~{expected:.2f}"
         )
     return True, ""
 

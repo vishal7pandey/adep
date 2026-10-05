@@ -41,7 +41,10 @@ def _check_volume_tolerance(e: dict) -> tuple[bool, str]:
         return True, ""
     deviation = abs(loaded - lc_val) / lc_val
     if deviation > 0.05:
-        return False, f"loaded_volume ({loaded}) deviates {deviation:.1%} from LC amount ({lc_val}) — exceeds ±5%"
+        return (
+            False,
+            f"loaded_volume ({loaded}) deviates {deviation:.1%} from LC amount ({lc_val}) — exceeds ±5%",
+        )
     return True, ""
 
 
@@ -77,6 +80,7 @@ _total_value_check = Invariant(
 def _check_delivery_after_trade(e: dict) -> tuple[bool, str]:
     """Verify delivery_date > trade_date."""
     from datetime import datetime
+
     trade = e.get("trade_date")
     delivery = e.get("delivery_date")
     if not trade or not delivery:
@@ -85,7 +89,10 @@ def _check_delivery_after_trade(e: dict) -> tuple[bool, str]:
         t = datetime.strptime(str(trade.value), "%Y-%m-%d")
         d = datetime.strptime(str(delivery.value), "%Y-%m-%d")
         if d <= t:
-            return False, f"delivery_date ({delivery.value}) is not after trade_date ({trade.value})"
+            return (
+                False,
+                f"delivery_date ({delivery.value}) is not after trade_date ({trade.value})",
+            )
         return True, ""
     except (ValueError, TypeError):
         return False, "Invalid date format for delivery vs trade date check"
@@ -100,14 +107,12 @@ _delivery_date_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Run detect_layout on the relevant document (assay, BoL, or LC). "
-        "Crop the field region and read with OCR. Use read_table for "
-        "assay composition tables.",
-    GapType.INVARIANT_FAILED:
-        "Volume tolerance check failed. Re-crop the loaded volume from "
-        "the BoL and the LC amount. Verify units (barrels vs metric tons). "
-        "Use cross_check to compare across documents.",
+    GapType.MISSING: "Run detect_layout on the relevant document (assay, BoL, or LC). "
+    "Crop the field region and read with OCR. Use read_table for "
+    "assay composition tables.",
+    GapType.INVARIANT_FAILED: "Volume tolerance check failed. Re-crop the loaded volume from "
+    "the BoL and the LC amount. Verify units (barrels vs metric tons). "
+    "Use cross_check to compare across documents.",
 }
 
 

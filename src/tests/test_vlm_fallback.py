@@ -70,9 +70,7 @@ class TestVLMFallbackActions:
         for gap_type, action in VLM_FALLBACK_ACTIONS.items():
             if gap_type == GapType.UNGROUNDED:
                 continue  # Grounding is about bbox tracing, not OCR escalation
-            assert "vlm" in action.lower(), (
-                f"Action for {gap_type} does not mention VLM escalation"
-            )
+            assert "vlm" in action.lower(), f"Action for {gap_type} does not mention VLM escalation"
 
 
 class TestGeometryFirstProbeOrder:
@@ -97,9 +95,7 @@ class TestGeometryFirstProbeOrder:
         assert "figure" in types
 
     def test_figure_routes_to_read_chart(self):
-        figure_entry = next(
-            (t, r) for t, r in GEOMETRY_FIRST_PROBE_ORDER if t == "figure"
-        )
+        figure_entry = next((t, r) for t, r in GEOMETRY_FIRST_PROBE_ORDER if t == "figure")
         assert "read_chart" in figure_entry[1].lower() or "vlm" in figure_entry[1].lower()
 
 

@@ -177,7 +177,9 @@ class AuditLogger:
             f.write(json.dumps(entry.to_dict()) + "\n")
 
         self._last_hash = entry.entry_hash
-        logger.debug("Audit log entry written for run %s, cycle %d [BLK-084]", self.run_id, entry.cycle)
+        logger.debug(
+            "Audit log entry written for run %s, cycle %d [BLK-084]", self.run_id, entry.cycle
+        )
         return entry.entry_hash
 
     def log_guardrail_decision(self, decision: GuardrailDecision) -> None:
@@ -242,12 +244,23 @@ class AuditLogger:
             return ""
 
         output = io.StringIO()
-        writer = csv.DictWriter(output, fieldnames=[
-            "timestamp", "run_id", "cycle", "node",
-            "system_prompt_hash", "input_tokens", "output_tokens",
-            "cost_usd", "latency_ms", "validation_passed",
-            "guardrail_actions", "entry_hash",
-        ])
+        writer = csv.DictWriter(
+            output,
+            fieldnames=[
+                "timestamp",
+                "run_id",
+                "cycle",
+                "node",
+                "system_prompt_hash",
+                "input_tokens",
+                "output_tokens",
+                "cost_usd",
+                "latency_ms",
+                "validation_passed",
+                "guardrail_actions",
+                "entry_hash",
+            ],
+        )
         writer.writeheader()
         for entry in entries:
             row = entry.copy()

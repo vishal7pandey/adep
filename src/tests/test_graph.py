@@ -40,6 +40,7 @@ from src.tools.base import FieldValue, Grounding, ToolRegistry, ToolResult, Tool
 # Mock LLM client
 # ---------------------------------------------------------------------------
 
+
 class MockLLMClient:
     """Mock LLM that returns pre-configured actions."""
 
@@ -49,6 +50,7 @@ class MockLLMClient:
 
     def invoke(self, system_prompt: str, user_prompt: str) -> str:
         import json
+
         if self._idx >= len(self._actions):
             return json.dumps({"thought": "done", "tool": "", "args": {}, "field": None})
         action = self._actions[self._idx]
@@ -59,6 +61,7 @@ class MockLLMClient:
 # ---------------------------------------------------------------------------
 # Mock tool functions
 # ---------------------------------------------------------------------------
+
 
 def _mock_ocr(**kwargs: Any) -> ToolResult:
     return ToolResult(
@@ -86,8 +89,15 @@ def _mock_detect_layout(**kwargs: Any) -> ToolResult:
     return ToolResult(
         ok=True,
         data=[
-            {"id": "p0_r0", "type": "text", "bbox": (0, 0, 500, 100), "page": 0,
-             "text": "header", "confidence": 0.9, "metadata": {}},
+            {
+                "id": "p0_r0",
+                "type": "text",
+                "bbox": (0, 0, 500, 100),
+                "page": 0,
+                "text": "header",
+                "confidence": 0.9,
+                "metadata": {},
+            },
         ],
         tool="detect_layout",
     )
@@ -96,6 +106,7 @@ def _mock_detect_layout(**kwargs: Any) -> ToolResult:
 # ---------------------------------------------------------------------------
 # Test fixtures
 # ---------------------------------------------------------------------------
+
 
 def _build_registry_with_mock_tools() -> ToolRegistry:
     """Build a registry with mock tools for testing."""
@@ -142,6 +153,7 @@ def _build_test_state(**overrides: Any) -> AgentState:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestShouldContinue:
     """Verify the conditional edge routing."""
 
@@ -165,8 +177,12 @@ class TestPlanNode:
         state = _build_test_state(
             gap_report=GapReport(gaps=[], satisfied=["a"], is_complete=True, total_fields=1),
         )
-        result = plan_node(state, llm_client=MockLLMClient([]), skill=InvoiceSkill,
-                           registry=_build_registry_with_mock_tools())
+        result = plan_node(
+            state,
+            llm_client=MockLLMClient([]),
+            skill=InvoiceSkill,
+            registry=_build_registry_with_mock_tools(),
+        )
         assert result["status"] == RunStatus.COMPLETE
 
     def test_missing_llm_raises_runtime_error(self):
@@ -191,7 +207,12 @@ class TestActNode:
     def test_calls_tool_successfully(self):
         registry = _build_registry_with_mock_tools()
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png"}, "thought": "read", "field": "invoice_number"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png"},
+                "thought": "read",
+                "field": "invoice_number",
+            },
         )
         result = act_node(state, registry=registry, breaker=CircuitBreaker())
         assert result["status"] == RunStatus.REFLECTING
@@ -203,7 +224,12 @@ class TestActNode:
         breaker = CircuitBreaker(threshold=1)
         breaker.record_failure("ocr")
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png"}, "thought": "read", "field": "invoice_number"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png"},
+                "thought": "read",
+                "field": "invoice_number",
+            },
         )
         result = act_node(state, registry=registry, breaker=breaker)
         assert result["_tool_result"].ok is False
@@ -216,13 +242,22 @@ class TestActNode:
         )
         result = act_node(state, registry=registry, breaker=CircuitBreaker())
         assert result["_tool_result"].ok is False
-        assert "not registered" in result["_tool_result"].error or "Unknown tool" in result["_tool_result"].error
+        assert (
+            "not registered" in result["_tool_result"].error
+            or "Unknown tool" in result["_tool_result"].error
+        )
 
     def test_skips_already_attempted_with_region_id(self):
         """plan_node should skip a tool call that already failed on a specific region [BLK-243]."""
         registry = _build_registry_with_mock_tools()
         import json as _json
-        action = {"tool": "ocr", "args": {"image_path": "test.png", "region_id": "r1"}, "thought": "read", "field": "total"}
+
+        action = {
+            "tool": "ocr",
+            "args": {"image_path": "test.png", "region_id": "r1"},
+            "thought": "read",
+            "field": "total",
+        }
         attempt_key = f"ocr:{_json.dumps(action['args'], sort_keys=True)}"
         state = _build_test_state(
             attempted={"r1": {attempt_key}},
@@ -240,7 +275,13 @@ class TestActNode:
         """
         registry = _build_registry_with_mock_tools()
         import json as _json
-        action = {"tool": "ocr", "args": {"image_path": "page1.png"}, "thought": "read", "field": "total"}
+
+        action = {
+            "tool": "ocr",
+            "args": {"image_path": "page1.png"},
+            "thought": "read",
+            "field": "total",
+        }
         attempt_key = f"ocr:{_json.dumps(action['args'], sort_keys=True)}"
         state = _build_test_state(
             attempted={"_global": {attempt_key}},
@@ -256,9 +297,15 @@ class TestObserveNode:
 
     def test_successful_result_updates_extraction(self):
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png"}, "thought": "read", "field": "invoice_number"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png"},
+                "thought": "read",
+                "field": "invoice_number",
+            },
             _tool_result=ToolResult(
-                ok=True, data="INV-001",
+                ok=True,
+                data="INV-001",
                 grounding=Grounding(bbox=(0, 0, 100, 50), source_tool="ocr", confidence=0.9),
                 tool="ocr",
             ),
@@ -272,7 +319,12 @@ class TestObserveNode:
 
     def test_failed_result_records_attempted(self):
         state = _build_test_state(
-            _planned_action={"tool": "ocr", "args": {"image_path": "test.png", "region_id": "r1"}, "thought": "read", "field": "total"},
+            _planned_action={
+                "tool": "ocr",
+                "args": {"image_path": "test.png", "region_id": "r1"},
+                "thought": "read",
+                "field": "total",
+            },
             _tool_result=ToolResult(ok=False, error="timeout", tool="ocr"),
             step=1,
         )
@@ -287,27 +339,63 @@ class TestReflectNode:
 
     def test_complete_when_no_gaps(self):
         from src.tools.base import FieldValue, Grounding
+
         extraction = {
-            "invoice_number": FieldValue("invoice_number", "INV-001",
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.95), confidence=0.95),
-            "invoice_date": FieldValue("invoice_date", "2024-01-15",
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
-            "due_date": FieldValue("due_date", "2024-02-14",
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
-            "vendor": FieldValue("vendor", "ACME",
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
-            "line_items": FieldValue("line_items", [],
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
-            "subtotal": FieldValue("subtotal", 100.0,
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
-            "tax": FieldValue("tax", 10.0,
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
-            "total": FieldValue("total", 110.0,
-                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9), confidence=0.9),
+            "invoice_number": FieldValue(
+                "invoice_number",
+                "INV-001",
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.95),
+                confidence=0.95,
+            ),
+            "invoice_date": FieldValue(
+                "invoice_date",
+                "2024-01-15",
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
+            "due_date": FieldValue(
+                "due_date",
+                "2024-02-14",
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
+            "vendor": FieldValue(
+                "vendor",
+                "ACME",
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
+            "line_items": FieldValue(
+                "line_items",
+                [],
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
+            "subtotal": FieldValue(
+                "subtotal",
+                100.0,
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
+            "tax": FieldValue(
+                "tax",
+                10.0,
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
+            "total": FieldValue(
+                "total",
+                110.0,
+                grounding=Grounding(bbox=(0, 0, 100, 50), confidence=0.9),
+                confidence=0.9,
+            ),
         }
         state = _build_test_state(extraction=extraction, total_cycles=0)
-        result = reflect_node(state, skill=InvoiceSkill,
-                              validator_config=ValidatorConfig(default_confidence_threshold=0.8))
+        result = reflect_node(
+            state,
+            skill=InvoiceSkill,
+            validator_config=ValidatorConfig(default_confidence_threshold=0.8),
+        )
         assert result["status"] == RunStatus.COMPLETE
         assert result["gap_report"].is_complete is True
 
@@ -316,8 +404,7 @@ class TestReflectNode:
             field_attempts={"total": 5},
             total_cycles=30,
         )
-        result = reflect_node(state, skill=InvoiceSkill,
-                              validator_config=ValidatorConfig())
+        result = reflect_node(state, skill=InvoiceSkill, validator_config=ValidatorConfig())
         assert result["status"] == RunStatus.PARTIAL
 
 
@@ -327,7 +414,9 @@ class TestTerminateNode:
     def test_builds_result_from_state(self):
         state = _build_test_state(
             status=RunStatus.PARTIAL,
-            gap_report=GapReport(gaps=[FieldGap("total", GapType.MISSING, "missing")], is_complete=False),
+            gap_report=GapReport(
+                gaps=[FieldGap("total", GapType.MISSING, "missing")], is_complete=False
+            ),
             total_cycles=5,
             provider_errors=["ocr: timeout"],
             total_tokens=500,
@@ -343,7 +432,9 @@ class TestTerminateNode:
         """BLK-171: Zero-token runs with zero fields should report ERROR, not PARTIAL."""
         state = _build_test_state(
             status=RunStatus.PARTIAL,
-            gap_report=GapReport(gaps=[FieldGap("total", GapType.MISSING, "missing")], is_complete=False),
+            gap_report=GapReport(
+                gaps=[FieldGap("total", GapType.MISSING, "missing")], is_complete=False
+            ),
             total_cycles=0,
             total_tokens=0,
         )
@@ -362,9 +453,16 @@ class TestGraphIntegration:
         registry = _build_registry_with_mock_tools()
 
         # Mock LLM that fills invoice_number via ocr, then says done
-        llm = MockLLMClient([
-            {"thought": "Read invoice number", "tool": "ocr", "args": {"image_path": "test.png"}, "field": "invoice_number"},
-        ])
+        llm = MockLLMClient(
+            [
+                {
+                    "thought": "Read invoice number",
+                    "tool": "ocr",
+                    "args": {"image_path": "test.png"},
+                    "field": "invoice_number",
+                },
+            ]
+        )
 
         config = ValidatorConfig(default_confidence_threshold=0.8)
         graph = build_react_graph(
@@ -383,11 +481,21 @@ class TestGraphIntegration:
     def test_graph_terminates_on_cap_exhaustion(self):
         """Verify the graph terminates when document cycle cap is hit."""
         registry = ToolRegistry()
-        registry.register(ToolSpec(name="failing_tool", description="Always fails"), _mock_failing_tool)
+        registry.register(
+            ToolSpec(name="failing_tool", description="Always fails"), _mock_failing_tool
+        )
 
-        llm = MockLLMClient([
-            {"thought": "try failing", "tool": "failing_tool", "args": {"image_path": "x.png"}, "field": "total"},
-        ] * 50)
+        llm = MockLLMClient(
+            [
+                {
+                    "thought": "try failing",
+                    "tool": "failing_tool",
+                    "args": {"image_path": "x.png"},
+                    "field": "total",
+                },
+            ]
+            * 50
+        )
 
         config = ValidatorConfig(default_confidence_threshold=0.8)
         graph = build_react_graph(
@@ -427,6 +535,7 @@ class TestEmptyRegistryCheck:
 # Graph-specific validation in the live loop [BLK-218]
 # ---------------------------------------------------------------------------
 
+
 class TestGraphValidationInLiveLoop:
     """Verify graph extraction uses graph-specific validation during the live loop [BLK-218]."""
 
@@ -434,6 +543,7 @@ class TestGraphValidationInLiveLoop:
         """reflect_node should call _validate_graph_state for graph_extraction tasks [BLK-218]."""
         import inspect
         from src.agent.graph import reflect_node
+
         source = inspect.getsource(reflect_node)
         assert "task_type" in source, (
             "reflect_node must check task_type to dispatch validation [BLK-218]"
@@ -448,6 +558,7 @@ class TestGraphValidationInLiveLoop:
     def test_validate_graph_state_exists(self):
         """_validate_graph_state helper should exist in graph.py [BLK-218]."""
         from src.agent.graph import _validate_graph_state
+
         assert callable(_validate_graph_state)
 
     def test_validate_graph_state_produces_graph_gap_types(self):
@@ -588,6 +699,4 @@ class TestGraphValidationInLiveLoop:
             "task_type": "extraction",
         }
         count = result_gap_count(state)
-        assert count > 0, (
-            "result_gap_count should return >0 for InvoiceTemplate [BLK-218]"
-        )
+        assert count > 0, "result_gap_count should return >0 for InvoiceTemplate [BLK-218]"

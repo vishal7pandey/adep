@@ -70,6 +70,7 @@ class Grounding:
 # Region index (lives in State; never carries pixels) [§2.7, §12.1]
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Region:
     """A detected region in the document's layout.
@@ -101,6 +102,7 @@ class Region:
 # Extraction values
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FieldValue:
     """A single extracted field value with grounding and confidence.
@@ -126,6 +128,7 @@ class FieldValue:
 # ---------------------------------------------------------------------------
 # Tool results
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ToolResult:
@@ -154,6 +157,7 @@ class ToolResult:
 # ---------------------------------------------------------------------------
 # Tool specification and registry
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ToolSpec:
@@ -236,7 +240,9 @@ class ToolRegistry:
                 tool_name=name,
                 image_path=image_path if isinstance(image_path, str) else None,
                 params={k: v for k, v in kwargs.items() if k != "image_path"},
-                provider=settings.vlm_provider if name in ("vlm", "read_chart", "read_table") else settings.ocr_provider,
+                provider=settings.vlm_provider
+                if name in ("vlm", "read_chart", "read_table")
+                else settings.ocr_provider,
             )
             cache = get_cache()
             cached = cache.get(cache_key)
@@ -252,7 +258,12 @@ class ToolRegistry:
             from src.tools.cache import get_cache
 
             image_path = kwargs.get("image_path")
-            cache.put(cache_key, result, tool_name=name, image_path=image_path if isinstance(image_path, str) else None)
+            cache.put(
+                cache_key,
+                result,
+                tool_name=name,
+                image_path=image_path if isinstance(image_path, str) else None,
+            )
 
         return result
 

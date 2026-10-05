@@ -27,6 +27,7 @@ def client(tmp_path: Path) -> TestClient:
     # Patch the singleton store to use tmp_path
     import src.definitions.store as store_module
     import src.config as config_module
+
     old_store = store_module._store
     old_auth = config_module.settings.auth_enabled
     store_module._store = DefinitionStore(base_dir=tmp_path / ".adep")
@@ -34,6 +35,7 @@ def client(tmp_path: Path) -> TestClient:
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     client = TestClient(app)
 
@@ -48,33 +50,52 @@ def client(tmp_path: Path) -> TestClient:
 def seeded_client(client: TestClient) -> TestClient:
     """Client with a pre-seeded skill, template, and definition."""
     # Create skill
-    client.post("/api/v1/skills", json={
-        "id": "sk-invoice-basic",
-        "name": "Invoice Processing Skill",
-        "description": "ReAct reasoning skill for extracting invoice metadata",
-        "semantic_checks_enabled": False,
-        "tools": ["ocr", "vlm", "crop"],
-    })
+    client.post(
+        "/api/v1/skills",
+        json={
+            "id": "sk-invoice-basic",
+            "name": "Invoice Processing Skill",
+            "description": "ReAct reasoning skill for extracting invoice metadata",
+            "semantic_checks_enabled": False,
+            "tools": ["ocr", "vlm", "crop"],
+        },
+    )
 
     # Create template
-    client.post("/api/v1/templates", json={
-        "id": "tmpl-invoice-standard",
-        "name": "Standard Invoice Schema",
-        "description": "Extracts vendor, total, tax, line items",
-        "fields": [
-            {"name": "invoice_number", "type": "string", "description": "Invoice reference number", "required": True},
-            {"name": "total", "type": "number", "description": "Grand total amount", "required": True},
-        ],
-    })
+    client.post(
+        "/api/v1/templates",
+        json={
+            "id": "tmpl-invoice-standard",
+            "name": "Standard Invoice Schema",
+            "description": "Extracts vendor, total, tax, line items",
+            "fields": [
+                {
+                    "name": "invoice_number",
+                    "type": "string",
+                    "description": "Invoice reference number",
+                    "required": True,
+                },
+                {
+                    "name": "total",
+                    "type": "number",
+                    "description": "Grand total amount",
+                    "required": True,
+                },
+            ],
+        },
+    )
 
     # Create definition
-    client.post("/api/v1/definitions", json={
-        "id": "def-invoice-v1",
-        "name": "Standard Invoice Extractor",
-        "skill_ref": "invoice",
-        "template_ref": "invoice",
-        "tool_names": ["ocr", "vlm", "crop"],
-    })
+    client.post(
+        "/api/v1/definitions",
+        json={
+            "id": "def-invoice-v1",
+            "name": "Standard Invoice Extractor",
+            "skill_ref": "invoice",
+            "template_ref": "invoice",
+            "tool_names": ["ocr", "vlm", "crop"],
+        },
+    )
 
     return client
 
@@ -97,13 +118,16 @@ class TestDefinitionsCRUD:
     """Verify definition CRUD endpoints."""
 
     def test_create_and_get(self, client: TestClient):
-        resp = client.post("/api/v1/definitions", json={
-            "id": "def-test",
-            "name": "Test Definition",
-            "skill_id": "invoice",
-            "template_id": "invoice",
-            "tool_names": ["ocr"],
-        })
+        resp = client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-test",
+                "name": "Test Definition",
+                "skill_id": "invoice",
+                "template_id": "invoice",
+                "tool_names": ["ocr"],
+            },
+        )
         assert resp.status_code == 201
 
         resp = client.get("/api/v1/definitions/def-test")
@@ -111,12 +135,24 @@ class TestDefinitionsCRUD:
         assert resp.json()["name"] == "Test Definition"
 
     def test_list(self, client: TestClient):
-        client.post("/api/v1/definitions", json={
-            "id": "def-1", "name": "Def 1", "skill_id": "x", "template_id": "y",
-        })
-        client.post("/api/v1/definitions", json={
-            "id": "def-2", "name": "Def 2", "skill_id": "x", "template_id": "y",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-1",
+                "name": "Def 1",
+                "skill_id": "x",
+                "template_id": "y",
+            },
+        )
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-2",
+                "name": "Def 2",
+                "skill_id": "x",
+                "template_id": "y",
+            },
+        )
         resp = client.get("/api/v1/definitions")
         assert resp.status_code == 200
         data = resp.json()
@@ -126,17 +162,29 @@ class TestDefinitionsCRUD:
         assert len(data) >= 20  # 2 user-created + 18 prebuilt [BLK-159]
 
     def test_update(self, client: TestClient):
-        client.post("/api/v1/definitions", json={
-            "id": "def-upd", "name": "Original", "skill_id": "x", "template_id": "y",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-upd",
+                "name": "Original",
+                "skill_id": "x",
+                "template_id": "y",
+            },
+        )
         resp = client.put("/api/v1/definitions/def-upd", json={"name": "Updated"})
         assert resp.status_code == 200
         assert resp.json()["name"] == "Updated"
 
     def test_delete(self, client: TestClient):
-        client.post("/api/v1/definitions", json={
-            "id": "def-del", "name": "Delete", "skill_id": "x", "template_id": "y",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-del",
+                "name": "Delete",
+                "skill_id": "x",
+                "template_id": "y",
+            },
+        )
         resp = client.delete("/api/v1/definitions/def-del")
         assert resp.status_code == 204
 
@@ -145,12 +193,24 @@ class TestDefinitionsCRUD:
         assert resp.status_code == 404
 
     def test_create_duplicate_returns_409(self, client: TestClient):
-        client.post("/api/v1/definitions", json={
-            "id": "def-dup", "name": "Dup", "skill_id": "x", "template_id": "y",
-        })
-        resp = client.post("/api/v1/definitions", json={
-            "id": "def-dup", "name": "Dup", "skill_id": "x", "template_id": "y",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-dup",
+                "name": "Dup",
+                "skill_id": "x",
+                "template_id": "y",
+            },
+        )
+        resp = client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "def-dup",
+                "name": "Dup",
+                "skill_id": "x",
+                "template_id": "y",
+            },
+        )
         assert resp.status_code == 409
 
 
@@ -158,12 +218,15 @@ class TestSkillsCRUD:
     """Verify skill CRUD endpoints."""
 
     def test_create_and_get(self, client: TestClient):
-        resp = client.post("/api/v1/skills", json={
-            "id": "sk-test",
-            "name": "Test Skill",
-            "description": "A test skill",
-            "tools": ["ocr"],
-        })
+        resp = client.post(
+            "/api/v1/skills",
+            json={
+                "id": "sk-test",
+                "name": "Test Skill",
+                "description": "A test skill",
+                "tools": ["ocr"],
+            },
+        )
         assert resp.status_code == 201
 
         resp = client.get("/api/v1/skills/sk-test")
@@ -199,7 +262,11 @@ class TestSkillsCRUD:
                 {"region_type": "table", "rationale": "Extract line items"},
             ],
             "invariants": [
-                {"name": "sum_check", "fields": ["subtotal", "tax", "total"], "description": "subtotal + tax == total"},
+                {
+                    "name": "sum_check",
+                    "fields": ["subtotal", "tax", "total"],
+                    "description": "subtotal + tax == total",
+                },
             ],
             "failure_actions": {"missing": "retry_ocr", "low_confidence": "escalate_vlm"},
             "known_failures": "PaddleOCR fails on rotated text",
@@ -229,18 +296,24 @@ class TestSkillsCRUD:
 
     def test_partial_update_preserves_other_fields(self, client: TestClient):
         """PUT with partial data doesn't clobber unspecified fields [BLK-121]."""
-        client.post("/api/v1/skills", json={
-            "id": "sk-partial",
-            "name": "Original",
-            "description": "Original description",
-            "system_prompt": "Original prompt",
-            "tools": ["ocr"],
-            "confidence_overrides": {"total": 0.9},
-        })
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "sk-partial",
+                "name": "Original",
+                "description": "Original description",
+                "system_prompt": "Original prompt",
+                "tools": ["ocr"],
+                "confidence_overrides": {"total": 0.9},
+            },
+        )
 
-        resp = client.put("/api/v1/skills/sk-partial", json={
-            "name": "Updated Name",
-        })
+        resp = client.put(
+            "/api/v1/skills/sk-partial",
+            json={
+                "name": "Updated Name",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["name"] == "Updated Name"
@@ -251,16 +324,22 @@ class TestSkillsCRUD:
 
     def test_update_system_prompt_only(self, client: TestClient):
         """PUT can update just system_prompt without losing other data [BLK-121]."""
-        client.post("/api/v1/skills", json={
-            "id": "sk-update-prompt",
-            "name": "Test",
-            "system_prompt": "Old prompt",
-            "probe_order": [{"region_type": "header", "rationale": "Check header"}],
-        })
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "sk-update-prompt",
+                "name": "Test",
+                "system_prompt": "Old prompt",
+                "probe_order": [{"region_type": "header", "rationale": "Check header"}],
+            },
+        )
 
-        resp = client.put("/api/v1/skills/sk-update-prompt", json={
-            "system_prompt": "New prompt",
-        })
+        resp = client.put(
+            "/api/v1/skills/sk-update-prompt",
+            json={
+                "system_prompt": "New prompt",
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["system_prompt"] == "New prompt"
@@ -272,11 +351,14 @@ class TestTemplatesCRUD:
     """Verify template CRUD endpoints."""
 
     def test_create_and_get(self, client: TestClient):
-        resp = client.post("/api/v1/templates", json={
-            "id": "tmpl-test",
-            "name": "Test Template",
-            "fields": [{"name": "total", "type": "number", "required": True}],
-        })
+        resp = client.post(
+            "/api/v1/templates",
+            json={
+                "id": "tmpl-test",
+                "name": "Test Template",
+                "fields": [{"name": "total", "type": "number", "required": True}],
+            },
+        )
         assert resp.status_code == 201
 
         resp = client.get("/api/v1/templates/tmpl-test")
@@ -299,10 +381,13 @@ class TestRuns:
     """Verify run endpoints."""
 
     def test_start_run_missing_definition(self, client: TestClient):
-        resp = client.post("/api/v1/runs", json={
-            "definition_id": "nonexistent",
-            "document_path": "test.png",
-        })
+        resp = client.post(
+            "/api/v1/runs",
+            json={
+                "definition_id": "nonexistent",
+                "document_path": "test.png",
+            },
+        )
         assert resp.status_code == 404
 
     def test_get_missing_run(self, client: TestClient):
@@ -329,21 +414,30 @@ class TestSSEStreaming:
         # First create a run (will fail on document but we test the endpoint)
         # Save a mock run directly to the store
         import src.definitions.store as store_module
-        store_module._store.save_run("run-test", {
-            "id": "run-test",
-            "definition_id": "def-invoice-v1",
-            "document_url": "test.png",
-            "status": "completed",
-            "current_cycle": 5,
-            "total_fields": 7,
-            "extracted_fields_count": 7,
-            "fields": [
-                {"id": "run-test_invoice_number", "name": "invoice_number",
-                 "value": "INV-001", "confidence": 0.95,
-                 "bbox": {"x": 10, "y": 10, "width": 100, "height": 30},
-                 "page": 0, "status": "verified"},
-            ],
-        })
+
+        store_module._store.save_run(
+            "run-test",
+            {
+                "id": "run-test",
+                "definition_id": "def-invoice-v1",
+                "document_url": "test.png",
+                "status": "completed",
+                "current_cycle": 5,
+                "total_fields": 7,
+                "extracted_fields_count": 7,
+                "fields": [
+                    {
+                        "id": "run-test_invoice_number",
+                        "name": "invoice_number",
+                        "value": "INV-001",
+                        "confidence": 0.95,
+                        "bbox": {"x": 10, "y": 10, "width": 100, "height": 30},
+                        "page": 0,
+                        "status": "verified",
+                    },
+                ],
+            },
+        )
 
         resp = seeded_client.get("/api/v1/runs/run-test/stream")
         assert resp.status_code == 200

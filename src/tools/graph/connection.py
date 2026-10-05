@@ -40,10 +40,13 @@ def detect_connections(
             tool="detect_connections",
         )
 
-    symbol_desc = json.dumps([
-        {"id": s["id"], "bbox": list(s["bbox"]), "class": s.get("class", "unknown")}
-        for s in symbols
-    ], indent=2)
+    symbol_desc = json.dumps(
+        [
+            {"id": s["id"], "bbox": list(s["bbox"]), "class": s.get("class", "unknown")}
+            for s in symbols
+        ],
+        indent=2,
+    )
 
     prompt = (
         "You are analyzing a P&ID diagram. Given the following detected symbols, "
@@ -79,14 +82,16 @@ def detect_connections(
             path = conn.get("path_bbox", [])
             if isinstance(path, list) and path and isinstance(path[0], list):
                 path = [tuple(p) for p in path]
-            normalized.append({
-                "id": f"conn_{i}",
-                "from_id": conn.get("from_id", ""),
-                "to_id": conn.get("to_id", ""),
-                "path_bbox": path,
-                "type": conn.get("type", "pipe"),
-                "confidence": float(conn.get("confidence", 0.0)),
-            })
+            normalized.append(
+                {
+                    "id": f"conn_{i}",
+                    "from_id": conn.get("from_id", ""),
+                    "to_id": conn.get("to_id", ""),
+                    "path_bbox": path,
+                    "type": conn.get("type", "pipe"),
+                    "confidence": float(conn.get("confidence", 0.0)),
+                }
+            )
 
         return ToolResult(
             ok=True,
@@ -138,10 +143,10 @@ def trace_line(
         f"Starting from point {start_coord} in this P&ID diagram, "
         "trace the pipe line that passes through this point. "
         "Follow the line until it reaches a symbol or the edge of the diagram. "
-        "Return JSON: {\"bboxes\": [[x1,y1,x2,y2], ...], "
-        "\"end_point\": [x, y], "
-        "\"connected_to_id\": \"sym_id_or_null\", "
-        "\"confidence\": 0.0-1.0}."
+        'Return JSON: {"bboxes": [[x1,y1,x2,y2], ...], '
+        '"end_point": [x, y], '
+        '"connected_to_id": "sym_id_or_null", '
+        '"confidence": 0.0-1.0}.'
     )
     if direction:
         prompt += f" Initial direction hint: {direction}."

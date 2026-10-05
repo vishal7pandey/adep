@@ -33,7 +33,8 @@ class StructuredJsonFormatter(logging.Formatter):
         # Base fields
         log_entry: dict[str, Any] = {
             "timestamp": datetime.fromtimestamp(
-                record.created, tz=timezone.utc,
+                record.created,
+                tz=timezone.utc,
             ).isoformat(),
             "level": record.levelname,
             "logger": record.name,
@@ -46,10 +47,27 @@ class StructuredJsonFormatter(logging.Formatter):
 
         # Add extra fields from record.__dict__
         reserved = {
-            "name", "msg", "args", "levelname", "levelno", "pathname",
-            "filename", "module", "exc_info", "exc_text", "stack_info",
-            "lineno", "funcName", "created", "msecs", "relativeCreated",
-            "thread", "threadName", "processName", "process", "message",
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "message",
             "taskName",
         }
         for key, value in record.__dict__.items():
@@ -74,11 +92,11 @@ class ConsoleFormatter(logging.Formatter):
 
     # Colors for terminal output
     _COLORS = {
-        "DEBUG": "\033[36m",    # cyan
-        "INFO": "\033[32m",     # green
+        "DEBUG": "\033[36m",  # cyan
+        "INFO": "\033[32m",  # green
         "WARNING": "\033[33m",  # yellow
-        "ERROR": "\033[31m",    # red
-        "CRITICAL": "\033[35m", # magenta
+        "ERROR": "\033[31m",  # red
+        "CRITICAL": "\033[35m",  # magenta
     }
     _RESET = "\033[0m"
 
@@ -97,10 +115,27 @@ class ConsoleFormatter(logging.Formatter):
 
         # Extra fields
         reserved = {
-            "name", "msg", "args", "levelname", "levelno", "pathname",
-            "filename", "module", "exc_info", "exc_text", "stack_info",
-            "lineno", "funcName", "created", "msecs", "relativeCreated",
-            "thread", "threadName", "processName", "process", "message",
+            "name",
+            "msg",
+            "args",
+            "levelname",
+            "levelno",
+            "pathname",
+            "filename",
+            "module",
+            "exc_info",
+            "exc_text",
+            "stack_info",
+            "lineno",
+            "funcName",
+            "created",
+            "msecs",
+            "relativeCreated",
+            "thread",
+            "threadName",
+            "processName",
+            "process",
+            "message",
             "taskName",
         }
         extras = []

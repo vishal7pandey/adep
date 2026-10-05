@@ -52,6 +52,7 @@ def client(tmp_path):
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     with patch("src.agent.webhooks._validate_webhook_url"):
         yield TestClient(app)
@@ -65,6 +66,7 @@ def client(tmp_path):
 # ---------------------------------------------------------------------------
 # BLK-064: Webhooks
 # ---------------------------------------------------------------------------
+
 
 class TestWebhookConfig:
     """Verify WebhookConfig model [BLK-064]."""
@@ -88,7 +90,8 @@ class TestWebhookConfig:
 
     def test_matches_event(self):
         config = WebhookConfig(
-            id="hook1", url="https://example.com",
+            id="hook1",
+            url="https://example.com",
             events=[WebhookEvent.RUN_COMPLETED],
         )
         assert config.matches_event(WebhookEvent.RUN_COMPLETED)
@@ -96,7 +99,8 @@ class TestWebhookConfig:
 
     def test_inactive_does_not_match(self):
         config = WebhookConfig(
-            id="hook1", url="https://example.com",
+            id="hook1",
+            url="https://example.com",
             events=[WebhookEvent.RUN_COMPLETED],
             active=False,
         )
@@ -145,14 +149,22 @@ class TestWebhookStore:
 
     def test_get_all_for_event(self, tmp_path: Path):
         store = WebhookStore(base_dir=tmp_path / ".adep")
-        store.create("h1", WebhookConfig(
-            id="h1", url="https://a.com",
-            events=[WebhookEvent.RUN_COMPLETED],
-        ))
-        store.create("h2", WebhookConfig(
-            id="h2", url="https://b.com",
-            events=[WebhookEvent.BUDGET_WARNING],
-        ))
+        store.create(
+            "h1",
+            WebhookConfig(
+                id="h1",
+                url="https://a.com",
+                events=[WebhookEvent.RUN_COMPLETED],
+            ),
+        )
+        store.create(
+            "h2",
+            WebhookConfig(
+                id="h2",
+                url="https://b.com",
+                events=[WebhookEvent.BUDGET_WARNING],
+            ),
+        )
         configs = store.get_all_for_event(WebhookEvent.RUN_COMPLETED)
         assert len(configs) == 1
         assert configs[0].id == "h1"
@@ -177,48 +189,68 @@ class TestWebhookAPI:
     """Verify webhook API endpoints [BLK-064]."""
 
     def test_create_webhook(self, client):
-        resp = client.post("/api/v1/webhooks", json={
-            "id": "hook1",
-            "url": "https://example.com/webhook",
-            "events": ["run.completed"],
-        })
+        resp = client.post(
+            "/api/v1/webhooks",
+            json={
+                "id": "hook1",
+                "url": "https://example.com/webhook",
+                "events": ["run.completed"],
+            },
+        )
         assert resp.status_code == 201
         assert resp.json()["id"] == "hook1"
 
     def test_list_webhooks(self, client):
-        client.post("/api/v1/webhooks", json={
-            "id": "h1", "url": "https://a.com",
-        })
+        client.post(
+            "/api/v1/webhooks",
+            json={
+                "id": "h1",
+                "url": "https://a.com",
+            },
+        )
         resp = client.get("/api/v1/webhooks")
         assert resp.status_code == 200
         assert len(resp.json()) == 1
 
     def test_get_webhook(self, client):
-        client.post("/api/v1/webhooks", json={
-            "id": "h1", "url": "https://a.com",
-        })
+        client.post(
+            "/api/v1/webhooks",
+            json={
+                "id": "h1",
+                "url": "https://a.com",
+            },
+        )
         resp = client.get("/api/v1/webhooks/h1")
         assert resp.status_code == 200
         assert resp.json()["id"] == "h1"
 
     def test_delete_webhook(self, client):
-        client.post("/api/v1/webhooks", json={
-            "id": "h1", "url": "https://a.com",
-        })
+        client.post(
+            "/api/v1/webhooks",
+            json={
+                "id": "h1",
+                "url": "https://a.com",
+            },
+        )
         resp = client.delete("/api/v1/webhooks/h1")
         assert resp.status_code == 204
 
     def test_invalid_event(self, client):
-        resp = client.post("/api/v1/webhooks", json={
-            "id": "h1", "url": "https://a.com",
-            "events": ["invalid.event"],
-        })
+        resp = client.post(
+            "/api/v1/webhooks",
+            json={
+                "id": "h1",
+                "url": "https://a.com",
+                "events": ["invalid.event"],
+            },
+        )
         assert resp.status_code == 400
 
 
 # ---------------------------------------------------------------------------
 # BLK-065: i18n
 # ---------------------------------------------------------------------------
+
 
 class TestAcceptLanguage:
     """Verify Accept-Language parsing [BLK-065]."""
@@ -302,6 +334,7 @@ class TestDocumentLanguageDetection:
 # BLK-066: Analytics
 # ---------------------------------------------------------------------------
 
+
 class TestAnalytics:
     """Verify analytics aggregation [BLK-066]."""
 
@@ -320,7 +353,12 @@ class TestAnalytics:
                 "status": "completed" if i < 2 else "failed",
                 "fields": [
                     {"name": "vendor", "value": "ACME", "confidence": 0.9, "status": "extracted"},
-                    {"name": "total", "value": 100, "confidence": 0.8, "status": "extracted" if i < 2 else "missing"},
+                    {
+                        "name": "total",
+                        "value": 100,
+                        "confidence": 0.8,
+                        "status": "extracted" if i < 2 else "missing",
+                    },
                 ],
                 "extracted_fields_count": 2 if i < 2 else 1,
                 "total_fields": 2,

@@ -37,6 +37,7 @@ def _get_run_or_404(run_id: str) -> dict[str, Any]:
 
 class StartRunRequest(BaseModel):
     """Request body for starting a run."""
+
     definition_id: str = Field(description="Agent definition ID to use")
     document_path: str = Field(description="Path to the document to extract", alias="document_url")
 
@@ -79,6 +80,7 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
 
         # Get document page paths from the document store
         from src.documents.store import get_document_store
+
         doc_store = get_document_store()
         # Extract document_id from document_path (may be a path or an ID)
         doc_path = req.document_path
@@ -121,7 +123,9 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
     doc_path_resolved = Path(req.document_path).resolve()
     allowed_roots = [r.resolve() for r in [Path.cwd() / ".adep", Path.cwd() / "sample-data"]]
     if not any(doc_path_resolved.is_relative_to(root) for root in allowed_roots):
-        logger.warning("Run creation denied — document_path outside allowed roots: %s", req.document_path)
+        logger.warning(
+            "Run creation denied — document_path outside allowed roots: %s", req.document_path
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="document_url must point to a file within the document store (.adep/) or sample-data/.",
@@ -254,6 +258,7 @@ async def delete_run(run_id: str) -> dict[str, Any]:
 
 class PatchRunRequest(BaseModel):
     """Request body for patching a run [BLK-077]."""
+
     name: str | None = None
 
 
@@ -326,6 +331,7 @@ async def duplicate_run(run_id: str) -> dict[str, Any]:
     source = _get_run_or_404(run_id)
 
     import uuid as _uuid
+
     new_id = f"run-{_uuid.uuid4().hex[:8]}"
     new_run = {
         "id": new_id,
@@ -369,7 +375,8 @@ async def list_runs(
     if q:
         q_lower = q.lower()
         runs = [
-            r for r in runs
+            r
+            for r in runs
             if q_lower in r.get("id", "").lower()
             or q_lower in (r.get("document_url") or r.get("document_path") or "").lower()
         ]
@@ -441,6 +448,7 @@ async def stream_run(run_id: str, request: Request) -> StreamingResponse:
 
     # If run is active, subscribe to live emitter [BLK-129]
     if ctx is not None and ctx.status in ("running", "paused", "queued"):
+
         async def live_stream():
             """Stream live events from the run's emitter."""
             try:
@@ -492,7 +500,8 @@ async def stream_run(run_id: str, request: Request) -> StreamingResponse:
             emitter.emit_progress(
                 completed_fields=run_data.get("extracted_fields_count", 0),
                 total_fields=run_data.get("total_fields", 0),
-                failing_fields=run_data.get("total_fields", 0) - run_data.get("extracted_fields_count", 0),
+                failing_fields=run_data.get("total_fields", 0)
+                - run_data.get("extracted_fields_count", 0),
             )
 
             # Emit compaction event if compaction occurred [§12.4, BLK-039]
@@ -505,6 +514,7 @@ async def stream_run(run_id: str, request: Request) -> StreamingResponse:
             # Emit complete with run_id [BLK-129]
             # Map persisted store status → SSE complete status [BLK-280]
             from src.api.status import map_store_status_to_sse
+
             status_str = run_data.get("status", "failed")
             complete_status = map_store_status_to_sse(status_str)
             emitter.emit_complete(complete_status, run_id=run_id)
@@ -581,8 +591,10 @@ async def compact_run(run_id: str) -> dict[str, Any]:
 # Agent control endpoints [BLK-046]
 # ---------------------------------------------------------------------------
 
+
 class RollbackRequest(BaseModel):
     """Request body for rollback endpoint."""
+
     to_cycle: int = Field(description="Cycle number to rollback to")
 
 
@@ -739,7 +751,11 @@ async def rollback_run(run_id: str, body: RollbackRequest) -> dict[str, Any]:
         "message": (
             f"Rolled back from cycle {current_cycle} to {target_cycle}. "
             "attempted set preserved [§12.3]."
-            + (" Live graph signaled." if live_rollback else " Run not active in executor — metadata recorded.")
+            + (
+                " Live graph signaled."
+                if live_rollback
+                else " Run not active in executor — metadata recorded."
+            )
         ),
     }
 
@@ -748,8 +764,10 @@ async def rollback_run(run_id: str, body: RollbackRequest) -> dict[str, Any]:
 # HITL gate approval [BLK-047]
 # ---------------------------------------------------------------------------
 
+
 class ApprovalRequest(BaseModel):
     """Request body for HITL gate approval [BLK-047]."""
+
     field: str = Field(default="", description="Field path being approved or rejected")
     action: str = Field(default="accept", description="Approval action: 'accept' or 'reject'")
 
@@ -828,6 +846,7 @@ def reject_field(run_id: str, body: ApprovalRequest | None = None) -> dict[str, 
 # Trace export & audit report [BLK-060]
 # ---------------------------------------------------------------------------
 
+
 @router.get("/runs/{run_id}/export/json")
 async def export_run_json(run_id: str) -> dict[str, Any]:
     """Export full run data as JSON [BLK-060].
@@ -865,24 +884,35 @@ async def export_run_csv(run_id: str) -> PlainTextResponse:
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow([
-        "field_name", "value", "confidence", "status",
-        "page", "bbox_x", "bbox_y", "bbox_w", "bbox_h",
-    ])
+    writer.writerow(
+        [
+            "field_name",
+            "value",
+            "confidence",
+            "status",
+            "page",
+            "bbox_x",
+            "bbox_y",
+            "bbox_w",
+            "bbox_h",
+        ]
+    )
 
     for field in run_data.get("fields", []):
         bbox = field.get("bbox") or {}
-        writer.writerow([
-            field.get("name", field.get("id", "")),
-            field.get("value", ""),
-            field.get("confidence", 0.0),
-            field.get("status", ""),
-            field.get("page", 0),
-            bbox.get("x", ""),
-            bbox.get("y", ""),
-            bbox.get("width", ""),
-            bbox.get("height", ""),
-        ])
+        writer.writerow(
+            [
+                field.get("name", field.get("id", "")),
+                field.get("value", ""),
+                field.get("confidence", 0.0),
+                field.get("status", ""),
+                field.get("page", 0),
+                bbox.get("x", ""),
+                bbox.get("y", ""),
+                bbox.get("width", ""),
+                bbox.get("height", ""),
+            ]
+        )
 
     return PlainTextResponse(
         content=output.getvalue(),
@@ -896,6 +926,7 @@ async def export_run_csv(run_id: str) -> PlainTextResponse:
 # ---------------------------------------------------------------------------
 # Budget status endpoint [BLK-051]
 # ---------------------------------------------------------------------------
+
 
 @router.get("/budget")
 async def get_budget() -> dict[str, Any]:

@@ -47,8 +47,7 @@ _sum_check = Invariant(
     fields=["subtotal", "tax", "total"],
     fn=lambda e: (
         abs((e["subtotal"].value + e["tax"].value) - e["total"].value) < 0.01,
-        f"subtotal ({e['subtotal'].value}) + tax ({e['tax'].value}) "
-        f"!= total ({e['total'].value})",
+        f"subtotal ({e['subtotal'].value}) + tax ({e['tax'].value}) != total ({e['total'].value})",
     ),
 )
 
@@ -56,13 +55,20 @@ _sum_check = Invariant(
 def _check_date_range(e: dict) -> tuple[bool, str]:
     """Verify invoice_date <= due_date and due_date within 365 days of invoice_date."""
     from datetime import datetime, timedelta
+
     try:
         inv_date = datetime.strptime(str(e["invoice_date"].value), "%Y-%m-%d")
         due_date = datetime.strptime(str(e["due_date"].value), "%Y-%m-%d")
         if inv_date > due_date:
-            return False, f"invoice_date ({e['invoice_date'].value}) > due_date ({e['due_date'].value})"
+            return (
+                False,
+                f"invoice_date ({e['invoice_date'].value}) > due_date ({e['due_date'].value})",
+            )
         if (due_date - inv_date).days > 365:
-            return False, f"due_date ({e['due_date'].value}) is more than 365 days after invoice_date ({e['invoice_date'].value})"
+            return (
+                False,
+                f"due_date ({e['due_date'].value}) is more than 365 days after invoice_date ({e['invoice_date'].value})",
+            )
         return True, ""
     except (ValueError, TypeError):
         return False, "Invalid date format for date comparison"
@@ -109,30 +115,23 @@ _line_items_sum_check = Invariant(
 # ---------------------------------------------------------------------------
 
 INVOICE_FAILURE_ACTIONS: dict[GapType, str] = {
-    GapType.MISSING:
-        "Run detect_layout to find the relevant region, then crop and "
-        "read it with ocr or vlm.",
-    GapType.TYPE_ERROR:
-        "Re-crop the region for this field and re-read with ocr. "
-        "If the value is non-numeric where a number is expected, "
-        "ask vlm with a targeted question.",
-    GapType.FORMAT_ERROR:
-        "Re-read the region and ask vlm to normalize the value to the "
-        "required format (e.g. ISO date YYYY-MM-DD).",
-    GapType.UNGROUNDED:
-        "Call the ground tool to trace this value to its bounding box "
-        "in the source image.",
-    GapType.LOW_CONFIDENCE:
-        "Re-crop the region tightly around this value, deskew if needed, "
-        "and re-read with ocr. If still low, ask vlm with a sharp question.",
-    GapType.INVARIANT_FAILED:
-        "The subtotal + tax == total check failed. Re-crop the totals "
-        "band at the bottom of the invoice and re-read subtotal, tax, "
-        "and total with ocr. If OCR is garbled, use vlm.",
-    GapType.SEMANTIC_FAIL:
-        "The semantic check flagged this value as implausible. Re-crop "
-        "the region and re-read with vlm, asking a targeted question "
-        "about the expected value.",
+    GapType.MISSING: "Run detect_layout to find the relevant region, then crop and "
+    "read it with ocr or vlm.",
+    GapType.TYPE_ERROR: "Re-crop the region for this field and re-read with ocr. "
+    "If the value is non-numeric where a number is expected, "
+    "ask vlm with a targeted question.",
+    GapType.FORMAT_ERROR: "Re-read the region and ask vlm to normalize the value to the "
+    "required format (e.g. ISO date YYYY-MM-DD).",
+    GapType.UNGROUNDED: "Call the ground tool to trace this value to its bounding box "
+    "in the source image.",
+    GapType.LOW_CONFIDENCE: "Re-crop the region tightly around this value, deskew if needed, "
+    "and re-read with ocr. If still low, ask vlm with a sharp question.",
+    GapType.INVARIANT_FAILED: "The subtotal + tax == total check failed. Re-crop the totals "
+    "band at the bottom of the invoice and re-read subtotal, tax, "
+    "and total with ocr. If OCR is garbled, use vlm.",
+    GapType.SEMANTIC_FAIL: "The semantic check flagged this value as implausible. Re-crop "
+    "the region and re-read with vlm, asking a targeted question "
+    "about the expected value.",
 }
 
 
@@ -152,14 +151,13 @@ InvoiceSkill = Skill(
         "chart": "vlm",
     },
     probe_order=[
-        ("header", "Invoice number and date are usually in the top-right "
-                   "or top-center header region."),
-        ("text", "Vendor name is typically near the top, possibly with a "
-                 "logo."),
-        ("table", "Line items are in the main body table — read with ocr "
-                  "or read_table."),
-        ("text", "Subtotal, tax, and total are usually in a totals band "
-                 "near the bottom."),
+        (
+            "header",
+            "Invoice number and date are usually in the top-right or top-center header region.",
+        ),
+        ("text", "Vendor name is typically near the top, possibly with a logo."),
+        ("table", "Line items are in the main body table — read with ocr or read_table."),
+        ("text", "Subtotal, tax, and total are usually in a totals band near the bottom."),
     ],
     invariants=[_sum_check, _date_range_check, _line_items_sum_check],
     failure_actions=INVOICE_FAILURE_ACTIONS,

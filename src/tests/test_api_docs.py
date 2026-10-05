@@ -23,6 +23,7 @@ def client(tmp_path):
     """Create a test client with isolated store."""
     import src.definitions.store as store_module
     import src.config as config_module
+
     old_store = store_module._store
     old_auth = config_module.settings.auth_enabled
     store_module._store = store_module.DefinitionStore(base_dir=tmp_path / ".adep")
