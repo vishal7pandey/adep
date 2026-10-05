@@ -124,32 +124,41 @@ script to follow.
 """
 
 
-def _build_azure_model() -> Model:
-    """Build the real Azure-backed model from settings, mirroring vlm_azure.py's client wiring."""
+def _build_model() -> Model:
+    """Build the real model for the active provider (OpenAI or Azure OpenAI) [ADE-41].
+
+    Mirrors the client wiring in src/providers/vlm_azure.py so the agent and its perception
+    tools always talk to the same provider. Never logs a key or an endpoint.
+    """
     from pydantic_ai.models.openai import OpenAIChatModel
+
+    if settings.active_llm_provider == "openai":
+        from pydantic_ai.providers.openai import OpenAIProvider
+
+        logger.info("Building engine agent model: provider=openai, model=%s", settings.chat_model)
+        return OpenAIChatModel(
+            settings.chat_model, provider=OpenAIProvider(api_key=settings.openai_api_key)
+        )
+
     from pydantic_ai.providers.azure import AzureProvider
 
-    logger.info(
-        "Building engine agent model: deployment=%s, endpoint=%s",
-        settings.azure_chat_deployment,
-        settings.azure_chat_endpoint,
-    )
+    logger.info("Building engine agent model: provider=azure, deployment=%s", settings.chat_model)
     provider = AzureProvider(
         azure_endpoint=settings.azure_chat_endpoint,
         api_key=settings.azure_api_key,
         api_version="2024-02-15-preview",
     )
-    return OpenAIChatModel(settings.azure_chat_deployment, provider=provider)
+    return OpenAIChatModel(settings.chat_model, provider=provider)
 
 
 def build_agent(model: Model | None = None) -> Agent:
     """Build the engine agent. Pass model= to inject a TestModel/FunctionModel for hermetic tests.
 
-    When model is None, builds the real Azure-backed model from settings (lazy: never happens at
-    import time, so this module is importable with no Azure credentials set at all).
+    When model is None, builds the real model for the active provider from settings (lazy: never
+    happens at import time, so this module is importable with no credentials set at all).
     """
     agent: Agent = Agent(
-        model if model is not None else _build_azure_model(),
+        model if model is not None else _build_model(),
         system_prompt=SYSTEM_PROMPT,
         output_type=str,
         deps_type=ExtractionState,
