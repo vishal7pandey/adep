@@ -1,0 +1,11 @@
+id: ADE-30
+type: feature
+title: Land the ade2 engine beside the old one as a new package (src/engine/)
+slug: engine-vertical-slice
+status: draft
+risk: high
+jira: ADE-30
+branch: feature/ade-30-engine-vertical-slice
+created: 2026-10-05
+approvals: {}
+pr: null
