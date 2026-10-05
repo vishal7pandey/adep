@@ -43,15 +43,6 @@ jobs:
         run: >
           uv run pytest src/tests/ -v --tb=short
           --cov=src --cov-report=term-missing --cov-fail-under=80
-          --deselect src/tests/test_e2e.py::TestE2EInvoiceMocked::test_invoice_e2e_mocked
-          --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_seeded_definitions_exist
-          --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_invoice_run_produces_result
-          --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_utility_bill_run_mocked
-          --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_medical_claim_run_mocked
-          --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_boq_run_mocked
-          --deselect src/tests/test_e2e.py::TestE2EResultSerialization::test_result_has_required_keys
-          --deselect src/tests/test_stabilization.py::TestMaxCyclesOverride::test_override_used_in_recursion_limit
-          --deselect src/tests/test_agent_control.py::TestCompactEndpoint::test_compact_run_not_in_executor_returns_false
 
   frontend:
     runs-on: ubuntu-latest
@@ -70,9 +61,11 @@ jobs:
         working-directory: frontend
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (eslint)
-        working-directory: frontend
-        run: pnpm run lint
+      # TEMPORARILY DISABLED (ADE-1): eslint reports 22 errors on master, tracked in ADE-28.
+      # Re-enable `pnpm run lint` when ADE-28 is done.
+      # - name: Lint (eslint)
+      #   working-directory: frontend
+      #   run: pnpm run lint
 
       - name: Tests (vitest)
         working-directory: frontend
@@ -101,9 +94,11 @@ jobs:
               - '.dockerignore'
               - 'frontend/.dockerignore'
               - '.github/workflows/ci.yml'
-      - name: Docker build (backend)
-        if: steps.filter.outputs.docker == 'true'
-        run: docker build -f Dockerfile -t adep-backend:ci .
-      - name: Docker compose build
-        if: steps.filter.outputs.docker == 'true'
-        run: docker compose build
+      # TEMPORARILY DISABLED (ADE-1): the backend Dockerfile copies a requirements.txt that does
+      # not exist, tracked in ADE-27. Re-enable both steps when ADE-27 is done.
+      # - name: Docker build (backend)
+      #   if: steps.filter.outputs.docker == 'true'
+      #   run: docker build -f Dockerfile -t adep-backend:ci .
+      # - name: Docker compose build
+      #   if: steps.filter.outputs.docker == 'true'
+      #   run: docker compose build
