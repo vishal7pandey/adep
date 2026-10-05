@@ -2,10 +2,13 @@ id: ADE-30
 type: feature
 title: Land the ade2 engine beside the old one as a new package (src/engine/)
 slug: engine-vertical-slice
-status: draft
+status: spec-approved
 risk: high
 jira: ADE-30
-branch: feature/ade-30-engine-vertical-slice
+branch: docs/ade-30-engine-vertical-slice
 created: 2026-10-05
-approvals: {}
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: 2026-10-05
 pr: null
