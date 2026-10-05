@@ -42,6 +42,7 @@ from src.templates.base import ExtractedResult, GraphExtractionResult
 from src.tools.base import FieldValue, ToolRegistry, ToolResult
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from src.api.run_executor import RunControl
     from src.api.sse import SSEEventEmitter
@@ -68,6 +69,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Circuit breaker [§2.7]
 # ---------------------------------------------------------------------------
+
 
 class CircuitBreaker:
     """Per-provider circuit breaker for a single run [§2.7].
@@ -96,10 +98,16 @@ class CircuitBreaker:
 # Plan node — LLM decides next action
 # ---------------------------------------------------------------------------
 
-def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None = None,
-              registry: ToolRegistry | None = None,
-              emitter: SSEEventEmitter | None = None,
-              audit_logger: AuditLogger | None = None) -> dict[str, Any]:
+
+def plan_node(
+    state: AgentState,
+    *,
+    llm_client: Any = None,
+    skill: Skill | None = None,
+    registry: ToolRegistry | None = None,
+    emitter: SSEEventEmitter | None = None,
+    audit_logger: AuditLogger | None = None,
+) -> dict[str, Any]:
     """Decide the next action based on the GapReport and skill hints.
 
     The plan node takes the current GapReport, the region index, and the
@@ -136,8 +144,7 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
 
     if llm_client is None:
         raise RuntimeError(
-            "Cannot plan: LLM client is None. Check Azure API key "
-            "and endpoint configuration."
+            "Cannot plan: LLM client is None. Check Azure API key and endpoint configuration."
         )
     if skill is None:
         raise RuntimeError(
@@ -146,19 +153,14 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
         )
     if registry is None:
         raise RuntimeError(
-            "Cannot plan: tool registry is None. Check provider "
-            "configuration and imports."
+            "Cannot plan: tool registry is None. Check provider configuration and imports."
         )
 
     # Build the LLM prompt from gap report + skill + region index
-    tool_descriptions = "\n".join(
-        f"- {s.name}: {s.description}" for s in registry.specs()
-    )
+    tool_descriptions = "\n".join(f"- {s.name}: {s.description}" for s in registry.specs())
     gap_summary = _format_gaps(gap_report) if gap_report else "No gaps (initial run)."
     region_summary = _format_regions(regions)
-    probe_hints = "\n".join(
-        f"  {rtype}: {rationale}" for rtype, rationale in skill.probe_order
-    )
+    probe_hints = "\n".join(f"  {rtype}: {rationale}" for rtype, rationale in skill.probe_order)
 
     system_prompt = skill.system_prompt
 
@@ -176,9 +178,7 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
     # Include compaction summary if available [§12.4]
     compaction_summary = state.get("compaction_summary", "")
     trace_section = (
-        f"## Compacted Trace Summary\n{compaction_summary}\n\n"
-        if compaction_summary
-        else ""
+        f"## Compacted Trace Summary\n{compaction_summary}\n\n" if compaction_summary else ""
     )
 
     # Build document info section for multi-page awareness [BLK-220]
@@ -253,7 +253,8 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
                 guardrail_actions.append(f"sanitized_{len(detected)}_instruction_patterns")
                 logger.warning(
                     "LLM response contains instruction-like patterns — "
-                    "sanitized via guardrail [BLK-079]: %s", detected
+                    "sanitized via guardrail [BLK-079]: %s",
+                    detected,
                 )
 
         action = _parse_llm_response(response_text)
@@ -273,6 +274,7 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
     # Audit logging [BLK-084]
     if audit_logger is not None:
         from src.agent.guardrails.audit_logging import hash_prompt as _hash_prompt
+
         entry = AuditLogEntry(
             run_id=audit_logger.run_id,
             cycle=step,
@@ -312,8 +314,10 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
         logger.warning(
             "Run budget exceeded — terminating with partial results [BLK-051]. "
             "Tokens: %d/%d, Cost: $%.4f/$%.4f",
-            run_budget.consumed_tokens, run_budget.limit_tokens,
-            run_budget.consumed_cost_usd, run_budget.limit_cost_usd,
+            run_budget.consumed_tokens,
+            run_budget.limit_tokens,
+            run_budget.consumed_cost_usd,
+            run_budget.limit_cost_usd,
         )
         return {
             "step": step,
@@ -340,7 +344,9 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
     if not action.get("tool"):
         return {
             "step": step,
-            "status": RunStatus.PARTIAL if gap_report and not gap_report.is_complete else RunStatus.COMPLETE,
+            "status": RunStatus.PARTIAL
+            if gap_report and not gap_report.is_complete
+            else RunStatus.COMPLETE,
             "_planned_action": None,
             "token_usage": token_usage_list,
             "total_tokens": total_tokens,
@@ -380,10 +386,15 @@ def plan_node(state: AgentState, *, llm_client: Any = None, skill: Skill | None 
 # Act node — call one tool
 # ---------------------------------------------------------------------------
 
-def act_node(state: AgentState, *, registry: ToolRegistry | None = None,
-             breaker: CircuitBreaker | None = None,
-             emitter: SSEEventEmitter | None = None,
-             rate_limiter: ToolCallRateLimiter | None = None) -> dict[str, Any]:
+
+def act_node(
+    state: AgentState,
+    *,
+    registry: ToolRegistry | None = None,
+    breaker: CircuitBreaker | None = None,
+    emitter: SSEEventEmitter | None = None,
+    rate_limiter: ToolCallRateLimiter | None = None,
+) -> dict[str, Any]:
     """Execute the planned tool call through the ToolRegistry.
 
     Args:
@@ -424,11 +435,18 @@ def act_node(state: AgentState, *, registry: ToolRegistry | None = None,
 
     # Guardrails: evaluate tool call before execution [BLK-080]
     decision = _guard_evaluate_tool_call(
-        tool_name, tool_args, registry, rate_limiter=rate_limiter,
+        tool_name,
+        tool_args,
+        registry,
+        rate_limiter=rate_limiter,
     )
     if not decision.allowed:
-        logger.warning("Tool call rejected by guardrails: %s — %s [BLK-080]", tool_name, decision.reason)
-        result = ToolResult(ok=False, error=f"Tool call rejected: {decision.reason}", tool=tool_name)
+        logger.warning(
+            "Tool call rejected by guardrails: %s — %s [BLK-080]", tool_name, decision.reason
+        )
+        result = ToolResult(
+            ok=False, error=f"Tool call rejected: {decision.reason}", tool=tool_name
+        )
         if emitter:
             emitter.emit_tool_result(step, tool_name, result)
         return {
@@ -468,9 +486,10 @@ def act_node(state: AgentState, *, registry: ToolRegistry | None = None,
 # Observe node — process tool result, update extraction/regions/trace
 # ---------------------------------------------------------------------------
 
-def observe_node(state: AgentState, *,
-                 emitter: SSEEventEmitter | None = None,
-                 control: RunControl | None = None) -> dict[str, Any]:
+
+def observe_node(
+    state: AgentState, *, emitter: SSEEventEmitter | None = None, control: RunControl | None = None
+) -> dict[str, Any]:
     """Process the tool result and update State.
 
     Updates the extraction dict, region index, trace, and attempted set
@@ -532,9 +551,14 @@ def observe_node(state: AgentState, *,
             field_attempts[field] = field_attempts.get(field, 0) + 1
 
         # Compact trace [§12.3]
-        resolved = {k for k, v in extraction.items()
-                    if v.value is not None and v.grounding is not None
-                    and v.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)}
+        resolved = {
+            k
+            for k, v in extraction.items()
+            if v.value is not None
+            and v.grounding is not None
+            and v.confidence
+            >= state.get("confidence_threshold", settings.default_confidence_threshold)
+        }
         trace = compact_trace(trace, settings.trace_window_size, resolved)
 
         return {
@@ -549,7 +573,9 @@ def observe_node(state: AgentState, *,
 
     # Process successful result
     if result.data is not None:
-        _process_tool_result(result, tool_name, tool_args, extraction, regions, field, field_attempts)
+        _process_tool_result(
+            result, tool_name, tool_args, extraction, regions, field, field_attempts
+        )
 
     # Guardrail: hallucination detection — verify grounding for newly extracted fields [BLK-081]
     if field and field in extraction:
@@ -571,7 +597,8 @@ def observe_node(state: AgentState, *,
             if grounding_result.status == "hallucination_suspected":
                 logger.warning(
                     "Hallucination suspected for field '%s': %s [BLK-081]",
-                    field, grounding_result.message,
+                    field,
+                    grounding_result.message,
                 )
                 # Cap confidence for suspected hallucinations
                 extraction[field] = FieldValue(
@@ -594,15 +621,20 @@ def observe_node(state: AgentState, *,
         total_fields = 0
         if template_schema is not None:
             from src.agent.validator import _required_fields
+
             total_fields = len(_required_fields(template_schema))
         extracted_count = sum(
-            1 for fv in extraction.values()
-            if fv.value is not None and fv.grounding is not None
-            and fv.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)
+            1
+            for fv in extraction.values()
+            if fv.value is not None
+            and fv.grounding is not None
+            and fv.confidence
+            >= state.get("confidence_threshold", settings.default_confidence_threshold)
         )
         for name, fv in extraction.items():
             if fv.value is not None and fv.grounding is not None:
                 from src.agent.hitl import classify_extraction_risk
+
                 gate_decision = classify_extraction_risk(
                     confidence=fv.confidence,
                     semantic_failed=False,
@@ -679,9 +711,13 @@ def observe_node(state: AgentState, *,
                     control.reset_gate()
 
     # Compact trace
-    resolved = {k for k, v in extraction.items()
-                if v.value is not None and v.grounding is not None
-                and v.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)}
+    resolved = {
+        k
+        for k, v in extraction.items()
+        if v.value is not None
+        and v.grounding is not None
+        and v.confidence >= state.get("confidence_threshold", settings.default_confidence_threshold)
+    }
     trace = compact_trace(trace, settings.trace_window_size, resolved)
 
     return {
@@ -698,6 +734,7 @@ def observe_node(state: AgentState, *,
 # ---------------------------------------------------------------------------
 # Reflect node — run the Outcome Validator
 # ---------------------------------------------------------------------------
+
 
 def reflect_node(
     state: AgentState,
@@ -764,15 +801,14 @@ def reflect_node(
         last_tool = action.get("tool", "") if action else ""
         last_field = action.get("field") if action else None
         extracted_count = sum(
-            1 for fv in extraction.values()
-            if fv.value is not None and fv.grounding is not None
+            1 for fv in extraction.values() if fv.value is not None and fv.grounding is not None
         )
-        loop_detector.record_cycle(last_tool, action.get("args", {}), last_field, last_thought, extracted_count)
+        loop_detector.record_cycle(
+            last_tool, action.get("args", {}), last_field, last_thought, extracted_count
+        )
         loop_report = loop_detector.check_all()
         if loop_report.detected:
-            logger.warning(
-                "Loop detected — terminating: %s [BLK-082]", loop_report.summary
-            )
+            logger.warning("Loop detected — terminating: %s [BLK-082]", loop_report.summary)
             loop_detected = True
 
     # Trajectory cascade detection [BLK-049, §13]
@@ -798,8 +834,7 @@ def reflect_node(
         )
     elif consecutive_non_improving >= 5:
         logger.warning(
-            "Trajectory critical: %d consecutive non-improving cycles — "
-            "auto-pausing [BLK-049]",
+            "Trajectory critical: %d consecutive non-improving cycles — auto-pausing [BLK-049]",
             consecutive_non_improving,
         )
 
@@ -816,7 +851,8 @@ def reflect_node(
         logger.info(
             "Give-up caps exhausted — terminating with partial result. "
             "Cycles: %d, field_attempts: %s",
-            total_cycles, field_attempts,
+            total_cycles,
+            field_attempts,
         )
     elif consecutive_non_improving >= 5:
         status = RunStatus.PAUSED  # Auto-pause on trajectory critical [BLK-049, BLK-095]
@@ -898,8 +934,7 @@ def compact_node(
         output_tokens = 0
     else:
         trace_text = "\n".join(
-            f"  step {e.step}: {e.tool}({e.args}) → {e.result_summary}"
-            for e in trace
+            f"  step {e.step}: {e.tool}({e.args}) → {e.result_summary}" for e in trace
         )
         user_prompt = (
             f"## Existing Summary\n{existing_summary or '(none)'}\n\n"
@@ -926,7 +961,8 @@ def compact_node(
 
     logger.info(
         "Trace compacted: %d entries → %d char summary [§12.4]",
-        len(trace), len(summary),
+        len(trace),
+        len(summary),
     )
 
     # Record token usage for compact node [BLK-050]
@@ -968,9 +1004,7 @@ def _code_based_summary(
     if existing_summary:
         parts.append(existing_summary)
     for e in trace:
-        parts.append(
-            f"step {e.step}: {e.tool}({e.args}) → {e.result_summary}"
-        )
+        parts.append(f"step {e.step}: {e.tool}({e.args}) → {e.result_summary}")
     return "\n".join(parts[-20:])  # cap at 20 lines
 
 
@@ -978,8 +1012,8 @@ def _code_based_summary(
 # Terminate node — build ExtractedResult
 # ---------------------------------------------------------------------------
 
-def terminate_node(state: AgentState, *,
-                   emitter: SSEEventEmitter | None = None) -> dict[str, Any]:
+
+def terminate_node(state: AgentState, *, emitter: SSEEventEmitter | None = None) -> dict[str, Any]:
     """Build the final RunResult from the state.
 
     For field extraction (default), builds an ExtractedResult with field
@@ -1002,7 +1036,9 @@ def terminate_node(state: AgentState, *,
     template_schema = state.get("template_schema")
     task_type = state.get("task_type", "extraction")
 
-    is_complete = status == RunStatus.COMPLETE or (gap_report is not None and gap_report.is_complete)
+    is_complete = status == RunStatus.COMPLETE or (
+        gap_report is not None and gap_report.is_complete
+    )
 
     # BLK-171: Zero-token runs with zero extracted fields are failures
     total_tokens = state.get("total_tokens", 0)
@@ -1032,9 +1068,9 @@ def terminate_node(state: AgentState, *,
         values = None
         if is_complete and template_schema is not None:
             try:
-                values = template_schema(**{
-                    k: v.value for k, v in extraction.items() if v.value is not None
-                })
+                values = template_schema(
+                    **{k: v.value for k, v in extraction.items() if v.value is not None}
+                )
             except Exception as e:
                 logger.error("Failed to instantiate template: %s", e)
 
@@ -1125,6 +1161,7 @@ def _build_graph_result(
 
     token_usage_list = state.get("token_usage", [])
     from src.agent.token_tracking import summarize_token_usage
+
     token_summary = summarize_token_usage(token_usage_list)
 
     return GraphExtractionResult(
@@ -1145,6 +1182,7 @@ def _build_graph_result(
 # ---------------------------------------------------------------------------
 # Graph-specific validation during live loop [BLK-218]
 # ---------------------------------------------------------------------------
+
 
 def _validate_graph_state(
     state: AgentState,
@@ -1196,6 +1234,7 @@ def _validate_graph_state(
 # Conditional edge: reflect → plan or terminate
 # ---------------------------------------------------------------------------
 
+
 def should_continue(state: AgentState) -> str:
     """Conditional edge after reflect: route to plan, compact, or terminate.
 
@@ -1205,7 +1244,13 @@ def should_continue(state: AgentState) -> str:
         otherwise [§12.4].
     """
     status = state.get("status", RunStatus.PLANNING)
-    if status in (RunStatus.COMPLETE, RunStatus.PARTIAL, RunStatus.ERROR, RunStatus.PAUSED, RunStatus.CANCELLED):
+    if status in (
+        RunStatus.COMPLETE,
+        RunStatus.PARTIAL,
+        RunStatus.ERROR,
+        RunStatus.PAUSED,
+        RunStatus.CANCELLED,
+    ):
         return "terminate"
 
     # Check compaction triggers [§12.4]
@@ -1230,7 +1275,13 @@ def should_act(state: AgentState) -> str:
         "act" if an action is planned, "terminate" otherwise.
     """
     status = state.get("status", RunStatus.PLANNING)
-    if status in (RunStatus.COMPLETE, RunStatus.PARTIAL, RunStatus.ERROR, RunStatus.PAUSED, RunStatus.CANCELLED):
+    if status in (
+        RunStatus.COMPLETE,
+        RunStatus.PARTIAL,
+        RunStatus.ERROR,
+        RunStatus.PAUSED,
+        RunStatus.CANCELLED,
+    ):
         return "terminate"
     return "act"
 
@@ -1289,7 +1340,8 @@ def should_continue_with_control(state: AgentState, control: RunControl | None =
             state["total_cycles"] = to_cycle
             extraction = state.get("extraction", {})
             state["extraction"] = {
-                k: v for k, v in extraction.items()
+                k: v
+                for k, v in extraction.items()
                 if getattr(v, "_step", getattr(v, "step", 0)) <= to_cycle
             }
             state["compaction_summary"] = ""
@@ -1305,6 +1357,7 @@ def should_continue_with_control(state: AgentState, control: RunControl | None =
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def build_react_graph(
     registry: ToolRegistry,
@@ -1341,27 +1394,53 @@ def build_react_graph(
     graph = StateGraph(AgentState)
 
     # Add nodes with bound dependencies
-    graph.add_node("plan", lambda s: plan_node(
-        s, llm_client=llm_client, skill=skill, registry=registry,
-        emitter=emitter, audit_logger=audit_logger,
-    ))
-    graph.add_node("act", lambda s: act_node(
-        s, registry=registry, breaker=breaker,
-        emitter=emitter, rate_limiter=rate_limiter,
-    ))
-    graph.add_node("observe", lambda s: observe_node(
-        s, emitter=emitter, control=control,
-    ))
-    graph.add_node("reflect", lambda s: reflect_node(
-        s, skill=skill, validator_config=validator_config,
-        emitter=emitter, loop_detector=loop_detector,
-    ))
-    graph.add_node("compact", lambda s: compact_node(
-        s, llm_client=llm_client
-    ))
-    graph.add_node("terminate", lambda s: terminate_node(
-        s, emitter=emitter,
-    ))
+    graph.add_node(
+        "plan",
+        lambda s: plan_node(
+            s,
+            llm_client=llm_client,
+            skill=skill,
+            registry=registry,
+            emitter=emitter,
+            audit_logger=audit_logger,
+        ),
+    )
+    graph.add_node(
+        "act",
+        lambda s: act_node(
+            s,
+            registry=registry,
+            breaker=breaker,
+            emitter=emitter,
+            rate_limiter=rate_limiter,
+        ),
+    )
+    graph.add_node(
+        "observe",
+        lambda s: observe_node(
+            s,
+            emitter=emitter,
+            control=control,
+        ),
+    )
+    graph.add_node(
+        "reflect",
+        lambda s: reflect_node(
+            s,
+            skill=skill,
+            validator_config=validator_config,
+            emitter=emitter,
+            loop_detector=loop_detector,
+        ),
+    )
+    graph.add_node("compact", lambda s: compact_node(s, llm_client=llm_client))
+    graph.add_node(
+        "terminate",
+        lambda s: terminate_node(
+            s,
+            emitter=emitter,
+        ),
+    )
 
     # Edges — wire control checks into conditional edges [BLK-129, SCRUM-407]
     # Inline pause/cancel logic so the graph itself calls wait_for_resume(),
@@ -1406,7 +1485,8 @@ def build_react_graph(
                 s["total_cycles"] = to_cycle
                 extraction = s.get("extraction", {})
                 s["extraction"] = {
-                    k: v for k, v in extraction.items()
+                    k: v
+                    for k, v in extraction.items()
                     if getattr(v, "_step", getattr(v, "step", 0)) <= to_cycle
                 }
                 s["compaction_summary"] = ""
@@ -1436,6 +1516,7 @@ def build_react_graph(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _format_gaps(gap_report: GapReport) -> str:
     if not gap_report.gaps:
@@ -1523,8 +1604,11 @@ def _process_tool_result(
         for item in result.data:
             if isinstance(item, dict) and "id" in item and "type" in item:
                 from src.tools.base import Region, RegionType
+
                 try:
-                    rtype = RegionType(item["type"]) if isinstance(item["type"], str) else item["type"]
+                    rtype = (
+                        RegionType(item["type"]) if isinstance(item["type"], str) else item["type"]
+                    )
                     region = Region(
                         id=item["id"],
                         type=rtype,

@@ -102,8 +102,9 @@ def deskew(image_path: str, **kwargs: Any) -> ToolResult:
         img = _load_image(image_path)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=100,
-                                minLineLength=img.shape[1] // 5, maxLineGap=20)
+        lines = cv2.HoughLinesP(
+            edges, 1, np.pi / 180, threshold=100, minLineLength=img.shape[1] // 5, maxLineGap=20
+        )
 
         if lines is None:
             return ToolResult(ok=True, data=image_path, tool="deskew")
@@ -147,6 +148,7 @@ def auto_orient(image_path: str, **kwargs: Any) -> ToolResult:
     """
     try:
         from PIL import Image as PILImage, ExifTags
+
         pil_img = PILImage.open(image_path)
 
         # Check EXIF orientation
@@ -225,8 +227,7 @@ def threshold(image_path: str, **kwargs: Any) -> ToolResult:
         img = _load_image(image_path)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         thresh = cv2.adaptiveThreshold(
-            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY, 11, 2
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         )
         path = _save_image(thresh, "threshold")
         return ToolResult(ok=True, data=path, tool="threshold")

@@ -40,71 +40,95 @@ def _fv(value: any, name: str = "") -> FieldValue:
 class TestSkillStructure:
     """Verify all 3 skills have required attributes."""
 
-    @pytest.mark.parametrize("skill,expected_name", [
-        (TradeFinanceScrutinySkill, "trade_finance_scrutiny"),
-        (BillOfQuantitiesSkill, "bill_of_quantities"),
-        (UtilityBillSkill, "utility_bill"),
-    ])
+    @pytest.mark.parametrize(
+        "skill,expected_name",
+        [
+            (TradeFinanceScrutinySkill, "trade_finance_scrutiny"),
+            (BillOfQuantitiesSkill, "bill_of_quantities"),
+            (UtilityBillSkill, "utility_bill"),
+        ],
+    )
     def test_skill_name(self, skill: Skill, expected_name: str):
         assert skill.name == expected_name
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_system_prompt(self, skill: Skill):
         assert len(skill.system_prompt) > 100
         assert "extract" in skill.system_prompt.lower()
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_tool_preferences(self, skill: Skill):
         assert len(skill.tool_preferences) > 0
         assert "text" in skill.tool_preferences
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_probe_order(self, skill: Skill):
         assert len(skill.probe_order) > 0
         assert all(isinstance(t, tuple) and len(t) == 2 for t in skill.probe_order)
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_invariants(self, skill: Skill):
         assert len(skill.invariants) > 0
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_failure_actions(self, skill: Skill):
         assert len(skill.failure_actions) > 0
         assert GapType.MISSING in skill.failure_actions
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_known_failures(self, skill: Skill):
         assert len(skill.known_failures) > 0
 
-    @pytest.mark.parametrize("skill", [
-        TradeFinanceScrutinySkill,
-        BillOfQuantitiesSkill,
-        UtilityBillSkill,
-    ])
+    @pytest.mark.parametrize(
+        "skill",
+        [
+            TradeFinanceScrutinySkill,
+            BillOfQuantitiesSkill,
+            UtilityBillSkill,
+        ],
+    )
     def test_has_confidence_overrides(self, skill: Skill):
         assert len(skill.confidence_overrides) > 0
 
@@ -166,10 +190,27 @@ class TestBillOfQuantitiesSkill:
     def test_qty_rate_total_passes(self):
         """qty × rate = total for all items — invariant passes."""
         extraction = {
-            "line_items": _fv([
-                {"item_no": 1, "description": "Excavation", "unit": "m³", "quantity": 100, "rate": 50, "total": 5000},
-                {"item_no": 2, "description": "Concrete", "unit": "m³", "quantity": 200, "rate": 150, "total": 30000},
-            ], "line_items"),
+            "line_items": _fv(
+                [
+                    {
+                        "item_no": 1,
+                        "description": "Excavation",
+                        "unit": "m³",
+                        "quantity": 100,
+                        "rate": 50,
+                        "total": 5000,
+                    },
+                    {
+                        "item_no": 2,
+                        "description": "Concrete",
+                        "unit": "m³",
+                        "quantity": 200,
+                        "rate": 150,
+                        "total": 30000,
+                    },
+                ],
+                "line_items",
+            ),
         }
         inv = BillOfQuantitiesSkill.invariants[0]
         result, msg = inv.fn(extraction)
@@ -178,9 +219,19 @@ class TestBillOfQuantitiesSkill:
     def test_qty_rate_total_fails(self):
         """qty × rate ≠ total — invariant fails."""
         extraction = {
-            "line_items": _fv([
-                {"item_no": 1, "description": "Excavation", "unit": "m³", "quantity": 100, "rate": 50, "total": 6000},
-            ], "line_items"),
+            "line_items": _fv(
+                [
+                    {
+                        "item_no": 1,
+                        "description": "Excavation",
+                        "unit": "m³",
+                        "quantity": 100,
+                        "rate": 50,
+                        "total": 6000,
+                    },
+                ],
+                "line_items",
+            ),
         }
         inv = BillOfQuantitiesSkill.invariants[0]
         result, msg = inv.fn(extraction)

@@ -28,6 +28,7 @@ from src.agent.validator import GapType
 # Test helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_signature_image(path: str) -> None:
     """Create a synthetic image with a signature-like ink region."""
     import cv2
@@ -36,11 +37,23 @@ def _make_signature_image(path: str) -> None:
     img = np.ones((400, 600, 3), dtype=np.uint8) * 255
 
     # Draw a signature-like scribble in the bottom right
-    pts = np.array([
-        [350, 280], [360, 275], [370, 285], [380, 270],
-        [390, 280], [400, 275], [410, 285], [420, 270],
-        [430, 280], [440, 275], [450, 285], [460, 270],
-    ], dtype=np.int32)
+    pts = np.array(
+        [
+            [350, 280],
+            [360, 275],
+            [370, 285],
+            [380, 270],
+            [390, 280],
+            [400, 275],
+            [410, 285],
+            [420, 270],
+            [430, 280],
+            [440, 275],
+            [450, 285],
+            [460, 270],
+        ],
+        dtype=np.int32,
+    )
     cv2.polylines(img, [pts], False, (30, 30, 30), 3)
 
     # Add some random strokes
@@ -78,6 +91,7 @@ def _make_blank_image(path: str) -> None:
 # ---------------------------------------------------------------------------
 # detect_signatures tests
 # ---------------------------------------------------------------------------
+
 
 class TestDetectSignaturesPresent:
     """Verify signature detection when marks are present."""
@@ -196,6 +210,7 @@ class TestDetectionOnlyScope:
 
     def test_docstring_states_detection_only(self):
         from src.tools.signature_detection import detect_signatures
+
         docstring = detect_signatures.__doc__ or ""
         assert "detection" in docstring.lower() or "presence" in docstring.lower()
         # Should NOT claim authenticity or verification

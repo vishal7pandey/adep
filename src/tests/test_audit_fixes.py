@@ -29,6 +29,7 @@ from src.agent.webhooks import WebhookStore, WebhookConfig
 # BLK-151: Path traversal tests
 # ---------------------------------------------------------------------------
 
+
 class TestPathTraversalDefinitionStore:
     """Verify DefinitionStore rejects path traversal in entity IDs."""
 
@@ -96,6 +97,7 @@ class TestPathTraversalDocumentStore:
 # BLK-140: Timezone bug tests
 # ---------------------------------------------------------------------------
 
+
 class TestTimezoneFix:
     """Verify _seconds_since uses UTC, not localtime."""
 
@@ -141,6 +143,7 @@ class TestTimezoneFix:
 # BLK-150: WebhookStore.get_raw() tests
 # ---------------------------------------------------------------------------
 
+
 class TestWebhookGetRaw:
     """Verify WebhookStore.get_raw() returns unmasked secret."""
 
@@ -174,39 +177,74 @@ class TestWebhookGetRaw:
 # BLK-144: read_tag OCR provider selection tests
 # ---------------------------------------------------------------------------
 
+
 class TestReadTagOcrProvider:
     """Verify read_tag uses settings.ocr_provider instead of hardcoding."""
 
     def test_uses_tesseract_when_configured(self):
-        with patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.ocr_tesseract.ocr") as mock_ocr, \
-             patch("src.config.settings") as mock_settings:
+        with (
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.ocr_tesseract.ocr") as mock_ocr,
+            patch("src.config.settings") as mock_settings,
+        ):
             mock_settings.ocr_provider = "tesseract"
-            mock_crop.return_value = type("R", (), {
-                "ok": True, "data": "cropped.png", "error": "", "tool": "crop",
-            })()
-            mock_ocr.return_value = type("R", (), {
-                "ok": True, "data": "FT-101", "error": "", "tool": "ocr",
-                "grounding": type("G", (), {"confidence": 0.9, "bbox": (0,0,0,0)})(),
-            })()
+            mock_crop.return_value = type(
+                "R",
+                (),
+                {
+                    "ok": True,
+                    "data": "cropped.png",
+                    "error": "",
+                    "tool": "crop",
+                },
+            )()
+            mock_ocr.return_value = type(
+                "R",
+                (),
+                {
+                    "ok": True,
+                    "data": "FT-101",
+                    "error": "",
+                    "tool": "ocr",
+                    "grounding": type("G", (), {"confidence": 0.9, "bbox": (0, 0, 0, 0)})(),
+                },
+            )()
             from src.tools.graph.tag_reading import read_tag
+
             result = read_tag(image_path="test.png", bbox=(10, 10, 50, 30))
             assert result.ok
             assert result.data["tag"] == "FT-101"
 
     def test_uses_paddle_when_configured(self):
-        with patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.ocr_paddle.ocr") as mock_ocr, \
-             patch("src.config.settings") as mock_settings:
+        with (
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.ocr_paddle.ocr") as mock_ocr,
+            patch("src.config.settings") as mock_settings,
+        ):
             mock_settings.ocr_provider = "paddle"
-            mock_crop.return_value = type("R", (), {
-                "ok": True, "data": "cropped.png", "error": "", "tool": "crop",
-            })()
-            mock_ocr.return_value = type("R", (), {
-                "ok": True, "data": "FT-101", "error": "", "tool": "ocr",
-                "grounding": type("G", (), {"confidence": 0.9, "bbox": (0,0,0,0)})(),
-            })()
+            mock_crop.return_value = type(
+                "R",
+                (),
+                {
+                    "ok": True,
+                    "data": "cropped.png",
+                    "error": "",
+                    "tool": "crop",
+                },
+            )()
+            mock_ocr.return_value = type(
+                "R",
+                (),
+                {
+                    "ok": True,
+                    "data": "FT-101",
+                    "error": "",
+                    "tool": "ocr",
+                    "grounding": type("G", (), {"confidence": 0.9, "bbox": (0, 0, 0, 0)})(),
+                },
+            )()
             from src.tools.graph.tag_reading import read_tag
+
             result = read_tag(image_path="test.png", bbox=(10, 10, 50, 30))
             assert result.ok
             assert result.data["tag"] == "FT-101"
@@ -216,11 +254,13 @@ class TestReadTagOcrProvider:
 # BLK-145: Serialization edge ID tests
 # ---------------------------------------------------------------------------
 
+
 class TestSerializationEdgeIds:
     """Verify edge IDs use enumerate, not O(n²) index."""
 
     def test_graphml_edge_ids_without_explicit_ids(self):
         from src.tools.graph.serialization import serialize_graph
+
         graph = {
             "nodes": [
                 {"id": "n1", "type": "valve"},
@@ -242,6 +282,7 @@ class TestSerializationEdgeIds:
 
     def test_dexpi_edge_ids_without_explicit_ids(self):
         from src.tools.graph.serialization import serialize_graph
+
         graph = {
             "nodes": [
                 {"id": "n1", "type": "valve"},
@@ -260,6 +301,7 @@ class TestSerializationEdgeIds:
 
     def test_graphml_preserves_explicit_edge_ids(self):
         from src.tools.graph.serialization import serialize_graph
+
         graph = {
             "nodes": [{"id": "n1", "type": "valve"}, {"id": "n2", "type": "pump"}],
             "edges": [{"id": "custom_edge", "source": "n1", "target": "n2"}],

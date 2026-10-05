@@ -143,10 +143,12 @@ def compute_calibration_buckets(
     """
     buckets: list[CalibrationBucket] = []
     for i in range(len(CALIBRATION_BUCKETS) - 1):
-        buckets.append(CalibrationBucket(
-            range_low=CALIBRATION_BUCKETS[i],
-            range_high=CALIBRATION_BUCKETS[i + 1],
-        ))
+        buckets.append(
+            CalibrationBucket(
+                range_low=CALIBRATION_BUCKETS[i],
+                range_high=CALIBRATION_BUCKETS[i + 1],
+            )
+        )
 
     for conf, correct in zip(confidence_values, correctness):
         for bucket in buckets:
@@ -156,7 +158,8 @@ def compute_calibration_buckets(
                 bucket.count += 1
                 bucket.avg_confidence = (
                     (bucket.avg_confidence * (bucket.count - 1) + conf) / bucket.count
-                    if bucket.count > 0 else conf
+                    if bucket.count > 0
+                    else conf
                 )
                 if correct >= 1.0:
                     bucket.correct += 1
@@ -216,9 +219,7 @@ def build_accuracy_report(
         run_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         documents_tested=eval_report.sample_count,
         field_accuracy=eval_report.overall_accuracy,
-        avg_confidence=_safe_mean(
-            [m.mean_confidence for m in eval_report.field_metrics.values()]
-        ),
+        avg_confidence=_safe_mean([m.mean_confidence for m in eval_report.field_metrics.values()]),
     )
 
     # Per-field stats
@@ -241,18 +242,22 @@ def build_accuracy_report(
     buckets = compute_calibration_buckets(all_conf, all_correct)
     report.calibration_buckets = [b.to_dict() for b in buckets]
     report.confidence_calibration_error = compute_expected_calibration_error(
-        all_conf, all_correct, len(all_conf),
+        all_conf,
+        all_correct,
+        len(all_conf),
     )
 
     # Failures: fields where accuracy < 1.0
     for name, metric in eval_report.field_metrics.items():
         if metric.correct < metric.total:
-            report.failures.append({
-                "field": name,
-                "correct": metric.correct,
-                "total": metric.total,
-                "accuracy": round(metric.accuracy, 4),
-            })
+            report.failures.append(
+                {
+                    "field": name,
+                    "correct": metric.correct,
+                    "total": metric.total,
+                    "accuracy": round(metric.accuracy, 4),
+                }
+            )
 
     # Cycle and cost data from results_data
     if results_data:

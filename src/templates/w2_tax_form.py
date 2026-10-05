@@ -9,6 +9,7 @@ from src.templates.base import Template
 
 class W2TaxFormTemplate(Template):
     """Outcome schema for W-2 tax form extraction."""
+
     employee_ssn: str = Field(description="Employee Social Security Number (masked)")
     employer_ein: str = Field(description="Employer Identification Number (EIN)")
     employee_name: str = Field(description="Employee full name")

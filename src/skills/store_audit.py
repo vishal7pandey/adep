@@ -90,13 +90,11 @@ _overall_pass_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Run detect_layout to find the checklist table. Store ID and "
-        "audit date are in the header. Use detect_figures to count "
-        "photo evidence.",
-    GapType.FORMAT_ERROR:
-        "Cleanliness score must be 1-5. Compliance items are boolean. "
-        "Re-crop and re-read the checklist.",
+    GapType.MISSING: "Run detect_layout to find the checklist table. Store ID and "
+    "audit date are in the header. Use detect_figures to count "
+    "photo evidence.",
+    GapType.FORMAT_ERROR: "Cleanliness score must be 1-5. Compliance items are boolean. "
+    "Re-crop and re-read the checklist.",
 }
 
 

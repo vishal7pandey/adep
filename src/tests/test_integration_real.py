@@ -46,9 +46,11 @@ from src.eval.benchmarks import (
 # Skip conditions
 # ---------------------------------------------------------------------------
 
+
 def _has_credentials() -> bool:
     """Check if real provider credentials are available [BLK-128, SCRUM-512]."""
     from src.tests._credentials import has_real_credentials
+
     return has_real_credentials()
 
 
@@ -74,6 +76,7 @@ skip_no_fixtures = pytest.mark.skipif(
 # ---------------------------------------------------------------------------
 # Integration tests — full pipeline against real providers
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.integration
 @skip_no_credentials
@@ -126,9 +129,7 @@ class TestIntegrationReal:
                 pred_value = extracted[field_name]["value"]
                 tolerance = fixture.tolerances.get(field_name, 0.0)
 
-                assert values_match_with_tolerance(
-                    pred_value, expected_value, tolerance
-                ), (
+                assert values_match_with_tolerance(pred_value, expected_value, tolerance), (
                     f"Field '{field_name}' in {fixture.document_path}: "
                     f"expected {expected_value!r} (tol={tolerance}), got {pred_value!r}"
                 )
@@ -183,13 +184,14 @@ class TestIntegrationReal:
         truths = []
         for fixture in fixtures:
             fields = [
-                GroundTruthField(name=name, value=value)
-                for name, value in fixture.expected.items()
+                GroundTruthField(name=name, value=value) for name, value in fixture.expected.items()
             ]
-            truths.append(GroundTruthSample(
-                document_path=fixture.document_path,
-                fields=fields,
-            ))
+            truths.append(
+                GroundTruthSample(
+                    document_path=fixture.document_path,
+                    fields=fields,
+                )
+            )
 
         # Build ExtractedResult-like objects from the API results
         # The eval harness expects ExtractedResult, but we have serialized dicts.
@@ -211,9 +213,7 @@ class TestIntegrationReal:
                 if field_name in extracted:
                     pred_value = extracted[field_name]["value"]
                     tolerance = fixture.tolerances.get(field_name, 0.0)
-                    is_correct = values_match_with_tolerance(
-                        pred_value, expected_value, tolerance
-                    )
+                    is_correct = values_match_with_tolerance(pred_value, expected_value, tolerance)
                     if is_correct:
                         metric.correct += 1
                     conf = extracted[field_name].get("confidence", 0.0)
@@ -224,7 +224,9 @@ class TestIntegrationReal:
                     metric.correctness.append(0.0)
 
         accuracy_report = build_accuracy_report(
-            report, fixtures, results_data=extraction_results,
+            report,
+            fixtures,
+            results_data=extraction_results,
         )
         report_path = save_accuracy_report(accuracy_report)
 
@@ -247,9 +249,7 @@ class TestIntegrationReal:
                 if field_name in extracted:
                     pred_value = extracted[field_name]["value"]
                     tolerance = fixture.tolerances.get(field_name, 0.0)
-                    is_correct = values_match_with_tolerance(
-                        pred_value, expected_value, tolerance
-                    )
+                    is_correct = values_match_with_tolerance(pred_value, expected_value, tolerance)
                     conf = extracted[field_name].get("confidence", 0.0)
                     all_conf.append(conf)
                     all_correct.append(1.0 if is_correct else 0.0)

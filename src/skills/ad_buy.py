@@ -69,6 +69,7 @@ _impressions_check = Invariant(
 def _check_campaign_dates(e: dict) -> tuple[bool, str]:
     """Verify campaign_start <= campaign_end."""
     from datetime import datetime
+
     start = e.get("campaign_start")
     end = e.get("campaign_end")
     if not start or not end:
@@ -92,14 +93,12 @@ _campaign_date_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Run detect_tables to find the local markets table. Use read_table "
-        "for structured extraction. Advertiser and campaign info are in "
-        "the header.",
-    GapType.INVARIANT_FAILED:
-        "Sum invariant failed. Re-read the local markets table with "
-        "read_table. Verify each row's spend and impressions. Use "
-        "cross_check to compute sums deterministically.",
+    GapType.MISSING: "Run detect_tables to find the local markets table. Use read_table "
+    "for structured extraction. Advertiser and campaign info are in "
+    "the header.",
+    GapType.INVARIANT_FAILED: "Sum invariant failed. Re-read the local markets table with "
+    "read_table. Verify each row's spend and impressions. Use "
+    "cross_check to compute sums deterministically.",
 }
 
 

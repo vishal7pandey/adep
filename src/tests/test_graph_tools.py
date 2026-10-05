@@ -31,6 +31,7 @@ from src.tools.graph.connection import detect_connections, trace_line
 # ISA-5.1 tag parsing tests
 # ---------------------------------------------------------------------------
 
+
 class TestIsaTagParsing:
     """Verify ISA-5.1 tag parsing (deterministic)."""
 
@@ -87,6 +88,7 @@ class TestIsaTagParsing:
 # build_graph tests
 # ---------------------------------------------------------------------------
 
+
 class TestBuildGraph:
     """Verify graph building from symbols and connections."""
 
@@ -96,7 +98,13 @@ class TestBuildGraph:
             {"id": "sym_1", "bbox": (100, 10, 140, 50), "class": "pump", "confidence": 0.85},
         ]
         connections = [
-            {"id": "conn_0", "from_id": "sym_0", "to_id": "sym_1", "type": "pipe", "confidence": 0.8},
+            {
+                "id": "conn_0",
+                "from_id": "sym_0",
+                "to_id": "sym_1",
+                "type": "pipe",
+                "confidence": 0.8,
+            },
         ]
         result = build_graph(symbols=symbols, connections=connections)
         assert result.ok
@@ -115,8 +123,13 @@ class TestBuildGraph:
 
     def test_preserves_tag_data(self):
         symbols = [
-            {"id": "sym_0", "bbox": (10, 10, 50, 50), "class": "instrument",
-             "tag": "FT-101", "tag_components": {"function": "F", "modifier": "T"}},
+            {
+                "id": "sym_0",
+                "bbox": (10, 10, 50, 50),
+                "class": "instrument",
+                "tag": "FT-101",
+                "tag_components": {"function": "F", "modifier": "T"},
+            },
         ]
         result = build_graph(symbols=symbols)
         assert result.ok
@@ -126,6 +139,7 @@ class TestBuildGraph:
 # ---------------------------------------------------------------------------
 # validate_topology tests
 # ---------------------------------------------------------------------------
+
 
 class TestValidateTopology:
     """Verify topology validation rules."""
@@ -178,8 +192,12 @@ class TestValidateTopology:
     def test_invalid_isa_tag_detected(self):
         graph = {
             "nodes": [
-                {"id": "i1", "type": "instrument", "tag": "hello",
-                 "tag_components": {"parse_error": True}},
+                {
+                    "id": "i1",
+                    "type": "instrument",
+                    "tag": "hello",
+                    "tag_components": {"parse_error": True},
+                },
                 {"id": "v1", "type": "valve"},
             ],
             "edges": [
@@ -194,8 +212,12 @@ class TestValidateTopology:
     def test_control_loop_incomplete(self):
         graph = {
             "nodes": [
-                {"id": "tx1", "type": "instrument", "tag": "FT-101",
-                 "tag_components": {"function": "F", "modifier": "T", "parse_error": False}},
+                {
+                    "id": "tx1",
+                    "type": "instrument",
+                    "tag": "FT-101",
+                    "tag_components": {"function": "F", "modifier": "T", "parse_error": False},
+                },
             ],
             "edges": [],
         }
@@ -222,6 +244,7 @@ class TestValidateTopology:
 # ---------------------------------------------------------------------------
 # serialize_graph tests
 # ---------------------------------------------------------------------------
+
 
 class TestSerializeGraph:
     """Verify graph serialization to multiple formats."""
@@ -302,14 +325,17 @@ class TestSerializeGraph:
 # detect_symbols tests (mocked VLM)
 # ---------------------------------------------------------------------------
 
+
 class TestDetectSymbols:
     """Verify symbol detection with mocked VLM."""
 
     def test_detects_symbols(self):
-        mock_response = json.dumps([
-            {"bbox": [10, 10, 50, 50], "class": "valve", "confidence": 0.9},
-            {"bbox": [100, 10, 140, 50], "class": "pump", "confidence": 0.85},
-        ])
+        mock_response = json.dumps(
+            [
+                {"bbox": [10, 10, 50, 50], "class": "valve", "confidence": 0.9},
+                {"bbox": [100, 10, 140, 50], "class": "pump", "confidence": 0.85},
+            ]
+        )
         with patch("src.providers.vlm_azure.vlm") as mock_vlm:
             mock_vlm.return_value = ToolResult(ok=True, data=mock_response, tool="vlm")
             result = detect_symbols(image_path="test.png")
@@ -340,15 +366,19 @@ class TestDetectSymbols:
 # classify_symbol tests (mocked VLM + crop)
 # ---------------------------------------------------------------------------
 
+
 class TestClassifySymbol:
     """Verify symbol classification with mocked VLM."""
 
     def test_classifies_symbol(self):
-        with patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.vlm_azure.vlm") as mock_vlm:
+        with (
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.vlm_azure.vlm") as mock_vlm,
+        ):
             mock_crop.return_value = ToolResult(ok=True, data="cropped.png", tool="crop")
             mock_vlm.return_value = ToolResult(
-                ok=True, data=json.dumps({"class": "gate_valve", "confidence": 0.92}),
+                ok=True,
+                data=json.dumps({"class": "gate_valve", "confidence": 0.92}),
                 tool="vlm",
             )
             result = classify_symbol(image_path="test.png", bbox=(10, 10, 50, 50))
@@ -361,6 +391,7 @@ class TestClassifySymbol:
 # detect_connections tests (mocked VLM)
 # ---------------------------------------------------------------------------
 
+
 class TestDetectConnections:
     """Verify connection detection with mocked VLM."""
 
@@ -369,9 +400,17 @@ class TestDetectConnections:
             {"id": "sym_0", "bbox": (10, 10, 50, 50), "class": "valve"},
             {"id": "sym_1", "bbox": (100, 10, 140, 50), "class": "pump"},
         ]
-        mock_response = json.dumps([
-            {"from_id": "sym_0", "to_id": "sym_1", "path_bbox": [[30, 30, 80, 40]], "type": "pipe", "confidence": 0.85},
-        ])
+        mock_response = json.dumps(
+            [
+                {
+                    "from_id": "sym_0",
+                    "to_id": "sym_1",
+                    "path_bbox": [[30, 30, 80, 40]],
+                    "type": "pipe",
+                    "confidence": 0.85,
+                },
+            ]
+        )
         with patch("src.providers.vlm_azure.vlm") as mock_vlm:
             mock_vlm.return_value = ToolResult(ok=True, data=mock_response, tool="vlm")
             result = detect_connections(image_path="test.png", symbols=symbols)
@@ -392,16 +431,19 @@ class TestDetectConnections:
 # trace_line tests (mocked VLM)
 # ---------------------------------------------------------------------------
 
+
 class TestTraceLine:
     """Verify line tracing with mocked VLM."""
 
     def test_traces_line(self):
-        mock_response = json.dumps({
-            "bboxes": [[10, 30, 50, 40], [50, 30, 90, 40]],
-            "end_point": [90, 35],
-            "connected_to_id": "sym_1",
-            "confidence": 0.8,
-        })
+        mock_response = json.dumps(
+            {
+                "bboxes": [[10, 30, 50, 40], [50, 30, 90, 40]],
+                "end_point": [90, 35],
+                "connected_to_id": "sym_1",
+                "confidence": 0.8,
+            }
+        )
         with patch("src.providers.vlm_azure.vlm") as mock_vlm:
             mock_vlm.return_value = ToolResult(ok=True, data=mock_response, tool="vlm")
             result = trace_line(image_path="test.png", start_point=(10, 35))
@@ -410,9 +452,13 @@ class TestTraceLine:
             assert result.data["connected_to_id"] == "sym_1"
 
     def test_bbox_start_point_converted_to_center(self):
-        mock_response = json.dumps({
-            "bboxes": [], "end_point": [0, 0], "confidence": 0.5,
-        })
+        mock_response = json.dumps(
+            {
+                "bboxes": [],
+                "end_point": [0, 0],
+                "confidence": 0.5,
+            }
+        )
         with patch("src.providers.vlm_azure.vlm") as mock_vlm:
             mock_vlm.return_value = ToolResult(ok=True, data=mock_response, tool="vlm")
             trace_line(image_path="test.png", start_point=(10, 10, 50, 50))
@@ -425,17 +471,21 @@ class TestTraceLine:
 # read_tag tests (mocked OCR + crop)
 # ---------------------------------------------------------------------------
 
+
 class TestReadTag:
     """Verify tag reading with mocked OCR."""
 
     def test_reads_and_parses_tag(self):
-        with patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.ocr_tesseract.ocr") as mock_ocr, \
-             patch("src.config.settings") as mock_settings:
+        with (
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.ocr_tesseract.ocr") as mock_ocr,
+            patch("src.config.settings") as mock_settings,
+        ):
             mock_settings.ocr_provider = "tesseract"
             mock_crop.return_value = ToolResult(ok=True, data="cropped.png", tool="crop")
             mock_ocr.return_value = ToolResult(
-                ok=True, data="FT-101",
+                ok=True,
+                data="FT-101",
                 grounding=Grounding(bbox=(10, 10, 50, 30), source_tool="ocr", confidence=0.95),
                 tool="ocr",
             )
@@ -447,9 +497,11 @@ class TestReadTag:
             assert result.data["confidence"] == 0.95
 
     def test_empty_ocr_returns_error(self):
-        with patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.providers.ocr_tesseract.ocr") as mock_ocr, \
-             patch("src.config.settings") as mock_settings:
+        with (
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.providers.ocr_tesseract.ocr") as mock_ocr,
+            patch("src.config.settings") as mock_settings,
+        ):
             mock_settings.ocr_provider = "tesseract"
             mock_crop.return_value = ToolResult(ok=True, data="cropped.png", tool="crop")
             mock_ocr.return_value = ToolResult(ok=True, data="", tool="ocr")
@@ -458,8 +510,10 @@ class TestReadTag:
             assert "No text" in result.error
 
     def test_crop_failure_returns_error(self):
-        with patch("src.providers.image_cv.crop") as mock_crop, \
-             patch("src.config.settings") as mock_settings:
+        with (
+            patch("src.providers.image_cv.crop") as mock_crop,
+            patch("src.config.settings") as mock_settings,
+        ):
             mock_settings.ocr_provider = "tesseract"
             mock_crop.return_value = ToolResult(ok=False, error="file not found", tool="crop")
             result = read_tag(image_path="test.png", bbox=(10, 10, 50, 30))
@@ -471,16 +525,19 @@ class TestReadTag:
 # Integration test: full pipeline
 # ---------------------------------------------------------------------------
 
+
 class TestGraphExtractionPipeline:
     """Integration test: detect → read_tag → build → validate → serialize."""
 
     def test_full_pipeline_mocked(self):
         # Step 1: detect_symbols
-        mock_symbols = json.dumps([
-            {"bbox": [10, 10, 50, 50], "class": "valve", "confidence": 0.9},
-            {"bbox": [100, 10, 140, 50], "class": "pump", "confidence": 0.85},
-            {"bbox": [50, 100, 90, 130], "class": "instrument", "confidence": 0.8},
-        ])
+        mock_symbols = json.dumps(
+            [
+                {"bbox": [10, 10, 50, 50], "class": "valve", "confidence": 0.9},
+                {"bbox": [100, 10, 140, 50], "class": "pump", "confidence": 0.85},
+                {"bbox": [50, 100, 90, 130], "class": "instrument", "confidence": 0.8},
+            ]
+        )
         with patch("src.providers.vlm_azure.vlm") as mock_vlm:
             mock_vlm.return_value = ToolResult(ok=True, data=mock_symbols, tool="vlm")
             sym_result = detect_symbols(image_path="pid.png")
@@ -489,10 +546,12 @@ class TestGraphExtractionPipeline:
             assert len(symbols) == 3
 
         # Step 2: detect_connections
-        mock_conns = json.dumps([
-            {"from_id": "sym_0", "to_id": "sym_1", "type": "pipe", "confidence": 0.85},
-            {"from_id": "sym_2", "to_id": "sym_0", "type": "pipe", "confidence": 0.8},
-        ])
+        mock_conns = json.dumps(
+            [
+                {"from_id": "sym_0", "to_id": "sym_1", "type": "pipe", "confidence": 0.85},
+                {"from_id": "sym_2", "to_id": "sym_0", "type": "pipe", "confidence": 0.8},
+            ]
+        )
         with patch("src.providers.vlm_azure.vlm") as mock_vlm:
             mock_vlm.return_value = ToolResult(ok=True, data=mock_conns, tool="vlm")
             conn_result = detect_connections(image_path="pid.png", symbols=symbols)

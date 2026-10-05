@@ -147,18 +147,25 @@ def _find_ink_clusters(
             continue
 
         # Check ink density within the region
-        roi = binary[y:y+h, x:x+w]
+        roi = binary[y : y + h, x : x + w]
         density = float(np.count_nonzero(roi)) / (w * h) if w * h > 0 else 0
 
         # Signatures have moderate ink density (not solid, not empty)
         if density < 0.05 or density > 0.85:
             continue
 
-        candidates.append({
-            "bbox": (int(x + offset_x), int(y + offset_y), int(x + w + offset_x), int(y + h + offset_y)),
-            "density": density,
-            "area": int(area),
-        })
+        candidates.append(
+            {
+                "bbox": (
+                    int(x + offset_x),
+                    int(y + offset_y),
+                    int(x + w + offset_x),
+                    int(y + h + offset_y),
+                ),
+                "density": density,
+                "area": int(area),
+            }
+        )
 
     return candidates
 
@@ -203,12 +210,14 @@ def _find_circular_marks(
             y1 = int(cy - r + offset_y)
             x2 = int(cx + r + offset_x)
             y2 = int(cy + r + offset_y)
-            candidates.append({
-                "bbox": (x1, y1, x2, y2),
-                "density": 0.3,
-                "area": int(3.14159 * r * r),
-                "circular": True,
-            })
+            candidates.append(
+                {
+                    "bbox": (x1, y1, x2, y2),
+                    "density": 0.3,
+                    "area": int(3.14159 * r * r),
+                    "circular": True,
+                }
+            )
 
     return candidates
 
@@ -316,13 +325,15 @@ def _classify_marks_vlm(
             kind = mark.get("kind", "signature")
             if kind not in MARK_KINDS:
                 kind = "signature"
-            valid_marks.append({
-                "bbox": tuple(mark.get("bbox", c["bbox"])) if "bbox" in mark else c["bbox"],
-                "kind": kind,
-                "confidence": float(mark.get("confidence", 0.6)),
-                "is_handwritten": bool(mark.get("is_handwritten", True)),
-                "nearby_label": None,
-            })
+            valid_marks.append(
+                {
+                    "bbox": tuple(mark.get("bbox", c["bbox"])) if "bbox" in mark else c["bbox"],
+                    "kind": kind,
+                    "confidence": float(mark.get("confidence", 0.6)),
+                    "is_handwritten": bool(mark.get("is_handwritten", True)),
+                    "nearby_label": None,
+                }
+            )
 
         return valid_marks
 
@@ -385,6 +396,7 @@ def _associate_labels(
     """
     try:
         from src.config import settings
+
         ocr_func = _get_ocr_func(settings.ocr_provider)
     except ImportError:
         ocr_func = None
@@ -404,6 +416,7 @@ def _associate_labels(
 
         try:
             from src.providers.image_cv import crop
+
             crop_result = crop(image_path=image_path, bbox=search_bbox)
             if crop_result.ok:
                 ocr_result = ocr_func(image_path=crop_result.data)
@@ -425,9 +438,11 @@ def _get_ocr_func(provider: str):
     try:
         if provider == "tesseract":
             from src.providers.ocr_tesseract import ocr
+
             return ocr
         elif provider == "paddle":
             from src.providers.ocr_paddle import ocr
+
             return ocr
     except ImportError:
         return None

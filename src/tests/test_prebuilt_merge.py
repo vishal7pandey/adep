@@ -177,11 +177,13 @@ class TestSeedStoreRemoved:
     def test_seed_store_not_importable(self):
         """seed_store should not be importable from prebuilt."""
         from src.definitions import prebuilt
+
         assert not hasattr(prebuilt, "seed_store")
 
     def test_register_prebuilt_not_importable(self):
         """register_prebuilt_definitions should not be importable."""
         from src.definitions import prebuilt
+
         assert not hasattr(prebuilt, "register_prebuilt_definitions")
 
     def test_scripts_seed_deleted(self):

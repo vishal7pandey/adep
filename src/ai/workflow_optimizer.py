@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 # Workflow topology definition
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class WorkflowNode:
     """A node in the agent workflow graph.
@@ -51,6 +52,7 @@ class WorkflowNode:
         enabled: Whether the node is active in the workflow.
         params: Node-specific parameters (e.g., compaction_window for compact, threshold for review).
     """
+
     name: str
     node_type: str = "core"
     enabled: bool = True
@@ -66,6 +68,7 @@ class WorkflowEdge:
         target: Target node name.
         condition: Optional condition description (for conditional edges).
     """
+
     source: str
     target: str
     condition: str = ""
@@ -82,6 +85,7 @@ class WorkflowTopology:
         parameters: Global workflow parameters (max_cycles, compaction_window, confidence_threshold).
         description: Human-readable description of the workflow.
     """
+
     nodes: dict[str, WorkflowNode] = field(default_factory=dict)
     edges: list[WorkflowEdge] = field(default_factory=list)
     entry_point: str = "plan"
@@ -94,7 +98,10 @@ class WorkflowTopology:
                 name: {"node_type": n.node_type, "enabled": n.enabled, "params": n.params}
                 for name, n in self.nodes.items()
             },
-            "edges": [{"source": e.source, "target": e.target, "condition": e.condition} for e in self.edges],
+            "edges": [
+                {"source": e.source, "target": e.target, "condition": e.condition}
+                for e in self.edges
+            ],
             "entry_point": self.entry_point,
             "parameters": self.parameters,
             "description": self.description,
@@ -189,6 +196,7 @@ OPERATORS: dict[str, dict[str, Any]] = {
 # MCTS tree node
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MCTSNode:
     """A node in the MCTS search tree.
@@ -205,6 +213,7 @@ class MCTSNode:
         expanded: Whether this node has been expanded.
         expansion_action: Description of the action that created this node from its parent.
     """
+
     workflow: WorkflowTopology
     parent: MCTSNode | None = None
     children: list[MCTSNode] = field(default_factory=list)
@@ -231,6 +240,7 @@ class MCTSNode:
 # MCTS result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class MCTSResult:
     """Result of the MCTS workflow optimization.
@@ -244,12 +254,15 @@ class MCTSResult:
         token_usage: Total token usage across all LLM calls.
         convergence_reason: Why the search terminated.
     """
+
     best_workflow: WorkflowTopology | None = None
     best_score: float = 0.0
     tree_size: int = 0
     iterations: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
-    token_usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+    token_usage: dict[str, int] = field(
+        default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    )
     convergence_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -267,6 +280,7 @@ class MCTSResult:
 # ---------------------------------------------------------------------------
 # Selection — UCB1 traversal
 # ---------------------------------------------------------------------------
+
 
 def _select(root: MCTSNode) -> MCTSNode:
     """Traverse the tree from root to a selectable node using UCB1.
@@ -435,8 +449,12 @@ def _heuristic_expand(workflow: WorkflowTopology) -> WorkflowTopology:
 def _apply_action(workflow: WorkflowTopology, action: dict[str, Any]) -> WorkflowTopology:
     """Apply a proposed action to a workflow topology, returning a new topology."""
     new_wf = WorkflowTopology(
-        nodes={name: WorkflowNode(name=n.name, node_type=n.node_type, enabled=n.enabled, params=dict(n.params))
-               for name, n in workflow.nodes.items()},
+        nodes={
+            name: WorkflowNode(
+                name=n.name, node_type=n.node_type, enabled=n.enabled, params=dict(n.params)
+            )
+            for name, n in workflow.nodes.items()
+        },
         edges=[WorkflowEdge(e.source, e.target, e.condition) for e in workflow.edges],
         entry_point=workflow.entry_point,
         parameters=dict(workflow.parameters),
@@ -457,7 +475,9 @@ def _apply_action(workflow: WorkflowTopology, action: dict[str, Any]) -> Workflo
                 params=op["default_params"].copy(),
             )
             # Insert after reflect, before terminate
-            new_wf.edges = [e for e in new_wf.edges if not (e.source == "reflect" and e.target == "terminate")]
+            new_wf.edges = [
+                e for e in new_wf.edges if not (e.source == "reflect" and e.target == "terminate")
+            ]
             new_wf.edges.append(WorkflowEdge("reflect", node_name, "pre_terminate_check"))
             new_wf.edges.append(WorkflowEdge(node_name, "plan", "needs_revision"))
             new_wf.edges.append(WorkflowEdge(node_name, "terminate", "quality_ok"))
@@ -466,9 +486,13 @@ def _apply_action(workflow: WorkflowTopology, action: dict[str, Any]) -> Workflo
         node_name = details.get("node_name", "")
         if node_name in new_wf.nodes and new_wf.nodes[node_name].node_type != "core":
             del new_wf.nodes[node_name]
-            new_wf.edges = [e for e in new_wf.edges if e.source != node_name and e.target != node_name]
+            new_wf.edges = [
+                e for e in new_wf.edges if e.source != node_name and e.target != node_name
+            ]
             # Re-connect: if reflect lost its terminate edge, add it back
-            has_terminate = any(e.target == "terminate" for e in new_wf.edges if e.source == "reflect")
+            has_terminate = any(
+                e.target == "terminate" for e in new_wf.edges if e.source == "reflect"
+            )
             if not has_terminate:
                 new_wf.edges.append(WorkflowEdge("reflect", "terminate", "caps_exhausted"))
 
@@ -499,6 +523,7 @@ def _apply_action(workflow: WorkflowTopology, action: dict[str, Any]) -> Workflo
 # Evaluation — score a workflow on sample data
 # ---------------------------------------------------------------------------
 
+
 def _evaluate_workflow(
     workflow: WorkflowTopology,
     evaluate_fn: Callable[[WorkflowTopology], dict[str, float]],
@@ -521,7 +546,9 @@ def _evaluate_workflow(
     gap_severity = scores.get("gap_severity", 0.0)
     speed = scores.get("speed_score", 0.0)
 
-    aggregate = coverage * 0.35 + confidence * 0.25 + efficiency * 0.15 + speed * 0.15 - gap_severity * 0.1
+    aggregate = (
+        coverage * 0.35 + confidence * 0.25 + efficiency * 0.15 + speed * 0.15 - gap_severity * 0.1
+    )
 
     feedback_parts = [
         f"Field coverage: {coverage:.1%}",
@@ -544,6 +571,7 @@ def _evaluate_workflow(
 # Backpropagation
 # ---------------------------------------------------------------------------
 
+
 def _backpropagate(node: MCTSNode, score: float) -> None:
     """Backpropagate the evaluation score up the tree."""
     while node is not None:
@@ -556,6 +584,7 @@ def _backpropagate(node: MCTSNode, score: float) -> None:
 # Accumulated experience
 # ---------------------------------------------------------------------------
 
+
 def _accumulate_experience(node: MCTSNode) -> str:
     """Collect experience from the path from root to this node."""
     experiences: list[str] = []
@@ -563,7 +592,9 @@ def _accumulate_experience(node: MCTSNode) -> str:
     while current is not None and current.parent is not None:
         if current.expansion_action:
             avg = current.avg_score if current.visits > 0 else 0.0
-            experiences.append(f"- {current.expansion_action} (avg_score={avg:.4f}, visits={current.visits})")
+            experiences.append(
+                f"- {current.expansion_action} (avg_score={avg:.4f}, visits={current.visits})"
+            )
         current = current.parent
     return "\n".join(reversed(experiences)) if experiences else "No prior experience."
 
@@ -571,6 +602,7 @@ def _accumulate_experience(node: MCTSNode) -> str:
 # ---------------------------------------------------------------------------
 # Main MCTS optimization loop
 # ---------------------------------------------------------------------------
+
 
 def optimize_workflow(
     seed_workflow: WorkflowTopology | None = None,
@@ -610,19 +642,23 @@ def optimize_workflow(
     root_score, root_feedback = _evaluate_workflow(seed_workflow, evaluate_fn)
     _backpropagate(root, root_score)
 
-    result.history.append({
-        "iteration": 0,
-        "event": "seed_evaluated",
-        "score": root_score,
-        "feedback": root_feedback,
-    })
+    result.history.append(
+        {
+            "iteration": 0,
+            "event": "seed_evaluated",
+            "score": root_score,
+            "feedback": root_feedback,
+        }
+    )
 
     best_score = root_score
     best_workflow = seed_workflow
     best_score_history: list[float] = [root_score]
 
     for iteration in range(1, max_iterations + 1):
-        logger.info("MCTS iteration %d/%d — tree_size=%d", iteration, max_iterations, _count_nodes(root))
+        logger.info(
+            "MCTS iteration %d/%d — tree_size=%d", iteration, max_iterations, _count_nodes(root)
+        )
 
         # Step 1: Selection
         selected = _select(root)
@@ -646,19 +682,23 @@ def optimize_workflow(
         if child_score > best_score:
             best_score = child_score
             best_workflow = child.workflow
-            logger.info("MCTS: New best score=%.4f (action: %s)", best_score, child.expansion_action)
+            logger.info(
+                "MCTS: New best score=%.4f (action: %s)", best_score, child.expansion_action
+            )
 
         best_score_history.append(best_score)
 
-        result.history.append({
-            "iteration": iteration,
-            "event": "expanded",
-            "action": child.expansion_action,
-            "score": child_score,
-            "best_score": best_score,
-            "feedback": child_feedback,
-            "tree_size": _count_nodes(root),
-        })
+        result.history.append(
+            {
+                "iteration": iteration,
+                "event": "expanded",
+                "action": child.expansion_action,
+                "score": child_score,
+                "best_score": best_score,
+                "feedback": child_feedback,
+                "tree_size": _count_nodes(root),
+            }
+        )
 
         # Step 5: Convergence check
         if len(best_score_history) >= 4:
@@ -682,6 +722,7 @@ def optimize_workflow(
 # ---------------------------------------------------------------------------
 # Default heuristic evaluator (for testing / no-execution mode)
 # ---------------------------------------------------------------------------
+
 
 def _default_evaluator(workflow: WorkflowTopology) -> dict[str, float]:
     """Default heuristic evaluator that scores topologies based on structural properties.
@@ -749,6 +790,7 @@ def _default_evaluator(workflow: WorkflowTopology) -> dict[str, float]:
 # ---------------------------------------------------------------------------
 # Utility
 # ---------------------------------------------------------------------------
+
 
 def _count_nodes(node: MCTSNode) -> int:
     """Count total nodes in the MCTS tree."""

@@ -81,6 +81,7 @@ from src.observability.tracing import span as otel_span
 from src.observability.context import set_context, cycle_var
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from src.api.run_executor import RunControl
     from src.api.sse import SSEEventEmitter
@@ -175,9 +176,7 @@ def plan_and_act_node(
         raise RuntimeError("OneFlow requires a tool registry.")
 
     # Build combined prompt
-    tool_descriptions = "\n".join(
-        f"- {s.name}: {s.description}" for s in registry.specs()
-    )
+    tool_descriptions = "\n".join(f"- {s.name}: {s.description}" for s in registry.specs())
     gap_summary = _format_gaps(gap_report) if gap_report else "No gaps (initial run)."
     region_summary = _format_regions(regions)
     attempted_summary = _format_attempted(attempted)
@@ -185,16 +184,20 @@ def plan_and_act_node(
     doc_name = document or "unknown"
     fields_list = list(extraction.keys()) if extraction else ["(no fields extracted yet)"]
 
-    prompt = _ONEFLOW_ROLE_HEADER.format(
-        doc_name=doc_name,
-        skill_name=skill.name,
-        fields=", ".join(fields_list),
-        gaps=gap_summary,
-        regions=region_summary,
-        attempted=attempted_summary,
-    ) + f"\n\nAvailable tools:\n{tool_descriptions}\n\nSkill probe order:\n" + "\n".join(
-        f"- {p.get('region_type', '?')}: {p.get('rationale', '')}"
-        for p in (skill.probe_order or [])
+    prompt = (
+        _ONEFLOW_ROLE_HEADER.format(
+            doc_name=doc_name,
+            skill_name=skill.name,
+            fields=", ".join(fields_list),
+            gaps=gap_summary,
+            regions=region_summary,
+            attempted=attempted_summary,
+        )
+        + f"\n\nAvailable tools:\n{tool_descriptions}\n\nSkill probe order:\n"
+        + "\n".join(
+            f"- {p.get('region_type', '?')}: {p.get('rationale', '')}"
+            for p in (skill.probe_order or [])
+        )
     )
 
     # Sanitize input for exfiltration prevention
@@ -202,6 +205,7 @@ def plan_and_act_node(
 
     # Single LLM call for plan + act decision
     from src.providers.llm import invoke_llm
+
     llm_response = invoke_llm(
         system_prompt=skill.system_prompt or "You are a document extraction agent.",
         user_prompt=prompt,
@@ -218,7 +222,8 @@ def plan_and_act_node(
         decision = json.loads(response_text)
     except json.JSONDecodeError:
         import re
-        match = re.search(r'\{[\s\S]*\}', response_text)
+
+        match = re.search(r"\{[\s\S]*\}", response_text)
         if match:
             try:
                 decision = json.loads(match.group())
@@ -228,13 +233,16 @@ def plan_and_act_node(
                     "step": step,
                     "status": RunStatus.PLANNING,
                     "_planned_action": None,
-                    "trace": state.get("trace", []) + [TraceEntry(
-                        step=step,
-                        thought="Failed to parse LLM response",
-                        tool_name="",
-                        tool_args={},
-                        result=ToolResult(ok=False, error="Failed to parse LLM response"),
-                    )],
+                    "trace": state.get("trace", [])
+                    + [
+                        TraceEntry(
+                            step=step,
+                            thought="Failed to parse LLM response",
+                            tool_name="",
+                            tool_args={},
+                            result=ToolResult(ok=False, error="Failed to parse LLM response"),
+                        )
+                    ],
                 }
         else:
             logger.error("OneFlow: No JSON in LLM response")
@@ -284,9 +292,8 @@ def plan_and_act_node(
             "step": step,
             "status": RunStatus.PLANNING,
             "_planned_action": None,
-            "provider_errors": state.get("provider_errors", []) + [
-                f"Circuit breaker tripped for tool '{tool_name}'"
-            ],
+            "provider_errors": state.get("provider_errors", [])
+            + [f"Circuit breaker tripped for tool '{tool_name}'"],
         }
 
     # Execute tool
@@ -407,9 +414,7 @@ def observe_and_reflect_node(
     total_cycles = state.get("total_cycles", 0) + 1
     field_attempts = state.get("field_attempts", {})
 
-    give_up = _check_caps(
-        field_attempts, total_cycles
-    )
+    give_up = _check_caps(field_attempts, total_cycles)
 
     if give_up:
         return {
@@ -480,15 +485,29 @@ def build_oneflow_graph(
     graph = StateGraph(AgentState)
 
     # Add combined nodes
-    graph.add_node("plan_and_act", lambda s: plan_and_act_node(
-        s, llm_client=llm_client, skill=skill, registry=registry,
-        breaker=breaker, emitter=emitter, audit_logger=audit_logger,
-        rate_limiter=rate_limiter,
-    ))
-    graph.add_node("observe_and_reflect", lambda s: observe_and_reflect_node(
-        s, skill=skill, validator_config=validator_config,
-        emitter=emitter, loop_detector=loop_detector,
-    ))
+    graph.add_node(
+        "plan_and_act",
+        lambda s: plan_and_act_node(
+            s,
+            llm_client=llm_client,
+            skill=skill,
+            registry=registry,
+            breaker=breaker,
+            emitter=emitter,
+            audit_logger=audit_logger,
+            rate_limiter=rate_limiter,
+        ),
+    )
+    graph.add_node(
+        "observe_and_reflect",
+        lambda s: observe_and_reflect_node(
+            s,
+            skill=skill,
+            validator_config=validator_config,
+            emitter=emitter,
+            loop_detector=loop_detector,
+        ),
+    )
     graph.add_node("terminate", lambda s: _oneflow_terminate(s, emitter=emitter))
 
     # Edges
@@ -502,6 +521,7 @@ def build_oneflow_graph(
             return "terminate"
         if control:
             from src.agent.graph import should_continue_with_control
+
             next_node = should_continue_with_control(s, control)
             # OneFlow has no separate compact node — route compact to plan_and_act
             if next_node in ("plan", "compact"):
@@ -522,6 +542,7 @@ def build_oneflow_graph(
 def _oneflow_terminate(state: AgentState, *, emitter: Any = None) -> dict[str, Any]:
     """OneFlow terminate node — builds the final ExtractedResult."""
     from src.agent.graph import terminate_node
+
     return terminate_node(state, emitter=emitter)
 
 
@@ -533,7 +554,7 @@ def _oneflow_terminate(state: AgentState, *, emitter: Any = None) -> dict[str, A
 def estimate_cost_savings(
     num_cycles: int,
     standard_calls_per_cycle: int = 2,  # plan + reflect (act/observe don't use LLM)
-    oneflow_calls_per_cycle: int = 1,   # plan_and_act (observe_and_reflect is code-only)
+    oneflow_calls_per_cycle: int = 1,  # plan_and_act (observe_and_reflect is code-only)
     input_tokens_per_call: int = 3000,
     output_tokens_per_call: int = 500,
     input_price_per_1k: float = 0.005,
@@ -559,18 +580,16 @@ def estimate_cost_savings(
     # Standard mode re-injects context for each role transition
     standard_input_tokens = standard_llm_calls * input_tokens_per_call
     standard_output_tokens = standard_llm_calls * output_tokens_per_call
-    standard_cost = (
-        (standard_input_tokens / 1000) * input_price_per_1k
-        + (standard_output_tokens / 1000) * output_price_per_1k
-    )
+    standard_cost = (standard_input_tokens / 1000) * input_price_per_1k + (
+        standard_output_tokens / 1000
+    ) * output_price_per_1k
 
     # OneFlow reuses KV cache — only incremental tokens for role switching
     oneflow_input_tokens = oneflow_llm_calls * input_tokens_per_call
     oneflow_output_tokens = oneflow_llm_calls * output_tokens_per_call
-    oneflow_cost = (
-        (oneflow_input_tokens / 1000) * input_price_per_1k
-        + (oneflow_output_tokens / 1000) * output_price_per_1k
-    )
+    oneflow_cost = (oneflow_input_tokens / 1000) * input_price_per_1k + (
+        oneflow_output_tokens / 1000
+    ) * output_price_per_1k
 
     savings = standard_cost - oneflow_cost
     savings_pct = (savings / standard_cost * 100) if standard_cost > 0 else 0.0
@@ -583,7 +602,6 @@ def estimate_cost_savings(
         "standard_llm_calls": standard_llm_calls,
         "oneflow_llm_calls": oneflow_llm_calls,
         "call_reduction_percent": round(
-            (1 - oneflow_llm_calls / standard_llm_calls) * 100
-            if standard_llm_calls > 0 else 0.0, 1
+            (1 - oneflow_llm_calls / standard_llm_calls) * 100 if standard_llm_calls > 0 else 0.0, 1
         ),
     }

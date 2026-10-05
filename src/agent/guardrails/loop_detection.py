@@ -205,7 +205,9 @@ class LoopDetector:
         ]:
             report = check()
             if report.detected:
-                logger.warning("Loop detected: %s — %s [BLK-082]", report.loop_type.value, report.summary)
+                logger.warning(
+                    "Loop detected: %s — %s [BLK-082]", report.loop_type.value, report.summary
+                )
                 return report
 
         return LoopReport(loop_type=LoopType.NONE, detected=False)

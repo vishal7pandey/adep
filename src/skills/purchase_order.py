@@ -48,8 +48,7 @@ def _check_line_items_sum(e: dict) -> tuple[bool, str]:
     if not isinstance(item_list, list) or len(item_list) == 0:
         return True, ""
     line_sum = sum(
-        i.get("amount", 0) if isinstance(i, dict) else getattr(i, "amount", 0)
-        for i in item_list
+        i.get("amount", 0) if isinstance(i, dict) else getattr(i, "amount", 0) for i in item_list
     )
     if abs(line_sum - subtotal.value) > 0.01:
         return False, f"sum of line items ({line_sum}) != subtotal ({subtotal.value})"

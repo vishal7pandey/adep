@@ -36,9 +36,7 @@ class TestCompactTrace:
             _make_entry(2, field="vendor"),
             _make_entry(3, field="total"),
         ]
-        compacted = compact_trace(
-            trace, window_size=10, resolved_fields={"total"}
-        )
+        compacted = compact_trace(trace, window_size=10, resolved_fields={"total"})
         # Entries targeting "total" should be pruned
         assert all(e.field != "total" for e in compacted)
         assert len(compacted) == 2

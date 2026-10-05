@@ -26,17 +26,30 @@ class TestStatusVocabulary:
 
     def test_all_statuses_defined(self):
         """All 7 canonical statuses must be present."""
-        assert ALL_STATUSES == frozenset({
-            QUEUED, RUNNING, PAUSED, COMPLETED,
-            MAX_ITERATIONS_REACHED, FAILED, CANCELLED,
-        })
+        assert ALL_STATUSES == frozenset(
+            {
+                QUEUED,
+                RUNNING,
+                PAUSED,
+                COMPLETED,
+                MAX_ITERATIONS_REACHED,
+                FAILED,
+                CANCELLED,
+            }
+        )
 
     def test_no_extra_internal_statuses(self):
         """Every RunStatus constant must have a mapping."""
         internal_statuses = [
-            RunStatus.PLANNING, RunStatus.ACTING, RunStatus.OBSERVING,
-            RunStatus.REFLECTING, RunStatus.COMPLETE, RunStatus.PARTIAL,
-            RunStatus.PAUSED, RunStatus.ERROR, RunStatus.CANCELLED,
+            RunStatus.PLANNING,
+            RunStatus.ACTING,
+            RunStatus.OBSERVING,
+            RunStatus.REFLECTING,
+            RunStatus.COMPLETE,
+            RunStatus.PARTIAL,
+            RunStatus.PAUSED,
+            RunStatus.ERROR,
+            RunStatus.CANCELLED,
         ]
         for s in internal_statuses:
             mapped = map_status_to_frontend(s)
@@ -116,10 +129,17 @@ class TestRunEngineDelegatesToCanonical:
 
     def test_run_engine_mapping_matches_canonical(self):
         from src.api.run_engine import map_status_to_frontend as engine_map
+
         for status in [
-            RunStatus.PLANNING, RunStatus.ACTING, RunStatus.OBSERVING,
-            RunStatus.REFLECTING, RunStatus.COMPLETE, RunStatus.PARTIAL,
-            RunStatus.PAUSED, RunStatus.ERROR, RunStatus.CANCELLED,
+            RunStatus.PLANNING,
+            RunStatus.ACTING,
+            RunStatus.OBSERVING,
+            RunStatus.REFLECTING,
+            RunStatus.COMPLETE,
+            RunStatus.PARTIAL,
+            RunStatus.PAUSED,
+            RunStatus.ERROR,
+            RunStatus.CANCELLED,
         ]:
             assert engine_map(status) == map_status_to_frontend(status), (
                 f"run_engine mapping diverges from canonical for {status} [BLK-280]"
@@ -159,9 +179,14 @@ class TestComposedPipelineDoesNotCollapseFailures:
     def test_no_internal_status_collapses_to_completed_except_complete(self):
         """Only RunStatus.COMPLETE may ever surface as the SSE 'completed' status."""
         non_complete_statuses = [
-            RunStatus.PLANNING, RunStatus.ACTING, RunStatus.OBSERVING,
-            RunStatus.REFLECTING, RunStatus.PARTIAL, RunStatus.PAUSED,
-            RunStatus.ERROR, RunStatus.CANCELLED,
+            RunStatus.PLANNING,
+            RunStatus.ACTING,
+            RunStatus.OBSERVING,
+            RunStatus.REFLECTING,
+            RunStatus.PARTIAL,
+            RunStatus.PAUSED,
+            RunStatus.ERROR,
+            RunStatus.CANCELLED,
         ]
         for s in non_complete_statuses:
             assert self._composed(s) != COMPLETED, (

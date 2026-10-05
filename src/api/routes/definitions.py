@@ -15,6 +15,7 @@ router = APIRouter(tags=["definitions"])
 
 class CreateDefinitionRequest(BaseModel):
     """Request body for creating a definition."""
+
     id: str = Field(description="Unique definition identifier")
     name: str
     skill_id: str
@@ -28,6 +29,7 @@ class CreateDefinitionRequest(BaseModel):
 
 class UpdateDefinitionRequest(BaseModel):
     """Request body for updating a definition."""
+
     name: str | None = None
     skill_id: str | None = None
     template_id: str | None = None
@@ -56,9 +58,9 @@ async def list_definitions(
     if q:
         q_lower = q.lower()
         items = [
-            d for d in items
-            if q_lower in d.get("name", "").lower()
-            or q_lower in d.get("description", "").lower()
+            d
+            for d in items
+            if q_lower in d.get("name", "").lower() or q_lower in d.get("description", "").lower()
         ]
 
     if skill:
@@ -125,9 +127,16 @@ async def delete_definition(definition_id: str) -> Response:
 class ComposeDefinitionRequest(BaseModel):
     """Request body for AI Agent Composer [BLK-069]."""
 
-    description: str = Field(description="Natural language description of the document type and what to extract")
-    sample_document_summary: str | None = Field(default=None, description="Optional summary of a sample document")
-    save_to_store: bool = Field(default=False, description="If True, saves generated skill, template, and definition to the store")
+    description: str = Field(
+        description="Natural language description of the document type and what to extract"
+    )
+    sample_document_summary: str | None = Field(
+        default=None, description="Optional summary of a sample document"
+    )
+    save_to_store: bool = Field(
+        default=False,
+        description="If True, saves generated skill, template, and definition to the store",
+    )
 
 
 @router.post("/definitions/compose")

@@ -32,8 +32,8 @@ RETRY_TOKEN_BUDGET_RATIO = 0.20  # 20% of run budget
 class CircuitState(str, Enum):
     """Circuit breaker states [BLK-085]."""
 
-    CLOSED = "closed"      # Normal operation
-    OPEN = "open"          # Tripped — fail-fast
+    CLOSED = "closed"  # Normal operation
+    OPEN = "open"  # Tripped — fail-fast
     HALF_OPEN = "half_open"  # Testing if provider recovered
 
 
@@ -100,7 +100,9 @@ class GlobalCircuitBreaker:
                 # Transition to half-open
                 status.state = CircuitState.HALF_OPEN
                 status.last_state_change = now
-                logger.info("Circuit breaker for '%s' transitioning to HALF_OPEN [BLK-085]", provider)
+                logger.info(
+                    "Circuit breaker for '%s' transitioning to HALF_OPEN [BLK-085]", provider
+                )
                 return True, "half_open_test"
 
             return False, f"Circuit breaker open for provider '{provider}'"
@@ -131,13 +133,16 @@ class GlobalCircuitBreaker:
             # Half-open failure — re-open
             status.state = CircuitState.OPEN
             status.last_state_change = time.time()
-            logger.warning("Circuit breaker for '%s' re-OPENED (half-open test failed) [BLK-085]", provider)
+            logger.warning(
+                "Circuit breaker for '%s' re-OPENED (half-open test failed) [BLK-085]", provider
+            )
         elif status.consecutive_failures >= self.failure_threshold:
             status.state = CircuitState.OPEN
             status.last_state_change = time.time()
             logger.warning(
                 "Circuit breaker for '%s' OPENED after %d consecutive failures [BLK-085]",
-                provider, status.consecutive_failures,
+                provider,
+                status.consecutive_failures,
             )
 
     def get_status(self, provider: str) -> CircuitBreakerStatus:
@@ -163,7 +168,9 @@ def reset_global_circuit_breaker() -> None:
     _global_breaker = None
 
 
-def compute_backoff_wait(attempt: int, base: float = BACKOFF_BASE, max_wait: float = BACKOFF_MAX) -> float:
+def compute_backoff_wait(
+    attempt: int, base: float = BACKOFF_BASE, max_wait: float = BACKOFF_MAX
+) -> float:
     """Compute exponential backoff wait time with jitter [BLK-085].
 
     Formula: wait = min(base * 2^attempt + random_jitter, max_wait)
@@ -176,7 +183,7 @@ def compute_backoff_wait(attempt: int, base: float = BACKOFF_BASE, max_wait: flo
     Returns:
         Wait time in seconds.
     """
-    exponential = base * (2 ** attempt)
+    exponential = base * (2**attempt)
     jitter = random.uniform(0, base)
     return min(exponential + jitter, max_wait)
 
@@ -211,7 +218,10 @@ class RunRetryBudget:
         if self.retry_count >= self.max_retries:
             return False, f"Per-run retry budget exhausted ({self.retry_count}/{self.max_retries})"
         if self.retry_tokens >= self.max_retry_tokens:
-            return False, f"Retry token budget exhausted ({self.retry_tokens}/{self.max_retry_tokens} tokens)"
+            return (
+                False,
+                f"Retry token budget exhausted ({self.retry_tokens}/{self.max_retry_tokens} tokens)",
+            )
         return True, ""
 
     def record_retry(self, tokens_consumed: int = 0) -> None:
@@ -220,8 +230,10 @@ class RunRetryBudget:
         self.retry_tokens += tokens_consumed
         logger.info(
             "Retry recorded: attempt %d/%d, tokens %d/%d [BLK-085]",
-            self.retry_count, self.max_retries,
-            self.retry_tokens, self.max_retry_tokens,
+            self.retry_count,
+            self.max_retries,
+            self.retry_tokens,
+            self.max_retry_tokens,
         )
 
 
@@ -322,7 +334,10 @@ def retry_with_circuit_breaker(
             circuit_breaker.record_failure(provider)
             logger.warning(
                 "LLM call to '%s' failed (attempt %d/%d): %s [BLK-085]",
-                provider, attempt + 1, max_attempts, e,
+                provider,
+                attempt + 1,
+                max_attempts,
+                e,
             )
 
             # Record retry in budget

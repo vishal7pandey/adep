@@ -26,12 +26,11 @@ def _get_engine() -> Any:
         return _paddle_engine
     try:
         from paddleocr import PaddleOCR
+
         _paddle_engine = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
         return _paddle_engine
     except ImportError:
-        raise RuntimeError(
-            "PaddleOCR is not installed. Install with: uv add paddleocr"
-        )
+        raise RuntimeError("PaddleOCR is not installed. Install with: uv add paddleocr")
 
 
 def detect_layout(image_path: str, **kwargs: Any) -> ToolResult:
@@ -62,15 +61,17 @@ def detect_layout(image_path: str, **kwargs: Any) -> ToolResult:
         bbox_raw, (text, confidence) = line
         x1, y1 = int(bbox_raw[0][0]), int(bbox_raw[0][1])
         x2, y2 = int(bbox_raw[2][0]), int(bbox_raw[2][1])
-        regions.append({
-            "id": f"p0_r{idx}",
-            "type": RegionType.TEXT.value,
-            "bbox": (x1, y1, x2, y2),
-            "page": 0,
-            "text": text,
-            "confidence": float(confidence),
-            "metadata": {},
-        })
+        regions.append(
+            {
+                "id": f"p0_r{idx}",
+                "type": RegionType.TEXT.value,
+                "bbox": (x1, y1, x2, y2),
+                "page": 0,
+                "text": text,
+                "confidence": float(confidence),
+                "metadata": {},
+            }
+        )
 
     return ToolResult(ok=True, data=regions, tool="detect_layout")
 
@@ -91,7 +92,9 @@ def detect_text(image_path: str, lang: str = "en", **kwargs: Any) -> ToolResult:
     except RuntimeError as e:
         return ToolResult(ok=False, error=str(e), tool="detect_text")
     except Exception as e:
-        return ToolResult(ok=False, error=f"PaddleOCR text detection failed: {e}", tool="detect_text")
+        return ToolResult(
+            ok=False, error=f"PaddleOCR text detection failed: {e}", tool="detect_text"
+        )
 
     boxes: list[dict[str, Any]] = []
     if not result or not result[0]:
@@ -101,11 +104,13 @@ def detect_text(image_path: str, lang: str = "en", **kwargs: Any) -> ToolResult:
         bbox_raw, (text, confidence) = line
         x1, y1 = int(bbox_raw[0][0]), int(bbox_raw[0][1])
         x2, y2 = int(bbox_raw[2][0]), int(bbox_raw[2][1])
-        boxes.append({
-            "text": text,
-            "bbox": (x1, y1, x2, y2),
-            "score": float(confidence),
-        })
+        boxes.append(
+            {
+                "text": text,
+                "bbox": (x1, y1, x2, y2),
+                "score": float(confidence),
+            }
+        )
 
     return ToolResult(ok=True, data=boxes, tool="detect_text")
 

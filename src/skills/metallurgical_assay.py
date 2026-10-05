@@ -43,7 +43,11 @@ def _check_composition_in_spec(e: dict) -> tuple[bool, str]:
     min_list = spec_mins.value if hasattr(spec_mins, "value") else spec_mins
     max_list = spec_maxs.value if hasattr(spec_maxs, "value") else spec_maxs
 
-    if not isinstance(val_list, list) or not isinstance(min_list, list) or not isinstance(max_list, list):
+    if (
+        not isinstance(val_list, list)
+        or not isinstance(min_list, list)
+        or not isinstance(max_list, list)
+    ):
         return True, ""
 
     for i, (val, smin, smax) in enumerate(zip(val_list, min_list, max_list)):
@@ -107,16 +111,13 @@ _density_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Run deskew and denoise first, then detect_layout. For dot-matrix "
-        "text, use VLM if OCR fails. Use read_table for composition tables.",
-    GapType.INVARIANT_FAILED:
-        "Composition value outside spec range. Re-crop the composition "
-        "table and re-read with read_table. If OCR garbles numbers, "
-        "use VLM to extract specific values.",
-    GapType.LOW_CONFIDENCE:
-        "Dot-matrix print is hard for OCR. Apply deskew, denoise, and "
-        "threshold. If still low confidence, use VLM.",
+    GapType.MISSING: "Run deskew and denoise first, then detect_layout. For dot-matrix "
+    "text, use VLM if OCR fails. Use read_table for composition tables.",
+    GapType.INVARIANT_FAILED: "Composition value outside spec range. Re-crop the composition "
+    "table and re-read with read_table. If OCR garbles numbers, "
+    "use VLM to extract specific values.",
+    GapType.LOW_CONFIDENCE: "Dot-matrix print is hard for OCR. Apply deskew, denoise, and "
+    "threshold. If still low confidence, use VLM.",
 }
 
 

@@ -69,6 +69,7 @@ DEFAULT_PROVIDERS = ["paddle", "tesseract"]
 # Report structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ProviderResult:
     """Extraction quality metrics for a single provider [BLK-174].
@@ -167,8 +168,10 @@ class BenchmarkSuiteReport:
 # Suite runner
 # ---------------------------------------------------------------------------
 
+
 def _has_credentials() -> bool:
     from src.tests._credentials import has_real_credentials
+
     return has_real_credentials()
 
 
@@ -235,7 +238,9 @@ def _run_single_provider(
                 # Collect token/cost data
                 if hasattr(run_result, "token_usage") and run_result.token_usage:
                     total_tokens = sum(
-                        t.get("total_tokens", 0) if isinstance(t, dict) else getattr(t, "total_tokens", 0)
+                        t.get("total_tokens", 0)
+                        if isinstance(t, dict)
+                        else getattr(t, "total_tokens", 0)
                         for t in run_result.token_usage
                     )
                     token_counts.append(total_tokens)
@@ -288,6 +293,7 @@ def _run_single_provider(
 def _make_gt_field(name: str, value: Any):
     """Create a GroundTruthField from a name-value pair."""
     from src.eval.harness import GroundTruthField
+
     return GroundTruthField(name=name, value=value)
 
 
@@ -296,9 +302,15 @@ def _build_comparison(providers: list[ProviderResult]) -> dict[str, dict[str, An
     comparison: dict[str, dict[str, Any]] = {}
 
     metric_keys = [
-        "overall_accuracy", "overall_grounded_accuracy", "overall_anls",
-        "overall_smudge", "avg_confidence", "calibration_error",
-        "avg_latency_seconds", "avg_tokens", "avg_cost_usd",
+        "overall_accuracy",
+        "overall_grounded_accuracy",
+        "overall_anls",
+        "overall_smudge",
+        "avg_confidence",
+        "calibration_error",
+        "avg_latency_seconds",
+        "avg_tokens",
+        "avg_cost_usd",
     ]
 
     for metric in metric_keys:
@@ -332,7 +344,9 @@ def _build_comparison(providers: list[ProviderResult]) -> dict[str, dict[str, An
         comparison["per_field_accuracy"][field_name] = {}
         for p in providers:
             field_data = p.per_field.get(field_name, {})
-            comparison["per_field_accuracy"][field_name][p.provider] = field_data.get("accuracy", 0.0)
+            comparison["per_field_accuracy"][field_name][p.provider] = field_data.get(
+                "accuracy", 0.0
+            )
 
     return comparison
 
@@ -365,14 +379,16 @@ def _detect_regressions(
             provider_acc = p.per_field.get(field_name, {}).get("accuracy", 0.0)
             drop = baseline_acc - provider_acc
             if drop > threshold:
-                regressions.append({
-                    "field": field_name,
-                    "baseline_provider": baseline,
-                    "baseline_accuracy": round(baseline_acc, 4),
-                    "provider": p.provider,
-                    "provider_accuracy": round(provider_acc, 4),
-                    "drop": round(drop, 4),
-                })
+                regressions.append(
+                    {
+                        "field": field_name,
+                        "baseline_provider": baseline,
+                        "baseline_accuracy": round(baseline_acc, 4),
+                        "provider": p.provider,
+                        "provider_accuracy": round(provider_acc, 4),
+                        "drop": round(drop, 4),
+                    }
+                )
 
     return regressions
 

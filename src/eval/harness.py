@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # Ground truth structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GroundTruthField:
     """A single field's ground truth annotation.
@@ -64,6 +65,7 @@ class GroundTruthSample:
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------
+
 
 def bbox_iou(a: BBox, b: BBox) -> float:
     """Compute Intersection-over-Union between two bounding boxes.
@@ -116,6 +118,7 @@ def bbox_overlaps(pred: BBox | None, truth: BBox | None, threshold: float = 0.5)
 # ANLS metric — Average Normalized Levenshtein Similarity [BLK-015]
 # ---------------------------------------------------------------------------
 
+
 def _levenshtein(s1: str, s2: str) -> int:
     """Compute Levenshtein edit distance between two strings."""
     if len(s1) < len(s2):
@@ -158,6 +161,7 @@ def anls_score(predicted: Any, truth: Any) -> float:
 # ---------------------------------------------------------------------------
 # SMuDGE-style metric — spatial localization + output type [BLK-015]
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SmudgeScore:
@@ -221,6 +225,7 @@ def smudge_evaluate(
 # Report structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FieldMetric:
     """Per-field evaluation metrics.
@@ -256,7 +261,11 @@ class FieldMetric:
     @property
     def mean_confidence(self) -> float:
         """Average confidence across all predictions."""
-        return sum(self.confidence_values) / len(self.confidence_values) if self.confidence_values else 0.0
+        return (
+            sum(self.confidence_values) / len(self.confidence_values)
+            if self.confidence_values
+            else 0.0
+        )
 
     @property
     def calibration_error(self) -> float:
@@ -383,6 +392,7 @@ class EvaluationReport:
 # Harness
 # ---------------------------------------------------------------------------
 
+
 def evaluate_extraction(
     result: ExtractedResult,
     truth: GroundTruthSample,
@@ -435,7 +445,13 @@ def run_evaluation(
     for result, truth in zip(results, truths):
         evals = evaluate_extraction(result, truth)
 
-        for field_name, (value_correct, grounded_correct, confidence, anls, smudge) in evals.items():
+        for field_name, (
+            value_correct,
+            grounded_correct,
+            confidence,
+            anls,
+            smudge,
+        ) in evals.items():
             if field_name not in report.field_metrics:
                 report.field_metrics[field_name] = FieldMetric(name=field_name)
 
@@ -506,11 +522,13 @@ def _parse_sample(data: dict[str, Any], base_dir: Path) -> GroundTruthSample:
     fields = []
     for f in data.get("fields", []):
         bbox = tuple(f["bbox"]) if f.get("bbox") else None
-        fields.append(GroundTruthField(
-            name=f["name"],
-            value=f["value"],
-            bbox=bbox,
-            page=f.get("page", 0),
-        ))
+        fields.append(
+            GroundTruthField(
+                name=f["name"],
+                value=f["value"],
+                bbox=bbox,
+                page=f.get("page", 0),
+            )
+        )
 
     return GroundTruthSample(document_path=doc_path, fields=fields)

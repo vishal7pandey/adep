@@ -2,11 +2,11 @@
 
 /* ============================================================
    BLK-134: Semantic Design Token System
-   
+
    All color references in components should use var(--token-name).
    No hex literals in components. This enables dark mode to work
    by simply swapping token values via the .dark class.
-   
+
    Token naming convention:
      --brand-*      Brand colors (ADEP palette)
      --surface-*    Background surfaces
@@ -26,7 +26,7 @@
   --color-purple: #A27CC9;
   --color-periwinkle: #C5B4E3;
   --color-neutral-light: #E1E1E1;
-  
+
   --color-light-blue: #8FD3E8;
   --color-skobeloff: #007A78;
   --color-coral: #F47C6D;
@@ -104,7 +104,7 @@
 
 /* ============================================================
    Dark Theme
-   
+
    IMPORTANT: Document viewer (Pane 3) keeps white bg — we never
    invert the document render. An inverted scan is unreadable.
    Theme the chrome; leave the page true-to-original.
@@ -150,7 +150,7 @@
   --status-info: #58A6FF;
   --status-info-subtle: rgba(88, 166, 255, 0.12);
 
-  /* --- Confidence heatmap (must be visible on white document bg — 
+  /* --- Confidence heatmap (must be visible on white document bg —
          document keeps white bg even in dark mode) --- */
   --heatmap-high-fill: rgba(77, 184, 72, 0.18);
   --heatmap-high-stroke: #4DB848;

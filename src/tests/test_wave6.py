@@ -27,6 +27,7 @@ def client(tmp_path):
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     yield TestClient(app)
 
@@ -39,18 +40,29 @@ def client(tmp_path):
 # BLK-061: Search & filter
 # ---------------------------------------------------------------------------
 
+
 class TestDefinitionSearch:
     """Verify definition search and filter [BLK-061]."""
 
     def test_search_by_name(self, client):
-        client.post("/api/v1/definitions", json={
-            "id": "inv-1", "name": "Invoice Extractor",
-            "skill_id": "skill-1", "template_id": "tmpl-1",
-        })
-        client.post("/api/v1/definitions", json={
-            "id": "rcpt-1", "name": "Receipt Extractor",
-            "skill_id": "skill-2", "template_id": "tmpl-2",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "inv-1",
+                "name": "Invoice Extractor",
+                "skill_id": "skill-1",
+                "template_id": "tmpl-1",
+            },
+        )
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "rcpt-1",
+                "name": "Receipt Extractor",
+                "skill_id": "skill-2",
+                "template_id": "tmpl-2",
+            },
+        )
 
         resp = client.get("/api/v1/definitions?q=invoice")
         assert resp.status_code == 200
@@ -59,14 +71,24 @@ class TestDefinitionSearch:
         assert "inv-1" in ids
 
     def test_filter_by_skill(self, client):
-        client.post("/api/v1/definitions", json={
-            "id": "d1", "name": "Def 1",
-            "skill_id": "skill-a", "template_id": "tmpl-1",
-        })
-        client.post("/api/v1/definitions", json={
-            "id": "d2", "name": "Def 2",
-            "skill_id": "skill-b", "template_id": "tmpl-2",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "d1",
+                "name": "Def 1",
+                "skill_id": "skill-a",
+                "template_id": "tmpl-1",
+            },
+        )
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "d2",
+                "name": "Def 2",
+                "skill_id": "skill-b",
+                "template_id": "tmpl-2",
+            },
+        )
 
         resp = client.get("/api/v1/definitions?skill=skill-a")
         items = resp.json()
@@ -74,14 +96,24 @@ class TestDefinitionSearch:
         assert items[0]["id"] == "d1"
 
     def test_filter_by_template(self, client):
-        client.post("/api/v1/definitions", json={
-            "id": "d1", "name": "Def 1",
-            "skill_id": "s1", "template_id": "tmpl-x",
-        })
-        client.post("/api/v1/definitions", json={
-            "id": "d2", "name": "Def 2",
-            "skill_id": "s2", "template_id": "tmpl-y",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "d1",
+                "name": "Def 1",
+                "skill_id": "s1",
+                "template_id": "tmpl-x",
+            },
+        )
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "d2",
+                "name": "Def 2",
+                "skill_id": "s2",
+                "template_id": "tmpl-y",
+            },
+        )
 
         resp = client.get("/api/v1/definitions?template=tmpl-x")
         items = resp.json()
@@ -89,14 +121,24 @@ class TestDefinitionSearch:
         assert items[0]["id"] == "d1"
 
     def test_combined_search_and_filter(self, client):
-        client.post("/api/v1/definitions", json={
-            "id": "d1", "name": "Invoice Pro",
-            "skill_id": "s1", "template_id": "t1",
-        })
-        client.post("/api/v1/definitions", json={
-            "id": "d2", "name": "Invoice Basic",
-            "skill_id": "s2", "template_id": "t2",
-        })
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "d1",
+                "name": "Invoice Pro",
+                "skill_id": "s1",
+                "template_id": "t1",
+            },
+        )
+        client.post(
+            "/api/v1/definitions",
+            json={
+                "id": "d2",
+                "name": "Invoice Basic",
+                "skill_id": "s2",
+                "template_id": "t2",
+            },
+        )
 
         resp = client.get("/api/v1/definitions?q=invoice&skill=s1")
         items = resp.json()
@@ -108,14 +150,22 @@ class TestSkillSearch:
     """Verify skill search and filter [BLK-061]."""
 
     def test_search_by_name(self, client):
-        client.post("/api/v1/skills", json={
-            "id": "s1", "name": "Invoice Processing",
-            "tools": ["ocr", "vlm"],
-        })
-        client.post("/api/v1/skills", json={
-            "id": "s2", "name": "Receipt Processing",
-            "tools": ["ocr"],
-        })
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "s1",
+                "name": "Invoice Processing",
+                "tools": ["ocr", "vlm"],
+            },
+        )
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "s2",
+                "name": "Receipt Processing",
+                "tools": ["ocr"],
+            },
+        )
 
         resp = client.get("/api/v1/skills?q=invoice")
         items = resp.json()
@@ -123,12 +173,22 @@ class TestSkillSearch:
         assert "s1" in ids  # user-created matches [BLK-159]
 
     def test_filter_by_tool(self, client):
-        client.post("/api/v1/skills", json={
-            "id": "s1-unique-tool-test", "name": "Skill 1", "tools": ["ocr", "vlm"],
-        })
-        client.post("/api/v1/skills", json={
-            "id": "s2-unique-tool-test", "name": "Skill 2", "tools": ["ocr"],
-        })
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "s1-unique-tool-test",
+                "name": "Skill 1",
+                "tools": ["ocr", "vlm"],
+            },
+        )
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "s2-unique-tool-test",
+                "name": "Skill 2",
+                "tools": ["ocr"],
+            },
+        )
 
         resp = client.get("/api/v1/skills?tool=vlm")
         items = resp.json()
@@ -136,14 +196,24 @@ class TestSkillSearch:
         assert "s1-unique-tool-test" in ids  # user-created matches [BLK-159]
 
     def test_filter_by_semantic(self, client):
-        client.post("/api/v1/skills", json={
-            "id": "s1", "name": "Skill 1",
-            "semantic_checks_enabled": True, "tools": [],
-        })
-        client.post("/api/v1/skills", json={
-            "id": "s2", "name": "Skill 2",
-            "semantic_checks_enabled": False, "tools": [],
-        })
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "s1",
+                "name": "Skill 1",
+                "semantic_checks_enabled": True,
+                "tools": [],
+            },
+        )
+        client.post(
+            "/api/v1/skills",
+            json={
+                "id": "s2",
+                "name": "Skill 2",
+                "semantic_checks_enabled": False,
+                "tools": [],
+            },
+        )
 
         resp = client.get("/api/v1/skills?semantic=true")
         items = resp.json()
@@ -155,14 +225,22 @@ class TestTemplateSearch:
     """Verify template search and filter [BLK-061]."""
 
     def test_search_by_name(self, client):
-        client.post("/api/v1/templates", json={
-            "id": "t1-unique-search-test", "name": "Invoice Schema",
-            "fields": [{"name": "total", "type": "float"}],
-        })
-        client.post("/api/v1/templates", json={
-            "id": "t2-unique-search-test", "name": "Receipt Schema",
-            "fields": [{"name": "amount", "type": "float"}],
-        })
+        client.post(
+            "/api/v1/templates",
+            json={
+                "id": "t1-unique-search-test",
+                "name": "Invoice Schema",
+                "fields": [{"name": "total", "type": "float"}],
+            },
+        )
+        client.post(
+            "/api/v1/templates",
+            json={
+                "id": "t2-unique-search-test",
+                "name": "Receipt Schema",
+                "fields": [{"name": "amount", "type": "float"}],
+            },
+        )
 
         resp = client.get("/api/v1/templates?q=invoice")
         items = resp.json()
@@ -170,14 +248,22 @@ class TestTemplateSearch:
         assert "t1-unique-search-test" in ids  # user-created matches [BLK-159]
 
     def test_filter_by_field_type(self, client):
-        client.post("/api/v1/templates", json={
-            "id": "t1-unique-field-test", "name": "Template 1",
-            "fields": [{"name": "total", "type": "float"}],
-        })
-        client.post("/api/v1/templates", json={
-            "id": "t2-unique-field-test", "name": "Template 2",
-            "fields": [{"name": "vendor", "type": "str"}],
-        })
+        client.post(
+            "/api/v1/templates",
+            json={
+                "id": "t1-unique-field-test",
+                "name": "Template 1",
+                "fields": [{"name": "total", "type": "float"}],
+            },
+        )
+        client.post(
+            "/api/v1/templates",
+            json={
+                "id": "t2-unique-field-test",
+                "name": "Template 2",
+                "fields": [{"name": "vendor", "type": "str"}],
+            },
+        )
 
         resp = client.get("/api/v1/templates?field_type=float")
         items = resp.json()
@@ -189,11 +275,13 @@ class TestTemplateSearch:
 # BLK-059: Document import
 # ---------------------------------------------------------------------------
 
+
 class TestDocumentStore:
     """Verify DocumentStore [BLK-059]."""
 
     def test_import_png(self, tmp_path: Path):
         from PIL import Image
+
         store = DocumentStore(base_dir=tmp_path / ".adep")
 
         # Create a test PNG
@@ -209,6 +297,7 @@ class TestDocumentStore:
 
     def test_import_bmp(self, tmp_path: Path):
         from PIL import Image
+
         store = DocumentStore(base_dir=tmp_path / ".adep")
 
         img_path = tmp_path / "test.bmp"
@@ -238,6 +327,7 @@ class TestDocumentStore:
 
     def test_get_document(self, tmp_path: Path):
         from PIL import Image
+
         store = DocumentStore(base_dir=tmp_path / ".adep")
 
         img_path = tmp_path / "test.png"
@@ -250,6 +340,7 @@ class TestDocumentStore:
 
     def test_get_page_path(self, tmp_path: Path):
         from PIL import Image
+
         store = DocumentStore(base_dir=tmp_path / ".adep")
 
         img_path = tmp_path / "test.png"
@@ -261,6 +352,7 @@ class TestDocumentStore:
 
     def test_list_documents(self, tmp_path: Path):
         from PIL import Image
+
         store = DocumentStore(base_dir=tmp_path / ".adep")
 
         img_path = tmp_path / "test.png"
@@ -353,6 +445,7 @@ class TestDocumentAPI:
 
     def test_upload_unsupported_format(self, client):
         import io
+
         buf = io.BytesIO(b"GIF89a")
         resp = client.post(
             "/api/v1/documents",
@@ -365,25 +458,37 @@ class TestDocumentAPI:
 # BLK-060: Trace export
 # ---------------------------------------------------------------------------
 
+
 class TestRunExport:
     """Verify run export endpoints [BLK-060]."""
 
     def test_export_json(self, client):
         # Create a run via store
         from src.definitions.store import get_store
+
         store = get_store()
-        store.create("runs", "test-run-1", {
-            "id": "test-run-1",
-            "definition_id": "def-1",
-            "document_path": "/tmp/doc.pdf",
-            "status": "completed",
-            "fields": [
-                {"name": "vendor", "value": "ACME", "confidence": 0.95, "status": "extracted", "page": 1},
-            ],
-            "extracted_fields_count": 1,
-            "total_fields": 5,
-            "token_usage_summary": {"total_tokens": 1000, "total_cost_usd": 0.005},
-        })
+        store.create(
+            "runs",
+            "test-run-1",
+            {
+                "id": "test-run-1",
+                "definition_id": "def-1",
+                "document_path": "/tmp/doc.pdf",
+                "status": "completed",
+                "fields": [
+                    {
+                        "name": "vendor",
+                        "value": "ACME",
+                        "confidence": 0.95,
+                        "status": "extracted",
+                        "page": 1,
+                    },
+                ],
+                "extracted_fields_count": 1,
+                "total_fields": 5,
+                "token_usage_summary": {"total_tokens": 1000, "total_cost_usd": 0.005},
+            },
+        )
 
         resp = client.get("/api/v1/runs/test-run-1/export/json")
         assert resp.status_code == 200
@@ -395,19 +500,37 @@ class TestRunExport:
 
     def test_export_csv(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
-        store.create("runs", "test-run-2", {
-            "id": "test-run-2",
-            "definition_id": "def-1",
-            "document_path": "/tmp/doc.pdf",
-            "status": "completed",
-            "fields": [
-                {"name": "vendor", "value": "ACME", "confidence": 0.95, "status": "extracted", "page": 1, "bbox": {"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.1}},
-                {"name": "total", "value": 1500.00, "confidence": 0.88, "status": "extracted", "page": 1},
-            ],
-            "extracted_fields_count": 2,
-            "total_fields": 5,
-        })
+        store.create(
+            "runs",
+            "test-run-2",
+            {
+                "id": "test-run-2",
+                "definition_id": "def-1",
+                "document_path": "/tmp/doc.pdf",
+                "status": "completed",
+                "fields": [
+                    {
+                        "name": "vendor",
+                        "value": "ACME",
+                        "confidence": 0.95,
+                        "status": "extracted",
+                        "page": 1,
+                        "bbox": {"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.1},
+                    },
+                    {
+                        "name": "total",
+                        "value": 1500.00,
+                        "confidence": 0.88,
+                        "status": "extracted",
+                        "page": 1,
+                    },
+                ],
+                "extracted_fields_count": 2,
+                "total_fields": 5,
+            },
+        )
 
         resp = client.get("/api/v1/runs/test-run-2/export/csv")
         assert resp.status_code == 200

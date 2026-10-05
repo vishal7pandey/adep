@@ -46,6 +46,7 @@ from src.tools.base import ToolRegistry, ToolSpec, ToolResult
 # BLK-079: LLM output schema validation & sanitization
 # ---------------------------------------------------------------------------
 
+
 class TestTruncateOutput:
     """Verify output truncation [BLK-079]."""
 
@@ -240,6 +241,7 @@ class TestCoerceValue:
 # BLK-080: Tool call guardrails
 # ---------------------------------------------------------------------------
 
+
 class TestSanitizeToolArgs:
     """Verify tool argument sanitization [BLK-080]."""
 
@@ -407,6 +409,7 @@ class TestSafeToolCall:
 # BLK-082: Circular reasoning & loop detection
 # ---------------------------------------------------------------------------
 
+
 class TestLoopDetector:
     """Verify loop detection [BLK-082]."""
 
@@ -487,6 +490,7 @@ class TestLoopDetector:
 # BLK-085: Retry storm prevention & circuit breaker
 # ---------------------------------------------------------------------------
 
+
 class TestComputeBackoff:
     """Verify exponential backoff computation [BLK-085]."""
 
@@ -540,6 +544,7 @@ class TestGlobalCircuitBreaker:
 
         # Wait for cooldown
         import time
+
         time.sleep(0.15)
 
         allowed, reason = breaker.can_call("azure")
@@ -552,6 +557,7 @@ class TestGlobalCircuitBreaker:
         breaker.record_failure("azure")
 
         import time
+
         time.sleep(0.15)
         breaker.can_call("azure")  # Transitions to half-open
 
@@ -564,6 +570,7 @@ class TestGlobalCircuitBreaker:
         breaker.record_failure("azure")
 
         import time
+
         time.sleep(0.15)
         breaker.can_call("azure")  # Transitions to half-open
 
@@ -614,7 +621,9 @@ class TestRetryWithCircuitBreaker:
             return "result"
 
         result = retry_with_circuit_breaker(
-            success_fn, provider="test", sleep_fn=lambda _: None,
+            success_fn,
+            provider="test",
+            sleep_fn=lambda _: None,
         )
         assert result.success
         assert result.result == "result"
@@ -633,8 +642,10 @@ class TestRetryWithCircuitBreaker:
             return "success"
 
         result = retry_with_circuit_breaker(
-            fail_then_succeed, provider="test",
-            max_attempts=3, sleep_fn=lambda _: None,
+            fail_then_succeed,
+            provider="test",
+            max_attempts=3,
+            sleep_fn=lambda _: None,
         )
         assert result.success
         assert result.result == "success"
@@ -648,8 +659,10 @@ class TestRetryWithCircuitBreaker:
             raise RuntimeError("permanent error")
 
         result = retry_with_circuit_breaker(
-            always_fail, provider="test",
-            max_attempts=3, sleep_fn=lambda _: None,
+            always_fail,
+            provider="test",
+            max_attempts=3,
+            sleep_fn=lambda _: None,
         )
         assert not result.success
         assert "permanent error" in result.error
@@ -667,8 +680,10 @@ class TestRetryWithCircuitBreaker:
             return "result"
 
         result = retry_with_circuit_breaker(
-            success_fn, provider="test",
-            circuit_breaker=breaker, sleep_fn=lambda _: None,
+            success_fn,
+            provider="test",
+            circuit_breaker=breaker,
+            sleep_fn=lambda _: None,
         )
         assert not result.success
         assert "circuit breaker" in result.error.lower()
@@ -682,8 +697,11 @@ class TestRetryWithCircuitBreaker:
         budget = RunRetryBudget(max_retries=1, max_retry_tokens=10000)
 
         result = retry_with_circuit_breaker(
-            always_fail, provider="test",
-            max_attempts=5, run_budget=budget, sleep_fn=lambda _: None,
+            always_fail,
+            provider="test",
+            max_attempts=5,
+            run_budget=budget,
+            sleep_fn=lambda _: None,
         )
         assert not result.success
         # Should stop after budget exhausted (1 retry = 2 attempts)

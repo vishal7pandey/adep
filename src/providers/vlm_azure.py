@@ -29,6 +29,7 @@ def _get_client() -> Any:
         return _client
     try:
         from openai import AzureOpenAI
+
         _client = AzureOpenAI(
             api_key=settings.azure_api_key,
             azure_endpoint=settings.azure_chat_endpoint,
@@ -36,9 +37,7 @@ def _get_client() -> Any:
         )
         return _client
     except ImportError:
-        raise RuntimeError(
-            "openai package not installed. Install with: uv add openai"
-        )
+        raise RuntimeError("openai package not installed. Install with: uv add openai")
 
 
 def _encode_image(image_path: str) -> str:
@@ -106,7 +105,9 @@ def vlm(image_path: str, question: str, model: str | None = None, **kwargs: Any)
         return ToolResult(ok=False, error=f"VLM call failed: {e}", tool="vlm")
 
 
-def read_table(image_path: str, question: str = "Extract this table as structured data.", **kwargs: Any) -> ToolResult:
+def read_table(
+    image_path: str, question: str = "Extract this table as structured data.", **kwargs: Any
+) -> ToolResult:
     """Read a table from an image using the VLM.
 
     Args:
@@ -199,6 +200,7 @@ def read_chart(
         # Add grounding from image dimensions
         try:
             from PIL import Image
+
             with Image.open(image_path) as img:
                 w, h = img.size
             grounding = Grounding(bbox=(0, 0, w, h), source_tool="read_chart", confidence=0.85)

@@ -37,6 +37,7 @@ from src.agent.token_tracking import LLMResponse
 # Template Composer unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeFieldName:
     """Field name normalization to snake_case [BLK-067]."""
 
@@ -125,21 +126,50 @@ class TestGenerateTemplate:
     @patch("src.ai.template_composer.invoke_llm")
     def test_successful_generation(self, mock_invoke):
         mock_invoke.return_value = LLMResponse(
-            content=json.dumps({
-                "name": "Invoice Template",
-                "description": "Extract invoice fields",
-                "fields": [
-                    {"name": "vendor_name", "type": "string", "required": True, "threshold": 0.8},
-                    {"name": "invoice_number", "type": "string", "required": True, "threshold": 0.85},
-                    {"name": "total_amount", "type": "float", "required": True, "threshold": 0.85},
-                    {"name": "invoice_date", "type": "date", "required": True, "threshold": 0.85},
-                    {"name": "is_paid", "type": "boolean", "required": False, "threshold": 0.75},
-                ],
-            }),
+            content=json.dumps(
+                {
+                    "name": "Invoice Template",
+                    "description": "Extract invoice fields",
+                    "fields": [
+                        {
+                            "name": "vendor_name",
+                            "type": "string",
+                            "required": True,
+                            "threshold": 0.8,
+                        },
+                        {
+                            "name": "invoice_number",
+                            "type": "string",
+                            "required": True,
+                            "threshold": 0.85,
+                        },
+                        {
+                            "name": "total_amount",
+                            "type": "float",
+                            "required": True,
+                            "threshold": 0.85,
+                        },
+                        {
+                            "name": "invoice_date",
+                            "type": "date",
+                            "required": True,
+                            "threshold": 0.85,
+                        },
+                        {
+                            "name": "is_paid",
+                            "type": "boolean",
+                            "required": False,
+                            "threshold": 0.75,
+                        },
+                    ],
+                }
+            ),
             input_tokens=100,
             output_tokens=200,
         )
-        result = generate_template("Extract vendor name, invoice number, total, date, and paid status")
+        result = generate_template(
+            "Extract vendor name, invoice number, total, date, and paid status"
+        )
         assert result["name"] == "Invoice Template"
         assert len(result["fields"]) == 5
         assert result["fields"][0]["name"] == "vendor_name"
@@ -155,7 +185,9 @@ class TestGenerateTemplate:
 
     @patch("src.ai.template_composer.invoke_llm")
     def test_invalid_json_returns_error(self, mock_invoke):
-        mock_invoke.return_value = LLMResponse(content="not json at all", input_tokens=10, output_tokens=5)
+        mock_invoke.return_value = LLMResponse(
+            content="not json at all", input_tokens=10, output_tokens=5
+        )
         result = generate_template("Extract invoice fields")
         assert "error" in result
 
@@ -173,13 +205,15 @@ class TestGenerateTemplate:
     @patch("src.ai.template_composer.invoke_llm")
     def test_field_names_normalized(self, mock_invoke):
         mock_invoke.return_value = LLMResponse(
-            content=json.dumps({
-                "name": "Test",
-                "fields": [
-                    {"name": "Invoice Number", "type": "string"},
-                    {"name": "Total Amount", "type": "float"},
-                ],
-            }),
+            content=json.dumps(
+                {
+                    "name": "Test",
+                    "fields": [
+                        {"name": "Invoice Number", "type": "string"},
+                        {"name": "Total Amount", "type": "float"},
+                    ],
+                }
+            ),
             input_tokens=50,
             output_tokens=50,
         )
@@ -192,6 +226,7 @@ class TestGenerateTemplate:
 # Surrogate Verifier unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestFormatTrace:
     """Trace formatting for LLM prompt [BLK-070]."""
 
@@ -201,8 +236,20 @@ class TestFormatTrace:
 
     def test_format_trace_entries(self):
         entries = [
-            MagicMock(step=1, tool_name="ocr", thought="Read text", tool_args={"image_path": "/doc.png"}, result_summary="Success"),
-            MagicMock(step=2, tool_name="vlm", thought="Ask VLM", tool_args={"image_path": "/doc.png", "question": "What is the total?"}, result_summary="$42.50"),
+            MagicMock(
+                step=1,
+                tool_name="ocr",
+                thought="Read text",
+                tool_args={"image_path": "/doc.png"},
+                result_summary="Success",
+            ),
+            MagicMock(
+                step=2,
+                tool_name="vlm",
+                thought="Ask VLM",
+                tool_args={"image_path": "/doc.png", "question": "What is the total?"},
+                result_summary="$42.50",
+            ),
         ]
         result = _format_trace(entries)
         assert "Step 1" in result
@@ -257,18 +304,37 @@ class TestVerifySkill:
     @patch("src.ai.surrogate_verifier.invoke_llm")
     def test_successful_verification(self, mock_invoke):
         mock_invoke.return_value = LLMResponse(
-            content=json.dumps({
-                "diagnoses": [
-                    {"type": "tool_selection", "severity": "high", "message": "Used OCR on a region better suited for VLM"},
-                    {"type": "invariant", "severity": "medium", "message": "Missing date comparison invariant for due_date"},
-                ],
-                "proposed_tests": [
-                    {"assertion": "total_amount == sum(line_items.total) + tax_amount", "reason": "math invariant"},
-                ],
-                "skill_patch": {
-                    "invariants_to_add": [{"name": "total_check", "fields": ["total", "line_items", "tax"], "description": "Verify total"}],
-                },
-            }),
+            content=json.dumps(
+                {
+                    "diagnoses": [
+                        {
+                            "type": "tool_selection",
+                            "severity": "high",
+                            "message": "Used OCR on a region better suited for VLM",
+                        },
+                        {
+                            "type": "invariant",
+                            "severity": "medium",
+                            "message": "Missing date comparison invariant for due_date",
+                        },
+                    ],
+                    "proposed_tests": [
+                        {
+                            "assertion": "total_amount == sum(line_items.total) + tax_amount",
+                            "reason": "math invariant",
+                        },
+                    ],
+                    "skill_patch": {
+                        "invariants_to_add": [
+                            {
+                                "name": "total_check",
+                                "fields": ["total", "line_items", "tax"],
+                                "description": "Verify total",
+                            }
+                        ],
+                    },
+                }
+            ),
             input_tokens=200,
             output_tokens=300,
         )
@@ -303,7 +369,9 @@ class TestVerifySkill:
     @patch("src.ai.surrogate_verifier.invoke_llm")
     def test_missing_keys_defaulted(self, mock_invoke):
         mock_invoke.return_value = LLMResponse(
-            content=json.dumps({"diagnoses": [{"type": "other", "severity": "low", "message": "test"}]}),
+            content=json.dumps(
+                {"diagnoses": [{"type": "other", "severity": "low", "message": "test"}]}
+            ),
             input_tokens=50,
             output_tokens=50,
         )
@@ -316,35 +384,66 @@ class TestVerifySkill:
 # Integration tests with FastAPI
 # ---------------------------------------------------------------------------
 
+
 class TestTemplateGenerateEndpoint:
     """POST /templates/generate endpoint [BLK-067]."""
 
     def _create_app(self) -> FastAPI:
         app = FastAPI()
         from src.api.routes.templates import router
+
         app.include_router(router, prefix="/api/v1")
         return app
 
     @patch("src.ai.template_composer.invoke_llm")
     def test_generate_endpoint_success(self, mock_invoke):
         mock_invoke.return_value = LLMResponse(
-            content=json.dumps({
-                "name": "Invoice Schema",
-                "description": "Invoice extraction",
-                "fields": [
-                    {"name": "vendor_name", "type": "string", "required": True, "threshold": 0.8},
-                    {"name": "total_amount", "type": "float", "required": True, "threshold": 0.85},
-                    {"name": "invoice_date", "type": "date", "required": True, "threshold": 0.85},
-                    {"name": "invoice_number", "type": "string", "required": True, "threshold": 0.85},
-                    {"name": "is_paid", "type": "boolean", "required": False, "threshold": 0.75},
-                ],
-            }),
+            content=json.dumps(
+                {
+                    "name": "Invoice Schema",
+                    "description": "Invoice extraction",
+                    "fields": [
+                        {
+                            "name": "vendor_name",
+                            "type": "string",
+                            "required": True,
+                            "threshold": 0.8,
+                        },
+                        {
+                            "name": "total_amount",
+                            "type": "float",
+                            "required": True,
+                            "threshold": 0.85,
+                        },
+                        {
+                            "name": "invoice_date",
+                            "type": "date",
+                            "required": True,
+                            "threshold": 0.85,
+                        },
+                        {
+                            "name": "invoice_number",
+                            "type": "string",
+                            "required": True,
+                            "threshold": 0.85,
+                        },
+                        {
+                            "name": "is_paid",
+                            "type": "boolean",
+                            "required": False,
+                            "threshold": 0.75,
+                        },
+                    ],
+                }
+            ),
             input_tokens=100,
             output_tokens=200,
         )
         app = self._create_app()
         client = TestClient(app)
-        resp = client.post("/api/v1/templates/generate", json={"description": "Extract invoice fields"})
+        resp = client.post(
+            "/api/v1/templates/generate", json={"description": "Extract invoice fields"}
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["name"] == "Invoice Schema"
@@ -365,38 +464,62 @@ class TestSkillVerifyEndpoint:
     def _create_app(self, tmp_path) -> FastAPI:
         app = FastAPI()
         from src.api.routes.skills import router
+
         app.include_router(router, prefix="/api/v1")
 
         # Create a test skill in the store
         from src.definitions.store import DefinitionStore, get_store
         import src.definitions.store as store_module
+
         store_module._store = DefinitionStore(base_dir=str(tmp_path))
-        store_module._store.create_skill("test-skill", {
-            "id": "test-skill",
-            "name": "Test Skill",
-            "system_prompt": "Extract fields",
-            "tools": ["ocr", "vlm"],
-        })
+        store_module._store.create_skill(
+            "test-skill",
+            {
+                "id": "test-skill",
+                "name": "Test Skill",
+                "system_prompt": "Extract fields",
+                "tools": ["ocr", "vlm"],
+            },
+        )
         return app
 
     @patch("src.ai.surrogate_verifier.invoke_llm")
     def test_verify_endpoint_success(self, mock_invoke, tmp_path):
         mock_invoke.return_value = LLMResponse(
-            content=json.dumps({
-                "diagnoses": [{"type": "invariant", "severity": "high", "message": "Missing total invariant"}],
-                "proposed_tests": [{"assertion": "total > 0", "reason": "sanity"}],
-                "skill_patch": {"invariants_to_add": [{"name": "total_pos", "fields": ["total"], "description": "Total must be positive"}]},
-            }),
+            content=json.dumps(
+                {
+                    "diagnoses": [
+                        {
+                            "type": "invariant",
+                            "severity": "high",
+                            "message": "Missing total invariant",
+                        }
+                    ],
+                    "proposed_tests": [{"assertion": "total > 0", "reason": "sanity"}],
+                    "skill_patch": {
+                        "invariants_to_add": [
+                            {
+                                "name": "total_pos",
+                                "fields": ["total"],
+                                "description": "Total must be positive",
+                            }
+                        ]
+                    },
+                }
+            ),
             input_tokens=200,
             output_tokens=300,
         )
         app = self._create_app(tmp_path)
         client = TestClient(app)
-        resp = client.post("/api/v1/skills/test-skill/verify", json={
-            "trace": [],
-            "gap_report": {"total_fields": 3, "satisfied": [], "gaps": []},
-            "extraction": {},
-        })
+        resp = client.post(
+            "/api/v1/skills/test-skill/verify",
+            json={
+                "trace": [],
+                "gap_report": {"total_fields": 3, "satisfied": [], "gaps": []},
+                "extraction": {},
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert len(data["diagnoses"]) == 1
@@ -405,11 +528,14 @@ class TestSkillVerifyEndpoint:
     def test_verify_endpoint_skill_not_found(self, tmp_path):
         app = self._create_app(tmp_path)
         client = TestClient(app)
-        resp = client.post("/api/v1/skills/nonexistent/verify", json={
-            "trace": [],
-            "gap_report": {},
-            "extraction": {},
-        })
+        resp = client.post(
+            "/api/v1/skills/nonexistent/verify",
+            json={
+                "trace": [],
+                "gap_report": {},
+                "extraction": {},
+            },
+        )
         assert resp.status_code == 404
 
     @patch("src.ai.surrogate_verifier.invoke_llm")
@@ -417,11 +543,14 @@ class TestSkillVerifyEndpoint:
         mock_invoke.return_value = LLMResponse(content="", input_tokens=0, output_tokens=0)
         app = self._create_app(tmp_path)
         client = TestClient(app)
-        resp = client.post("/api/v1/skills/test-skill/verify", json={
-            "trace": [],
-            "gap_report": {},
-            "extraction": {},
-        })
+        resp = client.post(
+            "/api/v1/skills/test-skill/verify",
+            json={
+                "trace": [],
+                "gap_report": {},
+                "extraction": {},
+            },
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert "diagnoses" in data

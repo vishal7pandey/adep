@@ -49,7 +49,9 @@ def _make_trace_entry(step: int, tool: str = "ocr", ok: bool = True) -> TraceEnt
             data="INV-001" if ok else None,
             error=None if ok else "timeout",
             tool=tool,
-            grounding=Grounding(bbox=(0, 0, 100, 50), source_tool=tool, confidence=0.9) if ok else None,
+            grounding=Grounding(bbox=(0, 0, 100, 50), source_tool=tool, confidence=0.9)
+            if ok
+            else None,
         ),
         field="invoice_number",
     )
@@ -269,12 +271,14 @@ class TestCompactEndpoint:
         """Create a FastAPI TestClient with a temporary store."""
         import src.definitions.store as store_module
         import src.config as config_module
+
         old_store = store_module._store
         old_auth = config_module.settings.auth_enabled
         store_module._store = DefinitionStore(base_dir=tmp_path / ".adep")
         config_module.settings.auth_enabled = False
 
         from src.api.main import create_app
+
         app = create_app()
         client = TestClient(app)
 
@@ -289,10 +293,14 @@ class TestCompactEndpoint:
 
     def test_compact_completed_run_returns_info(self, client: TestClient):
         import src.definitions.store as store_module
-        store_module._store.save_run("run-done", {
-            "id": "run-done",
-            "status": "completed",
-        })
+
+        store_module._store.save_run(
+            "run-done",
+            {
+                "id": "run-done",
+                "status": "completed",
+            },
+        )
         resp = client.post("/api/v1/runs/run-done/compact")
         assert resp.status_code == 200
         data = resp.json()
@@ -301,10 +309,14 @@ class TestCompactEndpoint:
 
     def test_compact_running_run_triggers(self, client: TestClient):
         import src.definitions.store as store_module
-        store_module._store.save_run("run-active", {
-            "id": "run-active",
-            "status": "running",
-        })
+
+        store_module._store.save_run(
+            "run-active",
+            {
+                "id": "run-active",
+                "status": "running",
+            },
+        )
         resp = client.post("/api/v1/runs/run-active/compact")
         assert resp.status_code == 200
         data = resp.json()
@@ -325,9 +337,11 @@ class TestSSECompactionEvent:
         loop = asyncio.new_event_loop()
         events = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(e)
+
             loop.run_until_complete(collect())
         finally:
             loop.close()
@@ -343,25 +357,30 @@ class TestSSECompactionEvent:
         """Verify SSE stream emits compaction event when run has compaction_summary."""
         import src.definitions.store as store_module
         import src.config as config_module
+
         old_store = store_module._store
         old_auth = config_module.settings.auth_enabled
         store_module._store = DefinitionStore(base_dir=tmp_path / ".adep")
         config_module.settings.auth_enabled = False
 
-        store_module._store.save_run("run-compacted", {
-            "id": "run-compacted",
-            "definition_id": "def-test",
-            "document_url": "test.png",
-            "status": "completed",
-            "current_cycle": 20,
-            "total_fields": 7,
-            "extracted_fields_count": 7,
-            "fields": [],
-            "compaction_summary": "Agent tried OCR then VLM, extracted all fields.",
-            "entries_compacted": 15,
-        })
+        store_module._store.save_run(
+            "run-compacted",
+            {
+                "id": "run-compacted",
+                "definition_id": "def-test",
+                "document_url": "test.png",
+                "status": "completed",
+                "current_cycle": 20,
+                "total_fields": 7,
+                "extracted_fields_count": 7,
+                "fields": [],
+                "compaction_summary": "Agent tried OCR then VLM, extracted all fields.",
+                "entries_compacted": 15,
+            },
+        )
 
         from src.api.main import create_app
+
         app = create_app()
         client = TestClient(app)
 
@@ -405,6 +424,7 @@ class TestPauseSuspension:
 
         # Give it a moment to block on wait_for_resume
         import time
+
         time.sleep(0.1)
 
         # While blocked, status should be PAUSED
@@ -435,6 +455,7 @@ class TestPauseSuspension:
         t.start()
 
         import time
+
         time.sleep(0.1)
 
         assert state["status"] == RunStatus.PAUSED
@@ -462,6 +483,7 @@ class TestPauseSuspension:
         t.start()
 
         import time
+
         time.sleep(0.1)
 
         assert state["status"] == RunStatus.PAUSED

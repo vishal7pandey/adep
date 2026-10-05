@@ -76,13 +76,25 @@ Rules:
 # ---------------------------------------------------------------------------
 
 _VALID_GAP_TYPES = {
-    "missing", "type_error", "format_error", "ungrounded",
-    "low_confidence", "invariant_failed", "semantic_fail",
+    "missing",
+    "type_error",
+    "format_error",
+    "ungrounded",
+    "low_confidence",
+    "invariant_failed",
+    "semantic_fail",
 }
 
 _VALID_TOOLS = {
-    "ocr", "vlm", "detect_layout", "crop", "ground", "read_table",
-    "classify", "table_detection", "signature_detection",
+    "ocr",
+    "vlm",
+    "detect_layout",
+    "crop",
+    "ground",
+    "read_table",
+    "classify",
+    "table_detection",
+    "signature_detection",
 }
 
 
@@ -100,7 +112,9 @@ def _validate_tool_preferences(raw: dict[str, Any]) -> dict[str, str]:
     for region_type, tool in raw.items():
         tool_lower = str(tool).lower().strip()
         if tool_lower not in _VALID_TOOLS:
-            logger.debug("Unknown tool '%s' for region '%s' — keeping anyway", tool_lower, region_type)
+            logger.debug(
+                "Unknown tool '%s' for region '%s' — keeping anyway", tool_lower, region_type
+            )
         result[str(region_type).lower().strip()] = tool_lower
     return result
 
@@ -132,11 +146,13 @@ def _validate_invariants(raw: list[Any]) -> list[dict[str, Any]]:
             fields_list = [str(f) for f in fields_list]
         description = str(inv.get("description", "")).strip()
         if name:
-            result.append({
-                "name": name,
-                "fields": fields_list,
-                "description": description,
-            })
+            result.append(
+                {
+                    "name": name,
+                    "fields": fields_list,
+                    "description": description,
+                }
+            )
     return result
 
 
@@ -179,6 +195,7 @@ def _validate_confidence_overrides(raw: dict[str, Any]) -> dict[str, float]:
 # Heuristic fallback (no LLM available)
 # ---------------------------------------------------------------------------
 
+
 def _heuristic_skill(description: str, sample_fields: list[str] | None = None) -> dict[str, Any]:
     """Generate a basic skill dict without an LLM call [BLK-068].
 
@@ -200,13 +217,23 @@ def _heuristic_skill(description: str, sample_fields: list[str] | None = None) -
             f"Every value must be grounded to its bounding box."
         )
         probe_order = [
-            {"region_type": "header", "rationale": "Invoice number and date are usually top-right."},
+            {
+                "region_type": "header",
+                "rationale": "Invoice number and date are usually top-right.",
+            },
             {"region_type": "text", "rationale": "Vendor name is typically near the top."},
             {"region_type": "table", "rationale": "Line items are in the main body table."},
-            {"region_type": "text", "rationale": "Totals (subtotal, tax, total) are near the bottom."},
+            {
+                "region_type": "text",
+                "rationale": "Totals (subtotal, tax, total) are near the bottom.",
+            },
         ]
         invariants = [
-            {"name": "sum_check", "fields": ["subtotal", "tax", "total"], "description": "subtotal + tax == total"},
+            {
+                "name": "sum_check",
+                "fields": ["subtotal", "tax", "total"],
+                "description": "subtotal + tax == total",
+            },
         ]
         tool_prefs = {"text": "ocr", "table": "ocr", "handwriting": "vlm", "stamp": "vlm"}
         confidence = {"invoice_number": 0.85, "total": 0.85}
@@ -229,12 +256,17 @@ def _heuristic_skill(description: str, sample_fields: list[str] | None = None) -
             {"region_type": "text", "rationale": "Opening/closing balances and totals."},
         ]
         invariants = [
-            {"name": "balance_check", "fields": ["opening_balance", "closing_balance", "total_credits", "total_debits"],
-             "description": "opening_balance + total_credits - total_debits == closing_balance"},
+            {
+                "name": "balance_check",
+                "fields": ["opening_balance", "closing_balance", "total_credits", "total_debits"],
+                "description": "opening_balance + total_credits - total_debits == closing_balance",
+            },
         ]
         tool_prefs = {"text": "ocr", "table": "ocr", "chart": "vlm"}
         confidence = {"account_number": 0.85, "closing_balance": 0.85}
-        known_failures = "Transaction tables may span multiple pages. Balances may be in summary boxes."
+        known_failures = (
+            "Transaction tables may span multiple pages. Balances may be in summary boxes."
+        )
     else:
         doc_type = "generic"
         system_prompt = (
@@ -278,6 +310,7 @@ def _heuristic_skill(description: str, sample_fields: list[str] | None = None) -
 # Skill patch application (from Surrogate Verifier)
 # ---------------------------------------------------------------------------
 
+
 def apply_skill_patch(skill: dict[str, Any], patch: dict[str, Any]) -> dict[str, Any]:
     """Apply a skill patch from the Surrogate Verifier to a skill dict [BLK-068, BLK-070].
 
@@ -297,11 +330,13 @@ def apply_skill_patch(skill: dict[str, Any], patch: dict[str, Any]) -> dict[str,
         if isinstance(inv, dict) and inv.get("name"):
             existing_names = {i.get("name") for i in patched.get("invariants", [])}
             if inv["name"] not in existing_names:
-                patched.setdefault("invariants", []).append({
-                    "name": inv["name"],
-                    "fields": inv.get("fields", []),
-                    "description": inv.get("description", ""),
-                })
+                patched.setdefault("invariants", []).append(
+                    {
+                        "name": inv["name"],
+                        "fields": inv.get("fields", []),
+                        "description": inv.get("description", ""),
+                    }
+                )
 
     # Add new failure actions
     for condition, action in patch.get("failure_actions_to_add", {}).items():
@@ -344,6 +379,7 @@ def apply_skill_patch(skill: dict[str, Any], patch: dict[str, Any]) -> dict[str,
 # Co-evolution result
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CoEvolutionResult:
     """Result of a generate → verify → patch co-evolution loop [BLK-068].
@@ -355,11 +391,14 @@ class CoEvolutionResult:
         history: List of (iteration, skill_snapshot) tuples.
         token_usage: Total token usage across all LLM calls.
     """
+
     skill: dict[str, Any] = field(default_factory=dict)
     iterations: int = 0
     verifier_reports: list[dict[str, Any]] = field(default_factory=list)
     history: list[dict[str, Any]] = field(default_factory=list)
-    token_usage: dict[str, int] = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0})
+    token_usage: dict[str, int] = field(
+        default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -374,6 +413,7 @@ class CoEvolutionResult:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def generate_skill(
     description: str,
@@ -412,7 +452,9 @@ def generate_skill(
     # Build user prompt with optional context
     parts = [f"## Description\n{description}"]
     if sample_fields:
-        parts.append(f"## Template Fields\nThe skill should help extract these fields: {', '.join(sample_fields)}")
+        parts.append(
+            f"## Template Fields\nThe skill should help extract these fields: {', '.join(sample_fields)}"
+        )
     if sample_document_summary:
         parts.append(f"## Sample Document Summary\n{sample_document_summary}")
     parts.append("Generate the skill playbook JSON.")
@@ -520,20 +562,24 @@ def co_evolve_skill(
         # Step 3: Check if we should stop (no diagnoses or no patch)
         diagnoses = verifier_report.get("diagnoses", [])
         patch = verifier_report.get("skill_patch", {})
-        if not diagnoses or (not patch.get("invariants_to_add") and
-                             not patch.get("failure_actions_to_add") and
-                             not patch.get("probe_order_adjustments") and
-                             not patch.get("system_prompt_suggestions")):
+        if not diagnoses or (
+            not patch.get("invariants_to_add")
+            and not patch.get("failure_actions_to_add")
+            and not patch.get("probe_order_adjustments")
+            and not patch.get("system_prompt_suggestions")
+        ):
             logger.info("Co-evolution converged at iteration %d (no more patches)", i + 1)
             break
 
         # Step 4: Apply the patch
         skill = apply_skill_patch(skill, patch)
-        result.history.append({
-            "iteration": i + 1,
-            "skill": json.loads(json.dumps(skill, default=str)),
-            "patch_applied": patch,
-        })
+        result.history.append(
+            {
+                "iteration": i + 1,
+                "skill": json.loads(json.dumps(skill, default=str)),
+                "patch_applied": patch,
+            }
+        )
         result.iterations = i + 1
 
     result.skill = skill

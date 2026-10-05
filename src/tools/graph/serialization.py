@@ -47,6 +47,7 @@ def serialize_graph(
 def _serialize_json(graph: dict[str, Any]) -> ToolResult:
     """Serialize to plain JSON."""
     import json
+
     content = json.dumps(graph, indent=2, default=str)
     return ToolResult(
         ok=True,
@@ -76,21 +77,23 @@ def _serialize_graphml(graph: dict[str, Any]) -> ToolResult:
         tag = node.get("tag")
         if tag:
             lines.append(f'      <data key="tag">{_xml_escape(tag)}</data>')
-        lines.append('    </node>')
+        lines.append("    </node>")
 
     for i, edge in enumerate(edges):
         edge_id = edge.get("id", f"e{i}")
         source = edge["source"]
         target = edge["target"]
         edge_type = edge.get("type", "pipe")
-        lines.append(f'    <edge id="{_xml_escape(edge_id)}" '
-                      f'source="{_xml_escape(source)}" '
-                      f'target="{_xml_escape(target)}">')
+        lines.append(
+            f'    <edge id="{_xml_escape(edge_id)}" '
+            f'source="{_xml_escape(source)}" '
+            f'target="{_xml_escape(target)}">'
+        )
         lines.append(f'      <data key="edge_type">{_xml_escape(edge_type)}</data>')
-        lines.append('    </edge>')
+        lines.append("    </edge>")
 
-    lines.append('  </graph>')
-    lines.append('</graphml>')
+    lines.append("  </graph>")
+    lines.append("</graphml>")
 
     return ToolResult(
         ok=True,
@@ -107,40 +110,43 @@ def _serialize_dexpi(graph: dict[str, Any]) -> ToolResult:
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<DEXPI xmlns="http://dexpi.org/schema/2018/01">',
-        '  <Plant>',
-        '    <Equipment>',
+        "  <Plant>",
+        "    <Equipment>",
     ]
 
     for node in nodes:
         node_id = node["id"]
         node_type = node.get("type", "unknown")
         tag = node.get("tag", "")
-        lines.append(f'      <Item ID="{_xml_escape(node_id)}" '
-                      f'Class="{_xml_escape(node_type)}">')
+        lines.append(f'      <Item ID="{_xml_escape(node_id)}" Class="{_xml_escape(node_type)}">')
         if tag:
-            lines.append(f'        <Tag>{_xml_escape(tag)}</Tag>')
+            lines.append(f"        <Tag>{_xml_escape(tag)}</Tag>")
         bbox = node.get("bbox")
         if bbox:
-            lines.append(f'        <Position x="{bbox[0]}" y="{bbox[1]}" '
-                          f'w="{bbox[2] - bbox[0]}" h="{bbox[3] - bbox[1]}"/>')
-        lines.append('      </Item>')
+            lines.append(
+                f'        <Position x="{bbox[0]}" y="{bbox[1]}" '
+                f'w="{bbox[2] - bbox[0]}" h="{bbox[3] - bbox[1]}"/>'
+            )
+        lines.append("      </Item>")
 
-    lines.append('    </Equipment>')
-    lines.append('    <Piping>')
+    lines.append("    </Equipment>")
+    lines.append("    <Piping>")
 
     for i, edge in enumerate(edges):
         edge_id = edge.get("id", f"p{i}")
         source = edge["source"]
         target = edge["target"]
         edge_type = edge.get("type", "pipe")
-        lines.append(f'      <PipeLine ID="{_xml_escape(edge_id)}" '
-                      f'From="{_xml_escape(source)}" '
-                      f'To="{_xml_escape(target)}" '
-                      f'Type="{_xml_escape(edge_type)}"/>')
+        lines.append(
+            f'      <PipeLine ID="{_xml_escape(edge_id)}" '
+            f'From="{_xml_escape(source)}" '
+            f'To="{_xml_escape(target)}" '
+            f'Type="{_xml_escape(edge_type)}"/>'
+        )
 
-    lines.append('    </Piping>')
-    lines.append('  </Plant>')
-    lines.append('</DEXPI>')
+    lines.append("    </Piping>")
+    lines.append("  </Plant>")
+    lines.append("</DEXPI>")
 
     return ToolResult(
         ok=True,
@@ -152,6 +158,7 @@ def _serialize_dexpi(graph: dict[str, Any]) -> ToolResult:
 def _serialize_smart_pid(graph: dict[str, Any]) -> ToolResult:
     """Serialize to Smart P&ID JSON representation."""
     import json
+
     nodes = graph.get("nodes", [])
     edges = graph.get("edges", [])
 
@@ -193,8 +200,7 @@ def _serialize_smart_pid(graph: dict[str, Any]) -> ToolResult:
 def _xml_escape(text: str) -> str:
     """Escape special XML characters."""
     return (
-        text
-        .replace("&", "&amp;")
+        text.replace("&", "&amp;")
         .replace("<", "&lt;")
         .replace(">", "&gt;")
         .replace('"', "&quot;")

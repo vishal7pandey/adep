@@ -73,6 +73,7 @@ class TestPrebuiltDefinitionToolNames:
     def prebuilt_defs(self):
         """All prebuilt definitions."""
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         return PREBUILT_DEFINITIONS
 
     def test_all_prebuilt_tool_names_exist_in_registry(self, registry_names, prebuilt_defs):
@@ -82,9 +83,7 @@ class TestPrebuiltDefinitionToolNames:
             for name in defn.get("tool_names", []):
                 if name not in registry_names:
                     stale.append((defn["id"], name))
-        assert not stale, (
-            f"Prebuilt definitions reference tools not in registry: {stale}"
-        )
+        assert not stale, f"Prebuilt definitions reference tools not in registry: {stale}"
 
     def test_no_stale_crop_image(self, prebuilt_defs):
         """No prebuilt definition references the stale 'crop_image' name."""
@@ -127,6 +126,7 @@ class TestSkillToolMetadata:
     def test_skill_tools_no_stale_names(self):
         """_skill_tools mapping should not contain stale tool names."""
         from src.definitions.prebuilt import _skill_tools
+
         stale_names = {"crop_image", "cross_check", "locate", "detect_figures"}
         for skill_id, tools in _skill_tools.items():
             for tool in tools:

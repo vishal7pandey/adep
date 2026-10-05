@@ -32,10 +32,12 @@ from src.definitions.store import DefinitionStore
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def tmp_store(tmp_path: Path) -> DefinitionStore:
     """Create a temporary DefinitionStore."""
     import src.definitions.store as store_module
+
     old_store = store_module._store
     store = DefinitionStore(base_dir=tmp_path / ".adep")
     store_module._store = store
@@ -48,6 +50,7 @@ def client(tmp_path: Path) -> TestClient:
     """Create a FastAPI TestClient with a temporary store."""
     import src.definitions.store as store_module
     import src.config as config_module
+
     old_store = store_module._store
     old_auth = config_module.settings.auth_enabled
     store_module._store = DefinitionStore(base_dir=tmp_path / ".adep")
@@ -55,6 +58,7 @@ def client(tmp_path: Path) -> TestClient:
 
     reset_executor()
     from src.api.main import create_app
+
     app = create_app()
     test_client = TestClient(app)
 
@@ -84,6 +88,7 @@ def _save_run(store: DefinitionStore, run_id: str, **overrides: Any) -> None:
 # ---------------------------------------------------------------------------
 # RunControl tests
 # ---------------------------------------------------------------------------
+
 
 class TestRunControl:
     """Unit tests for RunControl cooperative flags [BLK-129]."""
@@ -121,6 +126,7 @@ class TestRunControl:
 # RunContext tests
 # ---------------------------------------------------------------------------
 
+
 class TestRunContext:
     """Unit tests for RunContext [BLK-129]."""
 
@@ -151,6 +157,7 @@ class TestRunContext:
 # ---------------------------------------------------------------------------
 # RunExecutor tests
 # ---------------------------------------------------------------------------
+
 
 class TestRunExecutor:
     """Unit tests for RunExecutor [BLK-129]."""
@@ -267,6 +274,7 @@ class TestRunExecutor:
 # API endpoint tests
 # ---------------------------------------------------------------------------
 
+
 class TestPostRunsAsync:
     """POST /runs returns 202 with queued status [BLK-129]."""
 
@@ -278,10 +286,13 @@ class TestPostRunsAsync:
         doc_path = doc_dir / "test.png"
         doc_path.write_bytes(b"\x89PNG\r\n\x1a\n")
 
-        resp = client.post("/api/v1/runs", json={
-            "definition_id": "def-trade-finance-scrutiny",
-            "document_url": str(doc_path),
-        })
+        resp = client.post(
+            "/api/v1/runs",
+            json={
+                "definition_id": "def-trade-finance-scrutiny",
+                "document_url": str(doc_path),
+            },
+        )
         assert resp.status_code == 202
         data = resp.json()
         assert data["status"] == "queued"
@@ -289,10 +300,13 @@ class TestPostRunsAsync:
         assert data["definition_id"] == "def-trade-finance-scrutiny"
 
     def test_start_run_missing_definition_404(self, client: TestClient):
-        resp = client.post("/api/v1/runs", json={
-            "definition_id": "nonexistent-def",
-            "document_url": "test.png",
-        })
+        resp = client.post(
+            "/api/v1/runs",
+            json={
+                "definition_id": "nonexistent-def",
+                "document_url": "test.png",
+            },
+        )
         assert resp.status_code == 404
 
     def test_start_run_429_when_pool_full(self, client: TestClient):
@@ -302,13 +316,20 @@ class TestPostRunsAsync:
         for i in range(1):
             executor.enqueue("def-trade-finance-scrutiny", "doc.png")
 
-        resp = client.post("/api/v1/runs", json={
-            "definition_id": "def-trade-finance-scrutiny",
-            "document_url": "test.png",
-        })
+        resp = client.post(
+            "/api/v1/runs",
+            json={
+                "definition_id": "def-trade-finance-scrutiny",
+                "document_url": "test.png",
+            },
+        )
         assert resp.status_code == 429
         data = resp.json()
-        assert "Retry-After" in resp.headers or "retry" in resp.headers.get("retry-after", "").lower() or True
+        assert (
+            "Retry-After" in resp.headers
+            or "retry" in resp.headers.get("retry-after", "").lower()
+            or True
+        )
         assert "message" in data["detail"]
 
 
@@ -338,26 +359,31 @@ class TestAdminQueue:
 # Graph conditional edge tests
 # ---------------------------------------------------------------------------
 
+
 class TestGraphCancelledStatus:
     """RunStatus.CANCELLED is handled in graph edges [BLK-129]."""
 
     def test_should_continue_handles_cancelled(self):
         from src.agent.graph import should_continue
+
         state: dict[str, Any] = {"status": RunStatus.CANCELLED}
         assert should_continue(state) == "terminate"
 
     def test_should_act_handles_cancelled(self):
         from src.agent.graph import should_act
+
         state: dict[str, Any] = {"status": RunStatus.CANCELLED}
         assert should_act(state) == "terminate"
 
     def test_should_continue_handles_paused(self):
         from src.agent.graph import should_continue
+
         state: dict[str, Any] = {"status": RunStatus.PAUSED}
         assert should_continue(state) == "terminate"
 
     def test_should_act_handles_paused(self):
         from src.agent.graph import should_act
+
         state: dict[str, Any] = {"status": RunStatus.PAUSED}
         assert should_act(state) == "terminate"
 
@@ -365,6 +391,7 @@ class TestGraphCancelledStatus:
 # ---------------------------------------------------------------------------
 # SSE complete event with run_id
 # ---------------------------------------------------------------------------
+
 
 class TestSSECompleteWithRunId:
     """emit_complete includes run_id [BLK-129]."""
@@ -374,9 +401,11 @@ class TestSSECompleteWithRunId:
         loop = asyncio.new_event_loop()
         events: list[dict[str, Any]] = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(json.loads(e.replace("data: ", "").strip()))
+
             loop.run_until_complete(collect())
         finally:
             loop.close()
@@ -409,6 +438,7 @@ class TestSSECompleteWithRunId:
 # RunExecutor start/stop lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestRunExecutorLifecycle:
     """RunExecutor start/stop [BLK-129]."""
 
@@ -419,6 +449,7 @@ class TestRunExecutorLifecycle:
             assert len(executor._workers) == 2
             assert executor._started is True
             await executor.stop()
+
         asyncio.run(_test())
 
     def test_start_idempotent(self):
@@ -429,6 +460,7 @@ class TestRunExecutorLifecycle:
             executor.start()
             assert len(executor._workers) == initial_workers
             await executor.stop()
+
         asyncio.run(_test())
 
     def test_stop_drains_workers(self):
@@ -438,6 +470,7 @@ class TestRunExecutorLifecycle:
             await executor.stop()
             assert executor._started is False
             assert len(executor._workers) == 0
+
         asyncio.run(_test())
 
     def test_stop_is_idempotent(self):
@@ -447,12 +480,14 @@ class TestRunExecutorLifecycle:
             await executor.stop()
             await executor.stop()  # should not raise
             assert executor._started is False
+
         asyncio.run(_test())
 
 
 # ---------------------------------------------------------------------------
 # Late-subscriber buffer tests
 # ---------------------------------------------------------------------------
+
 
 class TestLateSubscriberBuffer:
     """Late SSE subscribers receive buffered events [BLK-129]."""
@@ -471,6 +506,7 @@ class TestLateSubscriberBuffer:
 # Event-loop blocking tests [BLK-240]
 # ---------------------------------------------------------------------------
 
+
 class TestGraphInvokeThreaded:
     """Verify graph.invoke runs in a thread, not blocking the event loop [BLK-240]."""
 
@@ -478,6 +514,7 @@ class TestGraphInvokeThreaded:
         """execute_run_async should offload graph.invoke via asyncio.to_thread [BLK-240]."""
         import inspect
         from src.api.run_engine import _execute_run_inner
+
         source = inspect.getsource(_execute_run_inner)
         assert "asyncio.to_thread" in source, (
             "_execute_run_inner must use asyncio.to_thread for graph.invoke [BLK-240]"
@@ -502,11 +539,20 @@ class TestGraphInvokeThreaded:
                 def invoke(self, state, config=None):
                     # Simulate a blocking synchronous call
                     import time
+
                     time.sleep(0.2)
-                    return {"status": "complete", "extraction": {}, "result": None,
-                            "trace": [], "token_usage": [], "regions": {},
-                            "attempted": set(), "provider_errors": {},
-                            "field_attempts": {}, "step": 0}
+                    return {
+                        "status": "complete",
+                        "extraction": {},
+                        "result": None,
+                        "trace": [],
+                        "token_usage": [],
+                        "regions": {},
+                        "attempted": set(),
+                        "provider_errors": {},
+                        "field_attempts": {},
+                        "step": 0,
+                    }
 
             # We can't easily call _execute_run_impl without a real definition,
             # so we verify the pattern: asyncio.to_thread is used by checking
@@ -522,9 +568,7 @@ class TestGraphInvokeThreaded:
                 concurrent_result.append("done")
 
             # Run graph.invoke via asyncio.to_thread and concurrent_task simultaneously
-            invoke_task = asyncio.ensure_future(
-                asyncio.to_thread(mock_graph.invoke, {})
-            )
+            invoke_task = asyncio.ensure_future(asyncio.to_thread(mock_graph.invoke, {}))
             concurrent_task_obj = asyncio.ensure_future(concurrent_task())
 
             await asyncio.gather(invoke_task, concurrent_task_obj)
@@ -542,6 +586,7 @@ class TestGraphInvokeThreaded:
 # ---------------------------------------------------------------------------
 # Pause/resume lifecycle tests [BLK-270]
 # ---------------------------------------------------------------------------
+
 
 class TestPauseResumeLifecycle:
     """Verify pause/resume is a real suspending lifecycle, not a terminate [BLK-270]."""
@@ -617,6 +662,7 @@ class TestPauseResumeLifecycle:
         assert executor.pause_run(ctx.run_id) is True
         assert ctx.status == "paused"
         from src.definitions.store import get_store
+
         store = get_store()
         run_data = store.get_run(ctx.run_id)
         assert run_data["status"] == "paused"
@@ -631,6 +677,7 @@ class TestPauseResumeLifecycle:
         assert executor.resume_run(ctx.run_id) is True
         assert ctx.status == "running"
         from src.definitions.store import get_store
+
         store = get_store()
         run_data = store.get_run(ctx.run_id)
         assert run_data["status"] == "running"
@@ -639,6 +686,7 @@ class TestPauseResumeLifecycle:
         """Graph conditional edges should block, not return 'terminate' on pause [BLK-270]."""
         import inspect
         from src.agent.graph import build_react_graph
+
         source = inspect.getsource(build_react_graph)
         assert "wait_for_resume" in source, (
             "Graph must call wait_for_resume() on pause, not terminate [BLK-270]"
@@ -676,6 +724,7 @@ class TestPauseResumeLifecycle:
 # Path traversal tests [BLK-241]
 # ---------------------------------------------------------------------------
 
+
 class TestPathTraversalProtection:
     """Verify preview and run creation reject paths outside allowed roots [BLK-241]."""
 
@@ -691,7 +740,9 @@ class TestPathTraversalProtection:
         resp = client.get("/api/v1/runs/run-abs/preview/1")
         assert resp.status_code == 403
 
-    def test_preview_rejects_symlink_escape(self, client: TestClient, tmp_store: DefinitionStore, tmp_path: Path):
+    def test_preview_rejects_symlink_escape(
+        self, client: TestClient, tmp_store: DefinitionStore, tmp_path: Path
+    ):
         """Preview endpoint should 403 for symlinks pointing outside allowed roots [BLK-241]."""
         # Create a symlink inside .adep pointing outside
         adp_dir = tmp_path / ".adep"
@@ -708,7 +759,9 @@ class TestPathTraversalProtection:
         resp = client.get("/api/v1/runs/run-symlink/preview/1")
         assert resp.status_code == 403
 
-    def test_preview_allows_adep_path(self, client: TestClient, tmp_store: DefinitionStore, tmp_path: Path, monkeypatch):
+    def test_preview_allows_adep_path(
+        self, client: TestClient, tmp_store: DefinitionStore, tmp_path: Path, monkeypatch
+    ):
         """Preview endpoint should allow paths inside .adep/ [BLK-241]."""
         # Mock Path.cwd() to return tmp_path so allowed_roots align with test store
         monkeypatch.setattr(Path, "cwd", lambda: tmp_path)
@@ -722,28 +775,40 @@ class TestPathTraversalProtection:
         resp = client.get("/api/v1/runs/run-valid/preview/1")
         assert resp.status_code == 200
 
-    def test_run_creation_rejects_path_traversal(self, client: TestClient, tmp_store: DefinitionStore):
+    def test_run_creation_rejects_path_traversal(
+        self, client: TestClient, tmp_store: DefinitionStore
+    ):
         """POST /runs should 403 for document_path outside allowed roots [BLK-241]."""
-        tmp_store.create("definitions", "def-test", {
-            "id": "def-test",
-            "name": "Test",
-            "skill_id": "invoice",
-            "template_ref": "invoice",
-        })
+        tmp_store.create(
+            "definitions",
+            "def-test",
+            {
+                "id": "def-test",
+                "name": "Test",
+                "skill_id": "invoice",
+                "template_ref": "invoice",
+            },
+        )
         resp = client.post(
             "/api/v1/runs",
             json={"definition_id": "def-test", "document_url": "../../etc/passwd"},
         )
         assert resp.status_code == 403
 
-    def test_run_creation_rejects_absolute_path(self, client: TestClient, tmp_store: DefinitionStore):
+    def test_run_creation_rejects_absolute_path(
+        self, client: TestClient, tmp_store: DefinitionStore
+    ):
         """POST /runs should 403 for absolute paths outside allowed roots [BLK-241]."""
-        tmp_store.create("definitions", "def-test", {
-            "id": "def-test",
-            "name": "Test",
-            "skill_id": "invoice",
-            "template_ref": "invoice",
-        })
+        tmp_store.create(
+            "definitions",
+            "def-test",
+            {
+                "id": "def-test",
+                "name": "Test",
+                "skill_id": "invoice",
+                "template_ref": "invoice",
+            },
+        )
         resp = client.post(
             "/api/v1/runs",
             json={"definition_id": "def-test", "document_url": "/etc/passwd"},

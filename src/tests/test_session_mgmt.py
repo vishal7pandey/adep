@@ -19,12 +19,14 @@ def client(tmp_path):
     """Create a test client with isolated store."""
     import src.definitions.store as store_module
     import src.config as config_module
+
     old_store = store_module._store
     old_auth = config_module.settings.auth_enabled
     store_module._store = store_module.DefinitionStore(base_dir=tmp_path / ".adep")
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     yield TestClient(app)
 
@@ -61,6 +63,7 @@ class TestListRuns:
 
     def test_list_with_limit(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         for i in range(5):
             _create_run(store, f"run-{i:03d}", {"created_at": f"2026-08-08T0{i}:00:00+05:30"})
@@ -73,6 +76,7 @@ class TestListRuns:
 
     def test_list_default_limit(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 
@@ -86,9 +90,14 @@ class TestListRuns:
         not the stale ``document_path`` key.
         """
         from src.definitions.store import get_store
+
         store = get_store()
-        _create_run(store, "run-aaa", {"document_url": "/tmp/invoice_2026.pdf", "document_path": None})
-        _create_run(store, "run-bbb", {"document_url": "/tmp/receipt_2026.pdf", "document_path": None})
+        _create_run(
+            store, "run-aaa", {"document_url": "/tmp/invoice_2026.pdf", "document_path": None}
+        )
+        _create_run(
+            store, "run-bbb", {"document_url": "/tmp/receipt_2026.pdf", "document_path": None}
+        )
 
         resp = client.get("/api/v1/runs?q=invoice")
         assert resp.status_code == 200
@@ -100,6 +109,7 @@ class TestListRuns:
         """Legacy runs persisted with the old ``document_path`` key must still
         be searchable [BLK-185, SCRUM-18]."""
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-legacy", {"document_path": "/tmp/legacy_report.pdf"})
 
@@ -115,6 +125,7 @@ class TestGetRun:
 
     def test_get_run_returns_field_counts(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 
@@ -136,6 +147,7 @@ class TestDeleteRun:
 
     def test_delete_run(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 
@@ -157,6 +169,7 @@ class TestPatchRun:
 
     def test_patch_rename(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 
@@ -178,6 +191,7 @@ class TestDuplicateRun:
 
     def test_duplicate_run(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 
@@ -202,6 +216,7 @@ class TestExportEndpoints:
 
     def test_export_json(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 
@@ -215,6 +230,7 @@ class TestExportEndpoints:
         """Regression [BLK-185, SCRUM-18]: export must surface the canonical
         ``document_url`` field, not an always-null ``document_path``."""
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001", {"document_url": "/tmp/doc.pdf", "document_path": None})
 
@@ -225,6 +241,7 @@ class TestExportEndpoints:
 
     def test_export_csv(self, client):
         from src.definitions.store import get_store
+
         store = get_store()
         _create_run(store, "run-001")
 

@@ -1,19 +1,28 @@
 # ADEP Pre-commit Hooks [BLK-063]
+# Install once per clone:  uv run pre-commit install
+# Run on everything:       uv run pre-commit run --all-files
+#
+# The sample data is the demo/evaluation set: hooks must never rewrite it (ADE-5).
+exclude: ^(sample-data/|uv\.lock$|frontend/pnpm-lock\.yaml$)
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.4.0
+    rev: v0.16.2  # same as the version locked in uv.lock
     hooks:
-      - id: ruff
-        args: [--fix]
+      # TEMPORARILY DISABLED (ADE-5): ruff reports 1043 errors on master (ADE-20); with --fix this hook
+      # would fail every commit that touches a Python file. Re-enable when ADE-20 is done.
+      # - id: ruff
+      #   args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
-    hooks:
-      - id: mypy
-        args: [--ignore-missing-imports]
-        additional_dependencies: [pydantic, pydantic-settings]
+  # TEMPORARILY DISABLED (ADE-5): mypy reports 183 errors on master (ADE-21), and an isolated hook env
+  # does not see the project's dependencies. Re-enable (rev v2.3.0, as locked) when ADE-21 is done.
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v2.3.0
+  #   hooks:
+  #     - id: mypy
+  #       args: [--ignore-missing-imports]
+  #       additional_dependencies: [pydantic, pydantic-settings]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0

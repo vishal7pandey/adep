@@ -113,10 +113,24 @@ def _mock_detect_layout(**kwargs: Any) -> ToolResult:
     return ToolResult(
         ok=True,
         data=[
-            {"id": "p0_r0", "type": "text", "bbox": (0, 0, 500, 100), "page": 0,
-             "text": "header", "confidence": 0.9, "metadata": {}},
-            {"id": "p0_r1", "type": "table", "bbox": (0, 100, 500, 400), "page": 0,
-             "text": "line items", "confidence": 0.85, "metadata": {}},
+            {
+                "id": "p0_r0",
+                "type": "text",
+                "bbox": (0, 0, 500, 100),
+                "page": 0,
+                "text": "header",
+                "confidence": 0.9,
+                "metadata": {},
+            },
+            {
+                "id": "p0_r1",
+                "type": "table",
+                "bbox": (0, 100, 500, 400),
+                "page": 0,
+                "text": "line items",
+                "confidence": 0.85,
+                "metadata": {},
+            },
         ],
         tool="detect_layout",
     )
@@ -126,7 +140,9 @@ def _mock_crop(**kwargs: Any) -> ToolResult:
     return ToolResult(
         ok=True,
         data="cropped_image.png",
-        grounding=Grounding(bbox=kwargs.get("bbox", (0, 0, 100, 100)), source_tool="crop", confidence=1.0),
+        grounding=Grounding(
+            bbox=kwargs.get("bbox", (0, 0, 100, 100)), source_tool="crop", confidence=1.0
+        ),
         tool="crop",
     )
 
@@ -163,6 +179,7 @@ def _build_mock_registry() -> ToolRegistry:
 # Mock LLM client — returns tool calls that extract fields one by one
 # ---------------------------------------------------------------------------
 
+
 class MockLLMClient:
     """Mock LLM that returns a sequence of tool calls to extract fields.
 
@@ -173,18 +190,22 @@ class MockLLMClient:
     def __init__(self, fields: list[str], tool: str = "ocr", batch_size: int = 3) -> None:
         self._actions: list[dict[str, Any]] = []
         for field in fields:
-            self._actions.append({
-                "thought": f"Extract {field} using {tool}",
-                "tool": tool,
-                "args": {"image_path": "sample.png", "field": field},
-                "field": field,
-            })
-        self._actions.append({
-            "thought": "All fields extracted, done",
-            "tool": "",
-            "args": {},
-            "field": None,
-        })
+            self._actions.append(
+                {
+                    "thought": f"Extract {field} using {tool}",
+                    "tool": tool,
+                    "args": {"image_path": "sample.png", "field": field},
+                    "field": field,
+                }
+            )
+        self._actions.append(
+            {
+                "thought": "All fields extracted, done",
+                "tool": "",
+                "args": {},
+                "field": None,
+            }
+        )
         self._idx = 0
 
     def invoke(self, system_prompt: str, user_prompt: str) -> str:
@@ -199,10 +220,12 @@ class MockLLMClient:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def seeded_store(tmp_path: Path) -> DefinitionStore:
     """Create a DefinitionStore with prebuilt content available via merge [BLK-159]."""
     import src.definitions.store as store_module
+
     old_store = store_module._store
     store = DefinitionStore(base_dir=tmp_path / ".adep")
     store_module._store = store
@@ -234,6 +257,7 @@ def _run_async(coro: Any) -> Any:
 # Mocked e2e tests — full pipeline, always runs
 # ---------------------------------------------------------------------------
 
+
 class TestE2EInvoiceMocked:
     """E2e: seed store -> execute_run with invoice definition -> verify result."""
 
@@ -243,15 +267,33 @@ class TestE2EInvoiceMocked:
         mock_llm = MockLLMClient(invoice_fields, "ocr")
         mock_registry = _build_mock_registry()
 
-        def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None, **kwargs):
+        def _mock_build_graph(
+            registry,
+            skill,
+            validator_config,
+            llm_client=None,
+            breaker=None,
+            control=None,
+            emitter=None,
+            **kwargs,
+        ):
             from src.agent.graph import build_react_graph as _real_build
-            return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter, **kwargs)
 
-        with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
-             patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
+            return _real_build(
+                registry,
+                skill,
+                validator_config,
+                llm_client=mock_llm,
+                breaker=breaker,
+                control=control,
+                emitter=emitter,
+                **kwargs,
+            )
 
+        with (
+            patch("src.api.run_engine.build_tool_registry", return_value=mock_registry),
+            patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph),
+        ):
             result = _run_async(execute_run("def-trade-finance-scrutiny", str(sample_pdf)))
 
         assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
@@ -277,15 +319,33 @@ class TestE2ESeedAndRun:
         mock_llm = MockLLMClient(invoice_fields, "ocr")
         mock_registry = _build_mock_registry()
 
-        def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None, **kwargs):
+        def _mock_build_graph(
+            registry,
+            skill,
+            validator_config,
+            llm_client=None,
+            breaker=None,
+            control=None,
+            emitter=None,
+            **kwargs,
+        ):
             from src.agent.graph import build_react_graph as _real_build
-            return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter, **kwargs)
 
-        with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
-             patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
+            return _real_build(
+                registry,
+                skill,
+                validator_config,
+                llm_client=mock_llm,
+                breaker=breaker,
+                control=control,
+                emitter=emitter,
+                **kwargs,
+            )
 
+        with (
+            patch("src.api.run_engine.build_tool_registry", return_value=mock_registry),
+            patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph),
+        ):
             result = _run_async(execute_run("def-trade-finance-scrutiny", str(sample_pdf)))
 
         assert result["id"].startswith("run-")
@@ -298,16 +358,35 @@ class TestE2ESeedAndRun:
         mock_llm = MockLLMClient(utility_fields, "vlm")
         mock_registry = _build_mock_registry()
 
-        def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None, **kwargs):
+        def _mock_build_graph(
+            registry,
+            skill,
+            validator_config,
+            llm_client=None,
+            breaker=None,
+            control=None,
+            emitter=None,
+            **kwargs,
+        ):
             from src.agent.graph import build_react_graph as _real_build
-            return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter, **kwargs)
 
-        with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
-             patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph), \
-             patch.object(settings, "compaction_enabled", False), \
-             patch.object(settings, "compaction_threshold", 999):
+            return _real_build(
+                registry,
+                skill,
+                validator_config,
+                llm_client=mock_llm,
+                breaker=breaker,
+                control=control,
+                emitter=emitter,
+                **kwargs,
+            )
+
+        with (
+            patch("src.api.run_engine.build_tool_registry", return_value=mock_registry),
+            patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph),
+            patch.object(settings, "compaction_enabled", False),
+            patch.object(settings, "compaction_threshold", 999),
+        ):
             result = _run_async(execute_run("def-utility-bill", str(sample_pdf)))
 
         assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
@@ -319,16 +398,35 @@ class TestE2ESeedAndRun:
         mock_llm = MockLLMClient(medical_fields, "ocr")
         mock_registry = _build_mock_registry()
 
-        def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None, **kwargs):
+        def _mock_build_graph(
+            registry,
+            skill,
+            validator_config,
+            llm_client=None,
+            breaker=None,
+            control=None,
+            emitter=None,
+            **kwargs,
+        ):
             from src.agent.graph import build_react_graph as _real_build
-            return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter, **kwargs)
 
-        with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
-             patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph), \
-             patch.object(settings, "compaction_enabled", False), \
-             patch.object(settings, "compaction_threshold", 999):
+            return _real_build(
+                registry,
+                skill,
+                validator_config,
+                llm_client=mock_llm,
+                breaker=breaker,
+                control=control,
+                emitter=emitter,
+                **kwargs,
+            )
+
+        with (
+            patch("src.api.run_engine.build_tool_registry", return_value=mock_registry),
+            patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph),
+            patch.object(settings, "compaction_enabled", False),
+            patch.object(settings, "compaction_threshold", 999),
+        ):
             result = _run_async(execute_run("def-medical-claim", str(sample_pdf)))
 
         assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
@@ -336,20 +434,39 @@ class TestE2ESeedAndRun:
 
     def test_boq_run_mocked(self, seeded_store, sample_pdf):
         from src.templates.bill_of_quantities import BillOfQuantitiesTemplate
+
         boq_fields = list(BillOfQuantitiesTemplate.model_fields.keys())[:5]
 
         mock_llm = MockLLMClient(boq_fields, "ocr")
         mock_registry = _build_mock_registry()
 
-        def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None, **kwargs):
+        def _mock_build_graph(
+            registry,
+            skill,
+            validator_config,
+            llm_client=None,
+            breaker=None,
+            control=None,
+            emitter=None,
+            **kwargs,
+        ):
             from src.agent.graph import build_react_graph as _real_build
-            return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter, **kwargs)
 
-        with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
-             patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
+            return _real_build(
+                registry,
+                skill,
+                validator_config,
+                llm_client=mock_llm,
+                breaker=breaker,
+                control=control,
+                emitter=emitter,
+                **kwargs,
+            )
 
+        with (
+            patch("src.api.run_engine.build_tool_registry", return_value=mock_registry),
+            patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph),
+        ):
             result = _run_async(execute_run("def-boq-estimator", str(sample_pdf)))
 
         assert result["status"] in ("completed", "failed", "max_iterations_reached", "paused")
@@ -365,19 +482,45 @@ class TestE2EResultSerialization:
         mock_llm = MockLLMClient(invoice_fields, "ocr")
         mock_registry = _build_mock_registry()
 
-        def _mock_build_graph(registry, skill, validator_config, llm_client=None, breaker=None,
-                              control=None, emitter=None, **kwargs):
+        def _mock_build_graph(
+            registry,
+            skill,
+            validator_config,
+            llm_client=None,
+            breaker=None,
+            control=None,
+            emitter=None,
+            **kwargs,
+        ):
             from src.agent.graph import build_react_graph as _real_build
-            return _real_build(registry, skill, validator_config, llm_client=mock_llm, breaker=breaker,
-                               control=control, emitter=emitter, **kwargs)
 
-        with patch("src.api.run_engine.build_tool_registry", return_value=mock_registry), \
-             patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph):
+            return _real_build(
+                registry,
+                skill,
+                validator_config,
+                llm_client=mock_llm,
+                breaker=breaker,
+                control=control,
+                emitter=emitter,
+                **kwargs,
+            )
 
+        with (
+            patch("src.api.run_engine.build_tool_registry", return_value=mock_registry),
+            patch("src.api.run_engine.build_react_graph", side_effect=_mock_build_graph),
+        ):
             result = _run_async(execute_run("def-trade-finance-scrutiny", str(sample_pdf)))
 
-        required_keys = {"id", "definition_id", "document_url", "status",
-                         "current_cycle", "total_fields", "extracted_fields_count", "fields"}
+        required_keys = {
+            "id",
+            "definition_id",
+            "document_url",
+            "status",
+            "current_cycle",
+            "total_fields",
+            "extracted_fields_count",
+            "fields",
+        }
         assert required_keys.issubset(set(result.keys()))
 
 
@@ -386,27 +529,48 @@ class TestE2EInvariantVerification:
 
     def _build_invoice_extraction(self, total_value: float = 1100.0) -> dict[str, FieldValue]:
         """Build a complete invoice extraction with correct field names and types."""
+
         def g(bbox: tuple) -> Grounding:
             return Grounding(bbox=bbox, source_tool="ocr", confidence=0.95)
+
         return {
-            "invoice_number": FieldValue(name="invoice_number", value="INV-001",
-                                         grounding=g((0, 0, 100, 30)), confidence=0.95),
-            "vendor": FieldValue(name="vendor", value="ACME Corp",
-                                 grounding=g((0, 30, 100, 60)), confidence=0.9),
-            "invoice_date": FieldValue(name="invoice_date", value="2024-03-15",
-                                       grounding=g((0, 60, 100, 90)), confidence=0.9),
-            "due_date": FieldValue(name="due_date", value="2024-04-14",
-                                   grounding=g((0, 90, 100, 120)), confidence=0.9),
-            "line_items": FieldValue(name="line_items",
-                                     value=[LineItem(description="Consulting", quantity=10.0,
-                                                     unit_price=100.0, amount=1000.0)],
-                                     grounding=g((0, 100, 100, 200)), confidence=0.9),
-            "subtotal": FieldValue(name="subtotal", value=1000.0,
-                                   grounding=g((0, 200, 100, 230)), confidence=0.95),
-            "tax": FieldValue(name="tax", value=100.0,
-                              grounding=g((0, 230, 100, 260)), confidence=0.95),
-            "total": FieldValue(name="total", value=total_value,
-                                grounding=g((0, 260, 100, 290)), confidence=0.95),
+            "invoice_number": FieldValue(
+                name="invoice_number",
+                value="INV-001",
+                grounding=g((0, 0, 100, 30)),
+                confidence=0.95,
+            ),
+            "vendor": FieldValue(
+                name="vendor", value="ACME Corp", grounding=g((0, 30, 100, 60)), confidence=0.9
+            ),
+            "invoice_date": FieldValue(
+                name="invoice_date",
+                value="2024-03-15",
+                grounding=g((0, 60, 100, 90)),
+                confidence=0.9,
+            ),
+            "due_date": FieldValue(
+                name="due_date", value="2024-04-14", grounding=g((0, 90, 100, 120)), confidence=0.9
+            ),
+            "line_items": FieldValue(
+                name="line_items",
+                value=[
+                    LineItem(
+                        description="Consulting", quantity=10.0, unit_price=100.0, amount=1000.0
+                    )
+                ],
+                grounding=g((0, 100, 100, 200)),
+                confidence=0.9,
+            ),
+            "subtotal": FieldValue(
+                name="subtotal", value=1000.0, grounding=g((0, 200, 100, 230)), confidence=0.95
+            ),
+            "tax": FieldValue(
+                name="tax", value=100.0, grounding=g((0, 230, 100, 260)), confidence=0.95
+            ),
+            "total": FieldValue(
+                name="total", value=total_value, grounding=g((0, 260, 100, 290)), confidence=0.95
+            ),
         }
 
     def test_invoice_subtotal_plus_tax_equals_total_pass(self):
@@ -451,6 +615,7 @@ _SAMPLE_DATA = Path(__file__).parent.parent.parent / "sample-data"
 def _providers_available() -> bool:
     """Check if OCR and VLM providers are configured with real credentials [SCRUM-512]."""
     from src.tests._credentials import has_real_credentials
+
     return has_real_credentials() and bool(settings.azure_chat_endpoint)
 
 

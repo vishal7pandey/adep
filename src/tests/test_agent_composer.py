@@ -32,6 +32,7 @@ from src.ai.agent_composer import (
 # Unit tests — validation helpers
 # ---------------------------------------------------------------------------
 
+
 class TestNormalizeDefinitionId:
     def test_adds_def_prefix(self):
         assert _normalize_definition_id("invoice") == "def-invoice"
@@ -58,21 +59,25 @@ class TestValidateAgentConfig:
         assert config["use_pdf_fast_path"] is False
 
     def test_valid_values(self):
-        config = _validate_agent_config({
-            "max_cycles_per_field": 8,
-            "max_cycles_per_document": 35,
-            "confidence_threshold": 0.90,
-        })
+        config = _validate_agent_config(
+            {
+                "max_cycles_per_field": 8,
+                "max_cycles_per_document": 35,
+                "confidence_threshold": 0.90,
+            }
+        )
         assert config["max_cycles_per_field"] == 8
         assert config["max_cycles_per_document"] == 35
         assert config["confidence_threshold"] == 0.90
 
     def test_clamps_invalid_values(self):
-        config = _validate_agent_config({
-            "max_cycles_per_field": 100,  # out of range
-            "max_cycles_per_document": -5,  # out of range
-            "confidence_threshold": 2.0,  # out of range
-        })
+        config = _validate_agent_config(
+            {
+                "max_cycles_per_field": 100,  # out of range
+                "max_cycles_per_document": -5,  # out of range
+                "confidence_threshold": 2.0,  # out of range
+            }
+        )
         assert config["max_cycles_per_field"] == 5  # default
         assert config["max_cycles_per_document"] == 20  # default
         assert config["confidence_threshold"] == 0.85  # default
@@ -138,6 +143,7 @@ class TestDeriveConfidenceThreshold:
 # Unit tests — heuristic fallback
 # ---------------------------------------------------------------------------
 
+
 class TestHeuristicDefinitionConfig:
     def test_basic(self):
         config = _heuristic_definition_config("Extract invoice fields")
@@ -166,6 +172,7 @@ class TestHeuristicDefinitionConfig:
 # Unit tests — compose_agent (with mocked sub-composers)
 # ---------------------------------------------------------------------------
 
+
 class TestComposeAgent:
     def test_empty_description_returns_error(self):
         result = compose_agent("")
@@ -179,9 +186,30 @@ class TestComposeAgent:
             "name": "Custom Invoice Template",
             "description": "Template for custom invoices",
             "fields": [
-                {"name": "invoice_number", "type": "string", "description": "Invoice ID", "required": True, "confidence_threshold": 0.85, "sub_fields": []},
-                {"name": "total", "type": "float", "description": "Total amount", "required": True, "confidence_threshold": 0.85, "sub_fields": []},
-                {"name": "line_items", "type": "list", "description": "Line items", "required": True, "confidence_threshold": 0.80, "sub_fields": []},
+                {
+                    "name": "invoice_number",
+                    "type": "string",
+                    "description": "Invoice ID",
+                    "required": True,
+                    "confidence_threshold": 0.85,
+                    "sub_fields": [],
+                },
+                {
+                    "name": "total",
+                    "type": "float",
+                    "description": "Total amount",
+                    "required": True,
+                    "confidence_threshold": 0.85,
+                    "sub_fields": [],
+                },
+                {
+                    "name": "line_items",
+                    "type": "list",
+                    "description": "Line items",
+                    "required": True,
+                    "confidence_threshold": 0.80,
+                    "sub_fields": [],
+                },
             ],
         }
         mock_skill = {
@@ -190,7 +218,13 @@ class TestComposeAgent:
             "system_prompt": "You are a custom invoice extraction agent.",
             "tool_preferences": {"text": "ocr", "table": "ocr", "handwriting": "vlm"},
             "probe_order": [{"region_type": "header", "rationale": "Top region"}],
-            "invariants": [{"name": "sum_check", "fields": ["subtotal", "tax", "total"], "description": "subtotal + tax == total"}],
+            "invariants": [
+                {
+                    "name": "sum_check",
+                    "fields": ["subtotal", "tax", "total"],
+                    "description": "subtotal + tax == total",
+                }
+            ],
             "failure_actions": {"missing": "Re-probe the region."},
             "known_failures": "Common issues.",
             "confidence_overrides": {"invoice_number": 0.85, "total": 0.90},
@@ -205,11 +239,19 @@ class TestComposeAgent:
             "system_prompt_override": None,
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 100, "output_tokens": 200, "total_tokens": 300}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 150, "output_tokens": 250, "total_tokens": 400}}
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 100, "output_tokens": 200, "total_tokens": 300},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 150, "output_tokens": 250, "total_tokens": 400},
+            }
             mock_llm.return_value = MagicMock(
                 content=json.dumps(mock_config),
                 input_tokens=50,
@@ -226,7 +268,9 @@ class TestComposeAgent:
             assert result.definition["task_type"] == "extraction"
             assert "detect_layout" in result.definition["tool_names"]
             assert "ocr" in result.definition["tool_names"]
-            assert "read_table" in result.definition["tool_names"]  # because template has list field
+            assert (
+                "read_table" in result.definition["tool_names"]
+            )  # because template has list field
             assert result.definition["agent_config"]["max_cycles_per_field"] == 5
             assert result.skill["name"] == "custom_invoice"
             assert result.template["name"] == "Custom Invoice Template"
@@ -238,7 +282,16 @@ class TestComposeAgent:
         mock_template = {
             "name": "Test",
             "description": "Test template",
-            "fields": [{"name": "field1", "type": "string", "description": "", "required": True, "confidence_threshold": 0.8, "sub_fields": []}],
+            "fields": [
+                {
+                    "name": "field1",
+                    "type": "string",
+                    "description": "",
+                    "required": True,
+                    "confidence_threshold": 0.8,
+                    "sub_fields": [],
+                }
+            ],
         }
         mock_skill = {
             "name": "test_skill",
@@ -252,12 +305,22 @@ class TestComposeAgent:
             "confidence_overrides": {},
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
 
             result = compose_agent("Extract data from invoices")
 
@@ -267,17 +330,32 @@ class TestComposeAgent:
 
     def test_template_composer_error_recorded(self):
         """When template composer returns an error, it should be recorded."""
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {"name": "", "description": "", "fields": [], "error": "LLM call failed"}
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                "name": "",
+                "description": "",
+                "fields": [],
+                "error": "LLM call failed",
+            }
             mock_gen_skill.return_value = {
-                "name": "test", "description": "", "system_prompt": "",
-                "tool_preferences": {}, "probe_order": [], "invariants": [],
-                "failure_actions": {}, "known_failures": "", "confidence_overrides": {},
+                "name": "test",
+                "description": "",
+                "system_prompt": "",
+                "tool_preferences": {},
+                "probe_order": [],
+                "invariants": [],
+                "failure_actions": {},
+                "known_failures": "",
+                "confidence_overrides": {},
                 "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
             }
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
 
             result = compose_agent("Extract data")
             assert any("Template Composer error" in e for e in result.errors)
@@ -287,7 +365,16 @@ class TestComposeAgent:
         mock_template = {
             "name": "Test Template",
             "description": "Test",
-            "fields": [{"name": "field1", "type": "string", "description": "", "required": True, "confidence_threshold": 0.8, "sub_fields": []}],
+            "fields": [
+                {
+                    "name": "field1",
+                    "type": "string",
+                    "description": "",
+                    "required": True,
+                    "confidence_threshold": 0.8,
+                    "sub_fields": [],
+                }
+            ],
         }
         mock_skill = {
             "name": "test_skill",
@@ -301,12 +388,22 @@ class TestComposeAgent:
             "confidence_overrides": {},
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
 
             # Mock the store
             mock_store = MagicMock()
@@ -326,7 +423,16 @@ class TestComposeAgent:
         mock_template = {
             "name": "Test",
             "description": "Test",
-            "fields": [{"name": "f1", "type": "string", "description": "", "required": True, "confidence_threshold": 0.8, "sub_fields": []}],
+            "fields": [
+                {
+                    "name": "f1",
+                    "type": "string",
+                    "description": "",
+                    "required": True,
+                    "confidence_threshold": 0.8,
+                    "sub_fields": [],
+                }
+            ],
         }
         mock_skill = {
             "name": "test_skill",
@@ -340,12 +446,22 @@ class TestComposeAgent:
             "confidence_overrides": {},
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
 
             mock_store = MagicMock()
             mock_store.create_skill.side_effect = FileExistsError("exists")
@@ -362,9 +478,15 @@ class TestComposeAgent:
         """Test that system_prompt_override from LLM config is applied."""
         mock_template = {"name": "T", "description": "", "fields": []}
         mock_skill = {
-            "name": "s", "description": "", "system_prompt": "default",
-            "tool_preferences": {}, "probe_order": [], "invariants": [],
-            "failure_actions": {}, "known_failures": "", "confidence_overrides": {},
+            "name": "s",
+            "description": "",
+            "system_prompt": "default",
+            "tool_preferences": {},
+            "probe_order": [],
+            "invariants": [],
+            "failure_actions": {},
+            "known_failures": "",
+            "confidence_overrides": {},
         }
         mock_config = {
             "name": "Test",
@@ -376,14 +498,24 @@ class TestComposeAgent:
             "system_prompt_override": "Custom system prompt for this definition.",
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
             mock_llm.return_value = MagicMock(
                 content=json.dumps(mock_config),
-                input_tokens=0, output_tokens=0, total_tokens=0,
+                input_tokens=0,
+                output_tokens=0,
+                total_tokens=0,
             )
 
             result = compose_agent("Extract data")
@@ -391,21 +523,34 @@ class TestComposeAgent:
 
     def test_token_usage_accumulated(self):
         """Test that token usage from all three LLM calls is accumulated."""
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
             mock_gen_tmpl.return_value = {
-                "name": "T", "description": "", "fields": [],
+                "name": "T",
+                "description": "",
+                "fields": [],
                 "_token_usage": {"input_tokens": 100, "output_tokens": 50, "total_tokens": 150},
             }
             mock_gen_skill.return_value = {
-                "name": "s", "description": "", "system_prompt": "",
-                "tool_preferences": {}, "probe_order": [], "invariants": [],
-                "failure_actions": {}, "known_failures": "", "confidence_overrides": {},
+                "name": "s",
+                "description": "",
+                "system_prompt": "",
+                "tool_preferences": {},
+                "probe_order": [],
+                "invariants": [],
+                "failure_actions": {},
+                "known_failures": "",
+                "confidence_overrides": {},
                 "_token_usage": {"input_tokens": 200, "output_tokens": 100, "total_tokens": 300},
             }
             mock_llm.return_value = MagicMock(
-                content="", input_tokens=50, output_tokens=25, total_tokens=75,
+                content="",
+                input_tokens=50,
+                output_tokens=25,
+                total_tokens=75,
             )
 
             result = compose_agent("Extract data")
@@ -417,6 +562,7 @@ class TestComposeAgent:
 # ---------------------------------------------------------------------------
 # Unit tests — AgentComposerResult
 # ---------------------------------------------------------------------------
+
 
 class TestAgentComposerResult:
     def test_to_dict(self):
@@ -447,6 +593,7 @@ class TestAgentComposerResult:
 # Integration tests — API endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestAgentComposerAPI:
     @pytest.fixture
     def client(self, tmp_path) -> TestClient:
@@ -461,6 +608,7 @@ class TestAgentComposerAPI:
         config_module.settings.auth_enabled = False
 
         from src.api.main import create_app
+
         app = create_app()
         test_client = TestClient(app)
 
@@ -473,7 +621,16 @@ class TestAgentComposerAPI:
         mock_template = {
             "name": "Test Template",
             "description": "Test",
-            "fields": [{"name": "field1", "type": "string", "description": "", "required": True, "confidence_threshold": 0.8, "sub_fields": []}],
+            "fields": [
+                {
+                    "name": "field1",
+                    "type": "string",
+                    "description": "",
+                    "required": True,
+                    "confidence_threshold": 0.8,
+                    "sub_fields": [],
+                }
+            ],
         }
         mock_skill = {
             "name": "test_skill",
@@ -487,16 +644,29 @@ class TestAgentComposerAPI:
             "confidence_overrides": {},
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
 
-            response = client.post("/api/v1/definitions/compose", json={
-                "description": "Extract invoice number and total from commercial invoices",
-            })
+            response = client.post(
+                "/api/v1/definitions/compose",
+                json={
+                    "description": "Extract invoice number and total from commercial invoices",
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert "definition" in data
@@ -507,9 +677,12 @@ class TestAgentComposerAPI:
             assert "agent_config" in data["definition"]
 
     def test_compose_endpoint_empty_description(self, client: TestClient):
-        response = client.post("/api/v1/definitions/compose", json={
-            "description": "",
-        })
+        response = client.post(
+            "/api/v1/definitions/compose",
+            json={
+                "description": "",
+            },
+        )
         assert response.status_code == 400
 
     def test_compose_endpoint_with_save(self, client: TestClient):
@@ -517,7 +690,16 @@ class TestAgentComposerAPI:
         mock_template = {
             "name": "API Test Template",
             "description": "Test",
-            "fields": [{"name": "f1", "type": "string", "description": "", "required": True, "confidence_threshold": 0.8, "sub_fields": []}],
+            "fields": [
+                {
+                    "name": "f1",
+                    "type": "string",
+                    "description": "",
+                    "required": True,
+                    "confidence_threshold": 0.8,
+                    "sub_fields": [],
+                }
+            ],
         }
         mock_skill = {
             "name": "api_test_skill",
@@ -531,17 +713,30 @@ class TestAgentComposerAPI:
             "confidence_overrides": {},
         }
 
-        with patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl, \
-             patch("src.ai.agent_composer.generate_skill") as mock_gen_skill, \
-             patch("src.ai.agent_composer.invoke_llm") as mock_llm:
-            mock_gen_tmpl.return_value = {**mock_template, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_gen_skill.return_value = {**mock_skill, "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+        with (
+            patch("src.ai.agent_composer.generate_template") as mock_gen_tmpl,
+            patch("src.ai.agent_composer.generate_skill") as mock_gen_skill,
+            patch("src.ai.agent_composer.invoke_llm") as mock_llm,
+        ):
+            mock_gen_tmpl.return_value = {
+                **mock_template,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_gen_skill.return_value = {
+                **mock_skill,
+                "_token_usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+            }
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
 
-            response = client.post("/api/v1/definitions/compose", json={
-                "description": "Extract test data",
-                "save_to_store": True,
-            })
+            response = client.post(
+                "/api/v1/definitions/compose",
+                json={
+                    "description": "Extract test data",
+                    "save_to_store": True,
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert data["definition"]["id"].startswith("def-")

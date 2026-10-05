@@ -47,18 +47,23 @@ from src.eval.harness import (
 # Fixture loader tests
 # ---------------------------------------------------------------------------
 
+
 class TestFixtureLoader:
     """Verify .expected.json fixture loading [BLK-128]."""
 
     def test_load_expected_fixtures(self, tmp_path: Path):
         fixture_file = tmp_path / "invoice.expected.json"
-        fixture_file.write_text(json.dumps({
-            "document": "invoice_001.pdf",
-            "definition_id": "def-invoice",
-            "expected": {"invoice_number": "INV-001", "total": 1500.00},
-            "tolerances": {"total": 0.01},
-            "min_confidence": {"invoice_number": 0.85},
-        }))
+        fixture_file.write_text(
+            json.dumps(
+                {
+                    "document": "invoice_001.pdf",
+                    "definition_id": "def-invoice",
+                    "expected": {"invoice_number": "INV-001", "total": 1500.00},
+                    "tolerances": {"total": 0.01},
+                    "min_confidence": {"invoice_number": 0.85},
+                }
+            )
+        )
 
         fixtures = load_expected_fixtures(tmp_path)
         assert len(fixtures) == 1
@@ -78,11 +83,15 @@ class TestFixtureLoader:
     def test_load_fixtures_multiple(self, tmp_path: Path):
         for i in range(3):
             f = tmp_path / f"doc{i}.expected.json"
-            f.write_text(json.dumps({
-                "document": f"doc{i}.pdf",
-                "definition_id": "def-invoice",
-                "expected": {"field": f"value{i}"},
-            }))
+            f.write_text(
+                json.dumps(
+                    {
+                        "document": f"doc{i}.pdf",
+                        "definition_id": "def-invoice",
+                        "expected": {"field": f"value{i}"},
+                    }
+                )
+            )
 
         fixtures = load_expected_fixtures(tmp_path)
         assert len(fixtures) == 3
@@ -90,11 +99,15 @@ class TestFixtureLoader:
     def test_load_fixtures_absolute_document_path(self, tmp_path: Path):
         abs_path = str(tmp_path / "doc.pdf")
         fixture_file = tmp_path / "doc.expected.json"
-        fixture_file.write_text(json.dumps({
-            "document": abs_path,
-            "definition_id": "def-invoice",
-            "expected": {},
-        }))
+        fixture_file.write_text(
+            json.dumps(
+                {
+                    "document": abs_path,
+                    "definition_id": "def-invoice",
+                    "expected": {},
+                }
+            )
+        )
 
         fixtures = load_expected_fixtures(tmp_path)
         assert fixtures[0].document_path == abs_path
@@ -103,6 +116,7 @@ class TestFixtureLoader:
 # ---------------------------------------------------------------------------
 # Value matching tests
 # ---------------------------------------------------------------------------
+
 
 class TestValuesMatch:
     """Verify values_match_with_tolerance [BLK-128]."""
@@ -139,6 +153,7 @@ class TestValuesMatch:
 # BBox validation tests
 # ---------------------------------------------------------------------------
 
+
 class TestBboxValidation:
     """Verify check_bbox_in_page_bounds [BLK-128]."""
 
@@ -164,6 +179,7 @@ class TestBboxValidation:
 # ---------------------------------------------------------------------------
 # Calibration tests
 # ---------------------------------------------------------------------------
+
 
 class TestCalibration:
     """Verify confidence calibration computation [BLK-128]."""
@@ -212,6 +228,7 @@ class TestCalibration:
 # Accuracy report tests
 # ---------------------------------------------------------------------------
 
+
 class TestAccuracyReport:
     """Verify accuracy report generation [BLK-128]."""
 
@@ -226,10 +243,16 @@ class TestAccuracyReport:
         m.correctness = [1.0, 1.0]
 
         fixtures = [
-            ExpectedFixture(document_path="a.pdf", definition_id="def-invoice",
-                            expected={"invoice_number": "INV-001"}),
-            ExpectedFixture(document_path="b.pdf", definition_id="def-invoice",
-                            expected={"invoice_number": "INV-002"}),
+            ExpectedFixture(
+                document_path="a.pdf",
+                definition_id="def-invoice",
+                expected={"invoice_number": "INV-001"},
+            ),
+            ExpectedFixture(
+                document_path="b.pdf",
+                definition_id="def-invoice",
+                expected={"invoice_number": "INV-002"},
+            ),
         ]
 
         accuracy = build_accuracy_report(report, fixtures)
@@ -283,6 +306,7 @@ class TestAccuracyReport:
 # ---------------------------------------------------------------------------
 # Benchmark utility tests
 # ---------------------------------------------------------------------------
+
 
 class TestBenchmarkUtils:
     """Verify benchmark utilities [BLK-128]."""
@@ -341,11 +365,13 @@ class TestBenchmarkUtils:
 # Integration marker tests
 # ---------------------------------------------------------------------------
 
+
 class TestIntegrationMarker:
     """Verify integration tests are properly marked [BLK-128]."""
 
     def test_integration_marker_registered(self):
         import subprocess
+
         result = subprocess.run(
             ["uv", "run", "pytest", "--markers"],
             capture_output=True,
@@ -357,9 +383,19 @@ class TestIntegrationMarker:
     def test_integration_tests_deselected_by_default(self):
         """Integration tests should NOT run in the normal test suite."""
         import subprocess
+
         result = subprocess.run(
-            ["uv", "run", "pytest", "--collect-only", "-q", "-m", "not integration",
-             "src/tests/test_integration_real.py", "src/tests/test_benchmarks.py"],
+            [
+                "uv",
+                "run",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "-m",
+                "not integration",
+                "src/tests/test_integration_real.py",
+                "src/tests/test_benchmarks.py",
+            ],
             capture_output=True,
             text=True,
             cwd=str(Path.cwd()),

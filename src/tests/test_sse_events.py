@@ -24,9 +24,11 @@ def _collect_events(emitter: SSEEventEmitter) -> list[dict[str, Any]]:
     loop = asyncio.new_event_loop()
     events = []
     try:
+
         async def collect():
             async for e in emitter.async_iter():
                 events.append(e)
+
         loop.run_until_complete(collect())
     finally:
         loop.close()
@@ -174,6 +176,7 @@ class TestMultiConsumerFanout:
         events_a: list[str] = []
         events_b: list[str] = []
         try:
+
             async def collect_both():
                 # Subscribe both before consuming
                 qa = emitter.subscribe()
@@ -188,6 +191,7 @@ class TestMultiConsumerFanout:
                         out.append(json.dumps(event))
 
                 import asyncio as aio
+
                 await aio.gather(drain(qa, events_a), drain(qb, events_b))
 
             loop.run_until_complete(collect_both())

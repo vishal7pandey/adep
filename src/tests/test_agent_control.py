@@ -28,12 +28,14 @@ def client(tmp_path: Path) -> TestClient:
     """Create a FastAPI TestClient with a temporary store."""
     import src.definitions.store as store_module
     import src.config as config_module
+
     old_store = store_module._store
     old_auth = config_module.settings.auth_enabled
     store_module._store = DefinitionStore(base_dir=tmp_path / ".adep")
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     test_client = TestClient(app)
 
@@ -46,6 +48,7 @@ def client(tmp_path: Path) -> TestClient:
 def _save_run(run_id: str, **overrides: Any) -> None:
     """Save a run to the test store with defaults."""
     import src.definitions.store as store_module
+
     data = {
         "id": run_id,
         "definition_id": "def-test",
@@ -55,7 +58,12 @@ def _save_run(run_id: str, **overrides: Any) -> None:
         "total_fields": 7,
         "extracted_fields_count": 3,
         "fields": [
-            {"id": "invoice_number", "name": "invoice_number", "value": "INV-001", "confidence": 0.95},
+            {
+                "id": "invoice_number",
+                "name": "invoice_number",
+                "value": "INV-001",
+                "confidence": 0.95,
+            },
         ],
     }
     data.update(overrides)
@@ -96,6 +104,7 @@ class TestPauseEndpoint:
         _save_run("run-4", status="running")
         client.post("/api/v1/runs/run-4/pause")
         import src.definitions.store as store_module
+
         updated = store_module._store.get_run("run-4")
         assert updated["status"] == "paused"
 
@@ -133,6 +142,7 @@ class TestResumeEndpoint:
         _save_run("run-4", status="paused")
         client.post("/api/v1/runs/run-4/resume")
         import src.definitions.store as store_module
+
         updated = store_module._store.get_run("run-4")
         assert updated["status"] == "running"
 
@@ -141,9 +151,13 @@ class TestStopEndpoint:
     """POST /runs/{id}/stop"""
 
     def test_stop_running_run(self, client: TestClient):
-        _save_run("run-1", status="running", fields=[
-            {"id": "f1", "name": "f1", "value": "v1", "confidence": 0.9},
-        ])
+        _save_run(
+            "run-1",
+            status="running",
+            fields=[
+                {"id": "f1", "name": "f1", "value": "v1", "confidence": 0.9},
+            ],
+        )
         resp = client.post("/api/v1/runs/run-1/stop")
         assert resp.status_code == 202  # [BLK-129] cooperative cancel is async
         data = resp.json()
@@ -227,6 +241,7 @@ class TestRollbackEndpoint:
         _save_run("run-5", status="running", current_cycle=8)
         client.post("/api/v1/runs/run-5/rollback", json={"to_cycle": 2})
         import src.definitions.store as store_module
+
         updated = store_module._store.get_run("run-5")
         assert updated["status"] == "paused"
         assert updated["rolled_back_from"] == 8
@@ -254,6 +269,7 @@ class TestPauseResumeLifecycle:
         assert resp.json()["resumed"] is True
         # Verify store
         import src.definitions.store as store_module
+
         run = store_module._store.get_run("lifecycle-1")
         assert run["status"] == "running"
 
@@ -266,6 +282,7 @@ class TestPauseResumeLifecycle:
         assert resp.json()["cancelled"] is True
         # Verify store — status is 'cancelled' [BLK-129]
         import src.definitions.store as store_module
+
         run = store_module._store.get_run("lifecycle-2")
         assert run["status"] == "cancelled"
 
@@ -279,9 +296,11 @@ class TestSSEControlEvents:
         loop = asyncio.new_event_loop()
         events = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(e)
+
             loop.run_until_complete(collect())
         finally:
             loop.close()
@@ -341,11 +360,13 @@ class TestCompactEndpoint:
         _save_run("compact-2", status="running", current_cycle=3)
         # Reset executor singleton so we get a fresh instance
         from src.api.run_executor import reset_executor, get_executor
+
         reset_executor()
         executor = get_executor()
 
         # Manually register a run context so the executor knows about it
         from src.api.run_executor import RunContext
+
         ctx = RunContext("compact-2", "def-test", "test.png")
         ctx.status = "running"
         executor._runs["compact-2"] = ctx
@@ -366,6 +387,7 @@ class TestCompactEndpoint:
     def test_compact_run_not_in_executor_returns_false(self, client: TestClient):
         """Run exists in store but not in executor (e.g. sync run) — should return false."""
         from src.api.run_executor import reset_executor
+
         reset_executor()
         _save_run("compact-3", status="running", current_cycle=3)
         resp = client.post("/api/v1/runs/compact-3/compact")
@@ -381,6 +403,7 @@ class TestRollbackLiveIntegration:
     def test_rollback_running_run_signals_executor(self, client: TestClient):
         _save_run("rb-live-1", status="running", current_cycle=10)
         from src.api.run_executor import reset_executor, get_executor, RunContext
+
         reset_executor()
         executor = get_executor()
         ctx = RunContext("rb-live-1", "def-test", "test.png")
@@ -399,6 +422,7 @@ class TestRollbackLiveIntegration:
     def test_rollback_run_not_in_executor(self, client: TestClient):
         """Run exists in store but not in executor — live_rollback should be false."""
         from src.api.run_executor import reset_executor
+
         reset_executor()
         _save_run("rb-live-2", status="running", current_cycle=8)
         resp = client.post("/api/v1/runs/rb-live-2/rollback", json={"to_cycle": 2})
@@ -411,6 +435,7 @@ class TestRollbackLiveIntegration:
     def test_rollback_response_has_live_rollback_field(self, client: TestClient):
         """Every rollback response should include the live_rollback field [BLK-244]."""
         from src.api.run_executor import reset_executor
+
         reset_executor()
         _save_run("rb-live-3", status="running", current_cycle=5)
         resp = client.post("/api/v1/runs/rb-live-3/rollback", json={"to_cycle": 1})
@@ -440,13 +465,15 @@ class TestRollbackStateRestoration:
         # Build a minimal state with 5 cycles of trace and extraction
         trace = []
         for i in range(1, 6):
-            trace.append(TraceEntry(
-                step=i,
-                thought=f"Step {i}",
-                tool_name="ocr",
-                tool_args={},
-                result=ToolResult(ok=True, data=f"result-{i}"),
-            ))
+            trace.append(
+                TraceEntry(
+                    step=i,
+                    thought=f"Step {i}",
+                    tool_name="ocr",
+                    tool_args={},
+                    result=ToolResult(ok=True, data=f"result-{i}"),
+                )
+            )
 
         extraction = {
             "field_1": FieldValue(name="field_1", value="v1", confidence=0.9, grounding=None),
@@ -477,10 +504,16 @@ class TestRollbackStateRestoration:
         assert control.rollback_to_cycle == -1, "Cycle was not reset after rollback"
         assert state["total_cycles"] == 2, "total_cycles was not restored to rollback_to_cycle"
         assert len(state["trace"]) == 2, "Trace was not truncated to rollback_to_cycle"
-        assert all(e.step <= 2 for e in state["trace"]), "Trace contains entries past rollback point"
+        assert all(e.step <= 2 for e in state["trace"]), (
+            "Trace contains entries past rollback point"
+        )
         assert "field_3" not in state["extraction"], "Extraction was not pruned past rollback point"
-        assert "field_1" in state["extraction"], "Extraction before rollback point was incorrectly pruned"
-        assert "field_2" in state["extraction"], "Extraction at rollback point was incorrectly pruned"
+        assert "field_1" in state["extraction"], (
+            "Extraction before rollback point was incorrectly pruned"
+        )
+        assert "field_2" in state["extraction"], (
+            "Extraction at rollback point was incorrectly pruned"
+        )
         assert state["compaction_summary"] == "", "Compaction summary was not cleared"
 
     def test_rollback_with_no_control_returns_should_continue(self):

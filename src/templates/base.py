@@ -30,6 +30,7 @@ from src.tools.base import BBox, FieldValue
 # Output Contract hierarchy [BLK-109, §20]
 # ---------------------------------------------------------------------------
 
+
 class OutputContract(BaseModel):
     """Base class for all output contracts [BLK-109].
 
@@ -95,6 +96,7 @@ Template = FieldExtractionContract
 # ---------------------------------------------------------------------------
 # Run Result hierarchy [BLK-109, §20]
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RunResult:

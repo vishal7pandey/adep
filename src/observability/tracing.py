@@ -130,9 +130,11 @@ def mark_error(exc: BaseException) -> None:
         return
     try:
         from opentelemetry import trace
+
         current = trace.get_current_span()
         current.record_exception(exc)
         from opentelemetry.trace import Status, StatusCode
+
         current.set_status(Status(StatusCode.ERROR, str(exc)))
     except Exception:
         pass

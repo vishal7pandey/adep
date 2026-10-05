@@ -116,9 +116,7 @@ def sanitize_tool_args(args: dict[str, Any]) -> dict[str, Any]:
             sanitized[key] = sanitize_tool_args(value)
         elif isinstance(value, list):
             sanitized[key] = [
-                sanitize_tool_args(item) if isinstance(item, dict)
-                else item
-                for item in value
+                sanitize_tool_args(item) if isinstance(item, dict) else item for item in value
             ]
         else:
             sanitized[key] = value
@@ -217,7 +215,11 @@ def evaluate_tool_call(
     spec, _ = registry.get(tool_name)
     arg_schema = spec.arg_schema
 
-    if arg_schema is not None and isinstance(arg_schema, type) and issubclass(arg_schema, BaseModel):
+    if (
+        arg_schema is not None
+        and isinstance(arg_schema, type)
+        and issubclass(arg_schema, BaseModel)
+    ):
         try:
             validated = arg_schema.model_validate(sanitized_args)
             sanitized_args = validated.model_dump()

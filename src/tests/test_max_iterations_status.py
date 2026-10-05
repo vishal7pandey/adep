@@ -64,7 +64,9 @@ class TestEmitStatusChangeUsesCanonicalMapping:
             is_complete=False,
             status=RunStatus.PARTIAL,
             field_values={},
-            gap_report=GapReport(gaps=[FieldGap(field="test", gap_type=GapType.MISSING, detail="missing")]),
+            gap_report=GapReport(
+                gaps=[FieldGap(field="test", gap_type=GapType.MISSING, detail="missing")]
+            ),
             trace=[],
             total_cycles=5,
         )

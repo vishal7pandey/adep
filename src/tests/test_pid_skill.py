@@ -30,8 +30,10 @@ from src.agent.validator import GapType
 # Helper
 # ---------------------------------------------------------------------------
 
+
 class MockFieldValue:
     """Mock FieldValue for invariant testing."""
+
     def __init__(self, value):
         self.value = value
 
@@ -45,11 +47,13 @@ def mock_graph(graph: dict) -> dict:
 # Contract structure tests
 # ---------------------------------------------------------------------------
 
+
 class TestPnIDContract:
     """Verify PnIDContract structure."""
 
     def test_is_graph_extraction_contract(self):
         from src.templates.base import GraphExtractionContract
+
         assert isinstance(PnIDContract(), GraphExtractionContract)
 
     def test_task_type(self):
@@ -95,6 +99,7 @@ class TestPnIDContract:
 # ---------------------------------------------------------------------------
 # Skill configuration tests
 # ---------------------------------------------------------------------------
+
 
 class TestPnIDSkillConfig:
     """Verify PnIDSkill configuration."""
@@ -146,6 +151,7 @@ class TestPnIDSkillConfig:
 # ---------------------------------------------------------------------------
 # Topology invariant tests
 # ---------------------------------------------------------------------------
+
 
 class TestEveryValveConnected:
     """Verify every_valve_connected_to_pipe invariant."""
@@ -347,17 +353,20 @@ class TestNoOrphanPipes:
 # Registry resolution tests
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryResolution:
     """Verify P&ID skill and template are registered."""
 
     def test_skill_resolvable(self):
         from src.api.run_engine import resolve_skill
+
         skill = resolve_skill("pid_to_dexpi")
         assert skill is not None
         assert skill.name == "pid_to_dexpi"
 
     def test_template_resolvable(self):
         from src.api.run_engine import resolve_template
+
         template_cls = resolve_template("pid_to_dexpi")
         assert template_cls is not None
 
@@ -366,21 +375,25 @@ class TestRegistryResolution:
 # Prebuilt definition tests
 # ---------------------------------------------------------------------------
 
+
 class TestPrebuiltDefinition:
     """Verify P&ID prebuilt definition is registered."""
 
     def test_definition_present(self):
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         def_ids = {d["id"] for d in PREBUILT_DEFINITIONS}
         assert "def-pnid-to-dexpi" in def_ids
 
     def test_definition_has_task_type(self):
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         defn = next(d for d in PREBUILT_DEFINITIONS if d["id"] == "def-pnid-to-dexpi")
         assert defn["task_type"] == "graph_extraction"
 
     def test_definition_has_graph_tools(self):
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         defn = next(d for d in PREBUILT_DEFINITIONS if d["id"] == "def-pnid-to-dexpi")
         assert "detect_symbols" in defn["tool_names"]
         assert "build_graph" in defn["tool_names"]
@@ -389,11 +402,13 @@ class TestPrebuiltDefinition:
 
     def test_skill_in_prebuilt_skills(self):
         from src.definitions.prebuilt import PREBUILT_SKILLS
+
         skill_ids = {s["id"] for s in PREBUILT_SKILLS}
         assert "pid_to_dexpi" in skill_ids
 
     def test_template_in_prebuilt_templates(self):
         from src.definitions.prebuilt import PREBUILT_TEMPLATES
+
         template_ids = {t["id"] for t in PREBUILT_TEMPLATES}
         assert "pid_to_dexpi" in template_ids
 
@@ -401,6 +416,7 @@ class TestPrebuiltDefinition:
 # ---------------------------------------------------------------------------
 # E2E smoke test: full pipeline with mocked tools
 # ---------------------------------------------------------------------------
+
 
 class TestE2EPipeline:
     """E2E smoke test: build_graph → validate_topology → serialize_graph."""
@@ -412,8 +428,20 @@ class TestE2EPipeline:
         symbols = [
             {"id": "v1", "class": "valve", "bbox": (10, 10, 50, 50), "confidence": 0.9},
             {"id": "p1", "class": "pipe", "bbox": (60, 10, 200, 50), "confidence": 0.85},
-            {"id": "ft1", "class": "instrument", "bbox": (10, 60, 50, 100), "tag": "FT-101", "confidence": 0.88},
-            {"id": "fic1", "class": "instrument", "bbox": (60, 60, 100, 100), "tag": "FIC-101", "confidence": 0.87},
+            {
+                "id": "ft1",
+                "class": "instrument",
+                "bbox": (10, 60, 50, 100),
+                "tag": "FT-101",
+                "confidence": 0.88,
+            },
+            {
+                "id": "fic1",
+                "class": "instrument",
+                "bbox": (60, 60, 100, 100),
+                "tag": "FIC-101",
+                "confidence": 0.87,
+            },
         ]
 
         connections = [
@@ -478,6 +506,7 @@ class TestE2EPipeline:
         json_result = serialize_graph(graph=graph_result.data, format="smart_pid_json")
         assert json_result.ok
         import json
+
         data = json.loads(json_result.data["content"])
         assert "components" in data
         assert "connections" in data

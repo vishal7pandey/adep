@@ -147,6 +147,7 @@ def build_tool_registry(tool_names: list[str] | None = None) -> ToolRegistry:
     # --- OCR provider (config-driven) [§9] ---
     if settings.ocr_provider == "paddle":
         from src.providers.ocr_paddle import detect_layout, detect_text, ocr as _ocr_impl
+
         registry.register(
             ToolSpec(
                 name="detect_layout",
@@ -178,6 +179,7 @@ def build_tool_registry(tool_names: list[str] | None = None) -> ToolRegistry:
         )
     elif settings.ocr_provider == "tesseract":
         from src.providers.ocr_tesseract import ocr as _ocr_impl
+
         registry.register(
             ToolSpec(
                 name="ocr",
@@ -192,6 +194,7 @@ def build_tool_registry(tool_names: list[str] | None = None) -> ToolRegistry:
     # --- VLM provider (config-driven) [§9] ---
     if settings.vlm_provider == "azure":
         from src.providers.vlm_azure import vlm, read_chart, read_table
+
         registry.register(
             ToolSpec(
                 name="vlm",
@@ -233,6 +236,7 @@ def build_tool_registry(tool_names: list[str] | None = None) -> ToolRegistry:
         rotate,
         threshold,
     )
+
     registry.register(
         ToolSpec(
             name="crop",
@@ -519,7 +523,9 @@ def run(
         breaker=breaker,
     )
 
-    final_state = graph.invoke(state, config={"recursion_limit": settings.max_cycles_per_document + 10})
+    final_state = graph.invoke(
+        state, config={"recursion_limit": settings.max_cycles_per_document + 10}
+    )
 
     result = final_state.get("result")
     if result is None:
