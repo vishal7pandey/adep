@@ -9,7 +9,7 @@ Test framework and conventions found: the "test" is the workflow itself; observe
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | manual | PR #4 checks list | CI workflow starts on a PR to master | n/a: single filter value | n/a: the previous behaviour (no run) is the bug | verified |
 | AC2 | manual | backend job log on PR #4 | pytest + coverage step runs and passes with the deselects | coverage gate 80 still enforced | a known-failing test not deselected would turn the job red | verified |
-| AC3 | manual | frontend and docker-build job results on PR #4 | reported as they are | n/a: no boundary | red jobs get tickets | verified |
+| AC3 | manual | frontend and docker-build job results on PR #4 | vitest and next build pass; lint (ADE-28) and docker build (ADE-27) disabled with tickets | n/a: no boundary | red jobs get tickets | verified |
 
 ## Regression risk
 
