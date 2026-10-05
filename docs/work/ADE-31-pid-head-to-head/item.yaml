@@ -1,0 +1,19 @@
+id: ADE-31
+type: feature
+title: 'Head-to-head P&ID evaluation: old LangGraph engine vs new engine'
+slug: pid-head-to-head
+status: in-review
+risk: medium
+jira: ADE-31
+branch: feature/ade-31-head-to-head-p-id-evaluation-old
+created: '2026-10-05'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-05'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-05'
+    delegated: true
+pr: null
