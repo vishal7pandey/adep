@@ -1,0 +1,17 @@
+id: ADE-15
+type: feature
+title: "P&ID scoring: count recall and label precision against DEXPI ground truth"
+slug: pid-scoring
+status: in-review
+risk: medium
+jira: ADE-15
+branch: feature/ade-15-pid-scoring
+created: 2026-10-05
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: 2026-10-05
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: 2026-10-05
+pr: null
