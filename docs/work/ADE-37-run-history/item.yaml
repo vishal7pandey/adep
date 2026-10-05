@@ -2,7 +2,7 @@ id: ADE-37
 type: feature
 title: "Engine: run history store — SQLite-backed, no global lock"
 slug: run-history
-status: plan-approved
+status: in-review
 risk: low
 jira: ADE-37
 branch: feature/ade-37-run-history
