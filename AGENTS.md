@@ -6,22 +6,42 @@ Agentic Document Extraction Platform: agent definitions assembled from interchan
 ## Commands
 
 ```bash
-uv sync --all-extras                                  # install (make install)
+uv sync --all-extras                                  # install (make install); adds ruff, mypy, pytest-cov
 uv run pytest src/tests/ -v -m "not integration"      # tests (make test)
-make test-cov                                         # tests with the 80% coverage gate
-uv run ruff check src/ && uv run mypy src/ --ignore-missing-imports   # lint and types (as in CI)
-uv run uvicorn src.api.main:app --reload --port 8000  # backend (make dev)
-cd frontend && pnpm install && pnpm test && pnpm lint # frontend (Next.js, vitest)
+uv run pytest src/tests/ -m "not integration" --cov=src --cov-report=term-missing --cov-fail-under=80  # coverage gate (make test-cov)
+uv run ruff check src/                                # lint: runs, but FAILS today (1043 errors, ADE-20)
+uv run mypy src/ --ignore-missing-imports             # types: FAILS today (183 errors, ADE-21); see note
+uv run uvicorn src.api.main:app --reload --port 8000  # backend (make dev); GET /health -> {"status":"ok"}
+cd frontend && pnpm install && pnpm test && pnpm run build   # frontend (Next.js, vitest)
+cd frontend && pnpm lint                              # FAILS today (22 errors, ADE-28)
 ```
 
+Verified by running each on 2026-10-05 (Windows, Git Bash). Notes from that run:
+
+* `make` is not installed on the Windows dev machine; use the commands above (they are what the
+  Makefile runs). The coverage gate passes (about 90%).
+* Test baseline: with `-m "not integration"` there are 2 known failures, `test_compact_run_not_in_executor_returns_false`
+  (ADE-24) and `test_seeded_definitions_exist` (ADE-23). CI deselects these and 7 more clean-checkout failures
+  (see `.github/workflows/ci.yml`). Without `-m "not integration"` the integration tests skip unless real
+  Azure credentials are set, in which case they call the paid API: do not run them casually.
+* Tests must not need `.env`; the suite runs in a clean checkout. The rate limiter is reset between tests
+  by `src/tests/conftest.py` (ADE-19).
+* mypy: on a Python 3.14 venv it stops on a numpy stub (`Type statement is only supported in Python 3.12`).
+  CI uses Python 3.11, where it runs and reports the 183 errors; use a 3.11 environment to reproduce.
+* Frontend: `pnpm install` needs `CI=true` (or a TTY) the first time if `node_modules` came from another
+  pnpm or folder. `packageManager` in `frontend/package.json` is pinned to a pnpm release that works
+  (11.13.0 was a broken release and pnpm refuses to run it, ADE-4).
+* Venv launchers (`pytest.exe` etc.) break when the folder is moved; `uv run python -m pytest` always works.
+  Repair with `uv sync --frozen --inexact --reinstall-package <name>` (ADE-6).
 * Python `>=3.10` in `pyproject.toml`; CI uses 3.11. Backend code is in `src/`, tests in `src/tests/`.
 * Secrets (`AZURE_API_KEY` and others) live in the gitignored `.env`; copy `.env.example`. Never commit it.
 * Run data goes to `.adep/` (gitignored runtime data); `make reset` clears it.
 * `sample-data/` (about 70 MB of documents plus `*.expected.json`) is the demo and evaluation set and is
   committed on purpose: do not prune, compress or move it out of git in a cleanup. Known problem: some
   expected values do not match their documents (ADE-10), so treat evaluation scores with care until fixed.
-* The default branch is `master`. The existing `ci.yml` triggers only on `main`, so CI does not run on
-  pull requests to `master` until that is fixed (Jira ADE-1).
+* The default branch is `master`. `ci.yml` runs on pull requests and pushes to `master` (jobs `backend`,
+  `frontend`, `docker-build`). Some steps are temporarily disabled with a comment and ticket in the
+  workflow: ruff (ADE-20), mypy (ADE-21), frontend lint (ADE-28), docker build (ADE-27), plus 9 deselected tests.
 
 <!-- factory:begin -->
 ## Engineering method (AI Software Factory)
