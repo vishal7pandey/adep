@@ -224,7 +224,9 @@ def update_aggregate_stats(
         aggregate["total_cost_usd"] = round(aggregate["total_cost_usd"] + run_cost, 6)
         aggregate["runs_count"] += 1
         aggregate["avg_tokens_per_run"] = aggregate["total_tokens"] // aggregate["runs_count"]
-        aggregate["avg_cost_per_run"] = round(aggregate["total_cost_usd"] / aggregate["runs_count"], 6)
+        aggregate["avg_cost_per_run"] = round(
+            aggregate["total_cost_usd"] / aggregate["runs_count"], 6
+        )
 
         if today not in aggregate["by_date"]:
             aggregate["by_date"][today] = {
@@ -233,7 +235,9 @@ def update_aggregate_stats(
                 "runs": 0,
             }
         aggregate["by_date"][today]["tokens"] += run_tokens
-        aggregate["by_date"][today]["cost_usd"] = round(aggregate["by_date"][today]["cost_usd"] + run_cost, 6)
+        aggregate["by_date"][today]["cost_usd"] = round(
+            aggregate["by_date"][today]["cost_usd"] + run_cost, 6
+        )
         aggregate["by_date"][today]["runs"] += 1
 
         # Atomic write: temp file + os.replace [SCRUM-53, BLK-257]

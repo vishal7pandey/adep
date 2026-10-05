@@ -84,7 +84,8 @@ def _discover_documents(sample_root: Path, limit_per_category: int) -> dict[str,
         if not category_dir.exists():
             continue
         docs = [
-            path for path in sorted(category_dir.iterdir())
+            path
+            for path in sorted(category_dir.iterdir())
             if path.is_file() and path.suffix.lower() in DOCUMENT_EXTENSIONS
         ]
         preferences = PREFERRED_DOCUMENT_PATTERNS.get(category, ())
@@ -101,7 +102,9 @@ def _discover_documents(sample_root: Path, limit_per_category: int) -> dict[str,
     return discovered
 
 
-def _wait_for_run(base_url: str, run_id: str, timeout_seconds: int, poll_interval: float) -> tuple[bool, dict[str, Any]]:
+def _wait_for_run(
+    base_url: str, run_id: str, timeout_seconds: int, poll_interval: float
+) -> tuple[bool, dict[str, Any]]:
     """Poll a run until it reaches a terminal status or times out."""
     deadline = time.time() + timeout_seconds
     last_payload: dict[str, Any] = {}
@@ -210,13 +213,30 @@ def run_pipeline(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run supported ADE sample documents through the HTTP API.")
-    parser.add_argument("--base-url", default="http://127.0.0.1:8000", help="Base URL for the ADE API server")
+    parser = argparse.ArgumentParser(
+        description="Run supported ADE sample documents through the HTTP API."
+    )
+    parser.add_argument(
+        "--base-url", default="http://127.0.0.1:8000", help="Base URL for the ADE API server"
+    )
     parser.add_argument("--sample-root", default="sample-data", help="Sample data root directory")
-    parser.add_argument("--limit-per-category", type=int, default=2, help="Maximum documents to run per supported category")
-    parser.add_argument("--timeout-seconds", type=int, default=180, help="Maximum time to wait per run")
-    parser.add_argument("--poll-interval", type=float, default=2.0, help="Polling interval while waiting for runs")
-    parser.add_argument("--report-path", default=".adep/reports/api_depth_pipeline.json", help="Where to write the JSON report")
+    parser.add_argument(
+        "--limit-per-category",
+        type=int,
+        default=2,
+        help="Maximum documents to run per supported category",
+    )
+    parser.add_argument(
+        "--timeout-seconds", type=int, default=180, help="Maximum time to wait per run"
+    )
+    parser.add_argument(
+        "--poll-interval", type=float, default=2.0, help="Polling interval while waiting for runs"
+    )
+    parser.add_argument(
+        "--report-path",
+        default=".adep/reports/api_depth_pipeline.json",
+        help="Where to write the JSON report",
+    )
     return parser.parse_args(argv)
 
 

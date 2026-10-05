@@ -36,7 +36,9 @@ def mock_registry():
     registry.specs.return_value = [spec]
     registry.call.return_value = ToolResult(
         ok=True,
-        data={"invoice_number": FieldValue(name="invoice_number", value="INV-001", confidence=0.95)},
+        data={
+            "invoice_number": FieldValue(name="invoice_number", value="INV-001", confidence=0.95)
+        },
         tool="ocr",
     )
     return registry
@@ -86,7 +88,7 @@ class TestCostEstimation:
     def test_basic_estimation(self):
         result = estimate_cost_savings(num_cycles=10)
         assert result["standard_llm_calls"] == 20  # 2 per cycle
-        assert result["oneflow_llm_calls"] == 10   # 1 per cycle
+        assert result["oneflow_llm_calls"] == 10  # 1 per cycle
         assert result["call_reduction_percent"] == 50.0
         assert result["savings_usd"] > 0
         assert result["savings_percent"] > 0
@@ -123,6 +125,7 @@ class TestPlanAndActNode:
 
     def test_complete_when_no_gaps(self, initial_state, mock_registry, mock_skill):
         from src.agent.validator import GapReport
+
         state = dict(initial_state)
         state["gap_report"] = GapReport(gaps=[], is_complete=True)
 
@@ -135,7 +138,9 @@ class TestPlanAndActNode:
         assert result["status"] == RunStatus.COMPLETE
 
     def test_executes_tool_call(self, initial_state, mock_registry, mock_skill):
-        mock_response = LLMResponse(content='{"thought": "Need to OCR the header", "tool": "ocr", "args": {"region": "header"}}')
+        mock_response = LLMResponse(
+            content='{"thought": "Need to OCR the header", "tool": "ocr", "args": {"region": "header"}}'
+        )
         with patch("src.providers.llm.invoke_llm", return_value=mock_response):
             result = plan_and_act_node(
                 initial_state,
@@ -166,6 +171,7 @@ class TestPlanAndActNode:
     def test_none_tool_with_gaps_returns_partial(self, initial_state, mock_registry, mock_skill):
         """SCRUM-481: Agent says 'done' but gaps remain → PARTIAL, not COMPLETE."""
         from src.agent.validator import GapReport, FieldGap, GapType
+
         state = dict(initial_state)
         state["gap_report"] = GapReport(
             gaps=[FieldGap(field="total", gap_type=GapType.MISSING, detail="Not extracted")],
@@ -196,7 +202,9 @@ class TestPlanAndActNode:
 
     def test_handles_unknown_tool(self, initial_state, mock_registry, mock_skill):
         mock_registry.get.side_effect = KeyError("Tool not found")
-        mock_response = LLMResponse(content='{"thought": "Try unknown tool", "tool": "nonexistent_tool", "args": {}}')
+        mock_response = LLMResponse(
+            content='{"thought": "Try unknown tool", "tool": "nonexistent_tool", "args": {}}'
+        )
         with patch("src.providers.llm.invoke_llm", return_value=mock_response):
             result = plan_and_act_node(
                 initial_state,
@@ -209,7 +217,9 @@ class TestPlanAndActNode:
 
     def test_handles_tool_execution_error(self, initial_state, mock_registry, mock_skill):
         mock_registry.call.side_effect = Exception("Tool error")
-        mock_response = LLMResponse(content='{"thought": "OCR the header", "tool": "ocr", "args": {}}')
+        mock_response = LLMResponse(
+            content='{"thought": "OCR the header", "tool": "ocr", "args": {}}'
+        )
         with patch("src.providers.llm.invoke_llm", return_value=mock_response):
             result = plan_and_act_node(
                 initial_state,
@@ -283,6 +293,7 @@ class TestOneFlowGraphBuilder:
     def test_graph_with_control_does_not_crash(self, mock_registry, mock_skill):
         """SCRUM-482: OneFlow graph should build with control without crashing."""
         from src.api.run_executor import RunControl
+
         validator_config = ValidatorConfig()
         control = RunControl()
         graph = build_oneflow_graph(
@@ -297,6 +308,7 @@ class TestOneFlowGraphBuilder:
     def test_graph_with_control_cancels(self, mock_registry, mock_skill, initial_state):
         """SCRUM-482: OneFlow routing with control cancel returns terminate."""
         from src.api.run_executor import RunControl
+
         validator_config = ValidatorConfig()
         control = RunControl()
         control.cancel_requested = True
@@ -314,6 +326,7 @@ class TestOneFlowGraphBuilder:
         state["status"] = RunStatus.PLANNING
         # should_continue_with_control sets status to CANCELLED and returns "terminate"
         from src.agent.graph import should_continue_with_control
+
         next_node = should_continue_with_control(state, control)
         assert next_node == "terminate"
         assert state["status"] == RunStatus.CANCELLED
@@ -329,16 +342,19 @@ class TestAgentConfigOneFlow:
 
     def test_default_execution_mode(self):
         from src.definitions.base import AgentConfig
+
         config = AgentConfig()
         assert config.execution_mode == "react"
 
     def test_oneflow_execution_mode(self):
         from src.definitions.base import AgentConfig
+
         config = AgentConfig(execution_mode="oneflow")
         assert config.execution_mode == "oneflow"
 
     def test_definition_with_oneflow(self):
         from src.definitions.base import AgentDefinition, AgentConfig
+
         defn = AgentDefinition(
             id="def-oneflow-test",
             name="OneFlow Test",

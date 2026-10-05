@@ -27,6 +27,7 @@ def db_store(tmp_path):
 def file_store(tmp_path):
     """Create a temporary file-based store for migration tests."""
     from src.definitions.store import DefinitionStore
+
     return DefinitionStore(base_dir=tmp_path / ".adep")
 
 
@@ -240,10 +241,7 @@ class TestConcurrency:
         def create_def(def_id):
             db_store.create("definitions", def_id, {"id": def_id})
 
-        threads = [
-            threading.Thread(target=create_def, args=(f"def-{i}",))
-            for i in range(10)
-        ]
+        threads = [threading.Thread(target=create_def, args=(f"def-{i}",)) for i in range(10)]
         for t in threads:
             t.start()
         for t in threads:

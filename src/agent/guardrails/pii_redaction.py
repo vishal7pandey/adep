@@ -99,13 +99,15 @@ def detect_pii(text: str) -> list[PIIDetection]:
                 if not _luhn_valid(digits_only):
                     continue
 
-            detections.append(PIIDetection(
-                pii_type=pii_type,
-                original=matched_text,
-                redacted=REDACTION_LABELS[pii_type],
-                start=match.start(),
-                end=match.end(),
-            ))
+            detections.append(
+                PIIDetection(
+                    pii_type=pii_type,
+                    original=matched_text,
+                    redacted=REDACTION_LABELS[pii_type],
+                    start=match.start(),
+                    end=match.end(),
+                )
+            )
 
     return detections
 
@@ -130,7 +132,9 @@ def redact_pii(text: str, types: set[str] | None = None) -> tuple[str, list[PIID
 
     redacted_text = text
     for detection in detections:
-        redacted_text = redacted_text[:detection.start] + detection.redacted + redacted_text[detection.end:]
+        redacted_text = (
+            redacted_text[: detection.start] + detection.redacted + redacted_text[detection.end :]
+        )
 
     if detections:
         logger.info(

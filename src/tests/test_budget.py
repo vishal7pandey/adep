@@ -163,6 +163,7 @@ class TestCheckPreRunBudget:
         stats_dir = tmp_path / "stats"
         stats_dir.mkdir(parents=True)
         from datetime import datetime, timezone
+
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         stats = {
             "total_tokens": 500_000,
@@ -218,9 +219,11 @@ class TestSSEBudgetEvents:
         loop = asyncio.new_event_loop()
         events = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(e)
+
             loop.run_until_complete(collect())
         finally:
             loop.close()
@@ -277,12 +280,14 @@ class TestBudgetAPIEndpoint:
     def test_get_budget(self, tmp_path: Path):
         import src.definitions.store as store_module
         import src.config as config_module
+
         old_store = store_module._store
         old_auth = config_module.settings.auth_enabled
         store_module._store = store_module.DefinitionStore(base_dir=tmp_path / ".adep")
         config_module.settings.auth_enabled = False
 
         from src.api.main import create_app
+
         app = create_app()
         client = TestClient(app)
 

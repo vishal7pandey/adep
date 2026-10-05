@@ -30,6 +30,7 @@ from src.agent.webhooks import (
 # status_to_webhook_event
 # ---------------------------------------------------------------------------
 
+
 class TestStatusToWebhookEvent:
     """Verify canonical status → webhook event mapping [BLK-242]."""
 
@@ -59,6 +60,7 @@ class TestStatusToWebhookEvent:
 # emit_webhook_event_async
 # ---------------------------------------------------------------------------
 
+
 class TestEmitWebhookEventAsync:
     """Verify async webhook emission doesn't block the event loop [BLK-242]."""
 
@@ -69,26 +71,34 @@ class TestEmitWebhookEventAsync:
 
     def test_returns_empty_when_no_subscribers(self, tmp_path: Path):
         store = WebhookStore(base_dir=tmp_path / ".adep")
-        results = asyncio.run(emit_webhook_event_async(
-            WebhookEvent.RUN_COMPLETED,
-            {"run_id": "r1"},
-            store=store,
-        ))
+        results = asyncio.run(
+            emit_webhook_event_async(
+                WebhookEvent.RUN_COMPLETED,
+                {"run_id": "r1"},
+                store=store,
+            )
+        )
         assert results == []
 
     def test_dispatches_to_subscribed_webhooks(self, tmp_path: Path):
         store = WebhookStore(base_dir=tmp_path / ".adep")
-        store.create("h1", WebhookConfig(
-            id="h1", url="https://example.com",
-            events=[WebhookEvent.RUN_COMPLETED],
-        ))
+        store.create(
+            "h1",
+            WebhookConfig(
+                id="h1",
+                url="https://example.com",
+                events=[WebhookEvent.RUN_COMPLETED],
+            ),
+        )
         with patch("src.agent.webhooks.dispatch_webhook") as mock_dispatch:
             mock_dispatch.return_value = {"delivered": True, "status_code": 200, "attempts": 1}
-            results = asyncio.run(emit_webhook_event_async(
-                WebhookEvent.RUN_COMPLETED,
-                {"run_id": "r1"},
-                store=store,
-            ))
+            results = asyncio.run(
+                emit_webhook_event_async(
+                    WebhookEvent.RUN_COMPLETED,
+                    {"run_id": "r1"},
+                    store=store,
+                )
+            )
         assert len(results) == 1
         assert results[0]["delivered"] is True
         assert results[0]["webhook_id"] == "h1"
@@ -96,37 +106,53 @@ class TestEmitWebhookEventAsync:
 
     def test_handles_dispatch_exception_gracefully(self, tmp_path: Path):
         store = WebhookStore(base_dir=tmp_path / ".adep")
-        store.create("h1", WebhookConfig(
-            id="h1", url="https://example.com",
-            events=[WebhookEvent.RUN_FAILED],
-        ))
+        store.create(
+            "h1",
+            WebhookConfig(
+                id="h1",
+                url="https://example.com",
+                events=[WebhookEvent.RUN_FAILED],
+            ),
+        )
         with patch("src.agent.webhooks.dispatch_webhook", side_effect=RuntimeError("boom")):
-            results = asyncio.run(emit_webhook_event_async(
-                WebhookEvent.RUN_FAILED,
-                {"run_id": "r1"},
-                store=store,
-            ))
+            results = asyncio.run(
+                emit_webhook_event_async(
+                    WebhookEvent.RUN_FAILED,
+                    {"run_id": "r1"},
+                    store=store,
+                )
+            )
         assert len(results) == 1
         assert results[0]["delivered"] is False
         assert "boom" in results[0]["error"]
 
     def test_only_dispatches_to_matching_events(self, tmp_path: Path):
         store = WebhookStore(base_dir=tmp_path / ".adep")
-        store.create("h1", WebhookConfig(
-            id="h1", url="https://a.com",
-            events=[WebhookEvent.RUN_COMPLETED],
-        ))
-        store.create("h2", WebhookConfig(
-            id="h2", url="https://b.com",
-            events=[WebhookEvent.BUDGET_WARNING],
-        ))
+        store.create(
+            "h1",
+            WebhookConfig(
+                id="h1",
+                url="https://a.com",
+                events=[WebhookEvent.RUN_COMPLETED],
+            ),
+        )
+        store.create(
+            "h2",
+            WebhookConfig(
+                id="h2",
+                url="https://b.com",
+                events=[WebhookEvent.BUDGET_WARNING],
+            ),
+        )
         with patch("src.agent.webhooks.dispatch_webhook") as mock_dispatch:
             mock_dispatch.return_value = {"delivered": True, "status_code": 200, "attempts": 1}
-            results = asyncio.run(emit_webhook_event_async(
-                WebhookEvent.RUN_COMPLETED,
-                {"run_id": "r1"},
-                store=store,
-            ))
+            results = asyncio.run(
+                emit_webhook_event_async(
+                    WebhookEvent.RUN_COMPLETED,
+                    {"run_id": "r1"},
+                    store=store,
+                )
+            )
         assert len(results) == 1
         assert results[0]["webhook_id"] == "h1"
         assert mock_dispatch.call_count == 1
@@ -136,12 +162,15 @@ class TestEmitWebhookEventAsync:
 # Run engine integration — webhook fired at completion
 # ---------------------------------------------------------------------------
 
+
 class TestRunEngineWebhookEmission:
     """Verify run_engine fires webhooks at completion points [BLK-242]."""
 
     def test_agent_completion_fires_webhook(self):
         """emit_webhook_event_async is called after agent completion."""
-        with patch("src.api.run_engine.emit_webhook_event_async", new_callable=AsyncMock) as mock_emit:
+        with patch(
+            "src.api.run_engine.emit_webhook_event_async", new_callable=AsyncMock
+        ) as mock_emit:
             mock_emit.return_value = []
             # Verify the function is importable and callable
             assert mock_emit is not None
@@ -159,6 +188,7 @@ class TestRunEngineWebhookEmission:
 # test_webhook endpoint — async dispatch
 # ---------------------------------------------------------------------------
 
+
 class TestWebhookEndpointAsync:
     """Verify test_webhook endpoint dispatches without blocking [BLK-242]."""
 
@@ -169,6 +199,7 @@ class TestWebhookEndpointAsync:
         # instead of calling dispatch_webhook synchronously.
         import src.api.routes.webhooks as routes_mod
         import inspect
+
         source = inspect.getsource(routes_mod.test_webhook)
         assert "asyncio.to_thread" in source
         assert "await" in source
@@ -177,6 +208,7 @@ class TestWebhookEndpointAsync:
 # ---------------------------------------------------------------------------
 # emit_webhook_event (sync) still works for backward compat
 # ---------------------------------------------------------------------------
+
 
 class TestEmitWebhookEventSync:
     """Verify sync emit_webhook_event still works [BLK-242]."""
@@ -188,10 +220,14 @@ class TestEmitWebhookEventSync:
 
     def test_sync_emit_works(self, tmp_path: Path):
         store = WebhookStore(base_dir=tmp_path / ".adep")
-        store.create("h1", WebhookConfig(
-            id="h1", url="https://example.com",
-            events=[WebhookEvent.RUN_COMPLETED],
-        ))
+        store.create(
+            "h1",
+            WebhookConfig(
+                id="h1",
+                url="https://example.com",
+                events=[WebhookEvent.RUN_COMPLETED],
+            ),
+        )
         with patch("src.agent.webhooks.dispatch_webhook") as mock_dispatch:
             mock_dispatch.return_value = {"delivered": True, "status_code": 200, "attempts": 1}
             results = emit_webhook_event(

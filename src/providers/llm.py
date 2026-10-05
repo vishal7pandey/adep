@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 def _get_azure_client() -> Any:
     """Lazy-load the Azure OpenAI client (shared singleton)."""
     from src.providers.vlm_azure import _get_client
+
     return _get_client()
 
 
@@ -67,8 +68,14 @@ def invoke_llm(system_prompt: str, user_prompt: str, *, max_tokens: int = 2000) 
             return LLMResponse(content="", input_tokens=0, output_tokens=0)
 
         content = response.choices[0].message.content or ""
-        input_tokens = response.usage.prompt_tokens if response.usage else estimate_tokens(system_prompt + user_prompt)
-        output_tokens = response.usage.completion_tokens if response.usage else estimate_tokens(content)
+        input_tokens = (
+            response.usage.prompt_tokens
+            if response.usage
+            else estimate_tokens(system_prompt + user_prompt)
+        )
+        output_tokens = (
+            response.usage.completion_tokens if response.usage else estimate_tokens(content)
+        )
 
         return LLMResponse(
             content=content,

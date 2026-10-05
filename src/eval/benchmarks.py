@@ -20,12 +20,12 @@ logger = logging.getLogger(__name__)
 
 # Benchmark targets (from BLK-128 spec)
 BENCHMARK_TARGETS = {
-    "single_page_invoice_cold_cache": 30.0,   # seconds
-    "single_page_invoice_warm_cache": 3.0,     # seconds
-    "ten_page_document": 120.0,                 # seconds
-    "tool_registry_lookup": 0.001,              # seconds (1 ms)
-    "definition_store_list_100": 0.05,          # seconds (50 ms)
-    "sse_first_byte": 0.5,                      # seconds (500 ms)
+    "single_page_invoice_cold_cache": 30.0,  # seconds
+    "single_page_invoice_warm_cache": 3.0,  # seconds
+    "ten_page_document": 120.0,  # seconds
+    "tool_registry_lookup": 0.001,  # seconds (1 ms)
+    "definition_store_list_100": 0.05,  # seconds (50 ms)
+    "sse_first_byte": 0.5,  # seconds (500 ms)
 }
 
 

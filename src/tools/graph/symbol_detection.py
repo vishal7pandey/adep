@@ -70,12 +70,14 @@ def detect_symbols(
             bbox = sym.get("bbox", sym.get("bounding_box", [0, 0, 0, 0]))
             if isinstance(bbox, list) and len(bbox) == 4:
                 bbox = tuple(bbox)
-            normalized.append({
-                "id": f"sym_{i}",
-                "bbox": bbox,
-                "class": sym.get("class", sym.get("type", "unknown")),
-                "confidence": float(sym.get("confidence", 0.0)),
-            })
+            normalized.append(
+                {
+                    "id": f"sym_{i}",
+                    "bbox": bbox,
+                    "class": sym.get("class", sym.get("type", "unknown")),
+                    "confidence": float(sym.get("confidence", 0.0)),
+                }
+            )
 
         return ToolResult(
             ok=True,
@@ -126,7 +128,7 @@ def classify_symbol(
     cropped_path = crop_result.data
     prompt = (
         "What type of engineering symbol is shown in this image? "
-        "Respond as JSON: {\"class\": \"symbol_type\", \"confidence\": 0.0-1.0}. "
+        'Respond as JSON: {"class": "symbol_type", "confidence": 0.0-1.0}. '
         "Common types: valve, gate_valve, ball_valve, check_valve, "
         "pump, centrifugal_pump, instrument, temperature_sensor, "
         "pressure_sensor, flow_meter, heat_exchanger, vessel, tank, "

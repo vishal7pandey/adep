@@ -12,7 +12,9 @@ class CommodityTradeTemplate(Template):
 
     commodity_type: str = Field(description="Type of commodity (e.g. crude oil, LNG)")
     loaded_volume_barrels: float = Field(description="Loaded volume in barrels (from BoL)")
-    loaded_volume_metric_tons: float = Field(default=0.0, description="Loaded volume in metric tons (from assay)")
+    loaded_volume_metric_tons: float = Field(
+        default=0.0, description="Loaded volume in metric tons (from assay)"
+    )
     api_gravity: float = Field(description="API gravity of the commodity")
     temperature_observed: float = Field(description="Observed temperature in degrees Celsius")
     volume_at_15c: float = Field(description="Volume corrected to 15°C standard temperature")

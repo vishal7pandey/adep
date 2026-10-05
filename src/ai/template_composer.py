@@ -66,7 +66,12 @@ def _validate_field(field: dict[str, Any]) -> dict[str, Any]:
         field_type = "string"
 
     threshold = field.get("threshold")
-    if threshold is None or not isinstance(threshold, (int, float)) or threshold < 0 or threshold > 1:
+    if (
+        threshold is None
+        or not isinstance(threshold, (int, float))
+        or threshold < 0
+        or threshold > 1
+    ):
         # Default thresholds by type
         if field_type in ("float", "int"):
             threshold = 0.85

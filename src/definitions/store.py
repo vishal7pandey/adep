@@ -110,7 +110,7 @@ class DefinitionStore:
         """
         if not _ENTITY_ID_PATTERN.match(entity_id):
             raise ValueError(
-                f"Invalid entity ID '{entity_id}': must match { _ENTITY_ID_PATTERN.pattern}"
+                f"Invalid entity ID '{entity_id}': must match {_ENTITY_ID_PATTERN.pattern}"
             )
         return self.base_dir / entity_type / f"{entity_id}.json"
 
@@ -367,9 +367,11 @@ def get_store() -> DefinitionStore | Any:
     global _store
     if _store is None:
         from src.config import settings
+
         backend = settings.store_backend.lower()
         if backend == "sqlite":
             from src.definitions.db_store import DatabaseDefinitionStore
+
             _store = DatabaseDefinitionStore(db_path=settings.store_db_path)
             logger.info("Using SQLite-backed store at %s", settings.store_db_path)
         else:
@@ -380,6 +382,7 @@ def get_store() -> DefinitionStore | Any:
 # ---------------------------------------------------------------------------
 # Prebuilt content merging [BLK-159]
 # ---------------------------------------------------------------------------
+
 
 def _get_prebuilt(entity_type: str) -> list[dict[str, Any]]:
     """Get prebuilt content for an entity type [BLK-159].

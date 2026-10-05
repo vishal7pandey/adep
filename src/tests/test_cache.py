@@ -39,6 +39,7 @@ from src.tools.cache import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def tmp_cache(tmp_path: Path) -> ToolCache:
     """Create a fresh ToolCache in a tmp directory."""
@@ -56,6 +57,7 @@ def _reset_cache_singleton():
 # ---------------------------------------------------------------------------
 # Cache key computation tests
 # ---------------------------------------------------------------------------
+
 
 class TestCacheKey:
     """Verify content-addressed cache key computation [BLK-124]."""
@@ -78,7 +80,9 @@ class TestCacheKey:
         img = tmp_path / "test.png"
         img.write_bytes(b"fake image bytes")
         key1 = compute_cache_key("vlm", image_path=str(img), params={"question": "what is this?"})
-        key2 = compute_cache_key("vlm", image_path=str(img), params={"question": "what is the total?"})
+        key2 = compute_cache_key(
+            "vlm", image_path=str(img), params={"question": "what is the total?"}
+        )
         assert key1 != key2
 
     def test_different_image_different_key(self, tmp_path: Path):
@@ -119,6 +123,7 @@ class TestCacheKey:
 # ToolCache basic tests
 # ---------------------------------------------------------------------------
 
+
 class TestToolCache:
     """Verify ToolCache get/put operations [BLK-124]."""
 
@@ -149,6 +154,7 @@ class TestToolCache:
 # TTL expiry tests
 # ---------------------------------------------------------------------------
 
+
 class TestTTLExpiry:
     """Verify TTL-based cache expiry [BLK-124]."""
 
@@ -175,6 +181,7 @@ class TestTTLExpiry:
 # ---------------------------------------------------------------------------
 # LRU eviction tests
 # ---------------------------------------------------------------------------
+
 
 class TestLRUEviction:
     """Verify in-memory LRU eviction [BLK-124]."""
@@ -214,6 +221,7 @@ class TestLRUEviction:
 # Disk persistence tests
 # ---------------------------------------------------------------------------
 
+
 class TestDiskPersistence:
     """Verify file-based cache persistence [BLK-124]."""
 
@@ -243,6 +251,7 @@ class TestDiskPersistence:
 # Cache clear tests
 # ---------------------------------------------------------------------------
 
+
 class TestCacheClear:
     """Verify cache clear operation [BLK-124]."""
 
@@ -261,6 +270,7 @@ class TestCacheClear:
 # ToolSpec.cacheable tests
 # ---------------------------------------------------------------------------
 
+
 class TestToolSpecCacheable:
     """Verify ToolSpec.cacheable flag [BLK-124]."""
 
@@ -277,11 +287,13 @@ class TestToolSpecCacheable:
 # ToolRegistry.call() caching tests
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryCaching:
     """Verify ToolRegistry.call() uses cache for cacheable tools [BLK-124]."""
 
     def test_cacheable_tool_uses_cache(self, tmp_path: Path):
         import src.config as config_module
+
         old_enabled = config_module.settings.cache_enabled
         config_module.settings.cache_enabled = True
 
@@ -296,8 +308,9 @@ class TestRegistryCaching:
 
             registry = ToolRegistry()
             registry.register(
-                ToolSpec(name="ocr", description="test", cacheable=True,
-                         arg_schema={"image_path": str}),
+                ToolSpec(
+                    name="ocr", description="test", cacheable=True, arg_schema={"image_path": str}
+                ),
                 mock_ocr,
             )
 
@@ -319,6 +332,7 @@ class TestRegistryCaching:
 
     def test_non_cacheable_tool_skips_cache(self, tmp_path: Path):
         import src.config as config_module
+
         old_enabled = config_module.settings.cache_enabled
         config_module.settings.cache_enabled = True
 
@@ -333,8 +347,9 @@ class TestRegistryCaching:
 
             registry = ToolRegistry()
             registry.register(
-                ToolSpec(name="test", description="test", cacheable=False,
-                         arg_schema={"image_path": str}),
+                ToolSpec(
+                    name="test", description="test", cacheable=False, arg_schema={"image_path": str}
+                ),
                 mock_tool,
             )
 
@@ -351,6 +366,7 @@ class TestRegistryCaching:
 
     def test_cache_disabled_skips_cache(self, tmp_path: Path):
         import src.config as config_module
+
         old_enabled = config_module.settings.cache_enabled
         config_module.settings.cache_enabled = False
 
@@ -365,8 +381,9 @@ class TestRegistryCaching:
 
             registry = ToolRegistry()
             registry.register(
-                ToolSpec(name="ocr", description="test", cacheable=True,
-                         arg_schema={"image_path": str}),
+                ToolSpec(
+                    name="ocr", description="test", cacheable=True, arg_schema={"image_path": str}
+                ),
                 mock_ocr,
             )
 
@@ -385,11 +402,13 @@ class TestRegistryCaching:
 # Cache version invalidation tests
 # ---------------------------------------------------------------------------
 
+
 class TestCacheVersion:
     """Verify cache version prefix invalidates keys [BLK-124]."""
 
     def test_version_change_invalidates(self, tmp_path: Path):
         import src.config as config_module
+
         old_version = config_module.settings.cache_version
 
         try:
@@ -415,11 +434,13 @@ class TestCacheVersion:
 # Cached second run makes zero provider calls
 # ---------------------------------------------------------------------------
 
+
 class TestCachedSecondRun:
     """Verify a cached second run makes zero provider calls [BLK-124]."""
 
     def test_second_run_uses_cache(self, tmp_path: Path):
         import src.config as config_module
+
         old_enabled = config_module.settings.cache_enabled
         config_module.settings.cache_enabled = True
 
@@ -434,8 +455,9 @@ class TestCachedSecondRun:
 
             registry = ToolRegistry()
             registry.register(
-                ToolSpec(name="ocr", description="test", cacheable=True,
-                         arg_schema={"image_path": str}),
+                ToolSpec(
+                    name="ocr", description="test", cacheable=True, arg_schema={"image_path": str}
+                ),
                 mock_ocr,
             )
 
@@ -458,6 +480,7 @@ class TestCachedSecondRun:
 # API endpoint tests
 # ---------------------------------------------------------------------------
 
+
 class TestCacheEndpoints:
     """Verify cache stats and clear API endpoints [BLK-124]."""
 
@@ -465,6 +488,7 @@ class TestCacheEndpoints:
     def client(self, tmp_path: Path):
         import src.config as config_module
         import src.definitions.store as store_module
+
         old_auth = config_module.settings.auth_enabled
         old_store = store_module._store
 
@@ -473,6 +497,7 @@ class TestCacheEndpoints:
 
         reset_cache()
         from src.api.main import create_app
+
         app = create_app()
         yield TestClient(app)
 
@@ -501,6 +526,7 @@ class TestCacheEndpoints:
 # ---------------------------------------------------------------------------
 # Grounding preservation tests (SCRUM-480)
 # ---------------------------------------------------------------------------
+
 
 class TestGroundingPreservation:
     """Verify grounding is not stripped during cache serialization [SCRUM-480]."""

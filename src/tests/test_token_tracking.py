@@ -44,11 +44,15 @@ class TestTokenUsage:
         assert usage.timestamp != ""
 
     def test_explicit_total_tokens(self):
-        usage = TokenUsage(node="plan", cycle=1, input_tokens=100, output_tokens=50, total_tokens=999)
+        usage = TokenUsage(
+            node="plan", cycle=1, input_tokens=100, output_tokens=50, total_tokens=999
+        )
         assert usage.total_tokens == 999
 
     def test_to_dict(self):
-        usage = TokenUsage(node="compact", cycle=3, input_tokens=200, output_tokens=100, cost_usd=0.005)
+        usage = TokenUsage(
+            node="compact", cycle=3, input_tokens=200, output_tokens=100, cost_usd=0.005
+        )
         d = usage.to_dict()
         assert d["node"] == "compact"
         assert d["cycle"] == 3
@@ -186,7 +190,9 @@ class TestSummarizeTokenUsage:
 
     def test_multiple_nodes(self):
         u1 = TokenUsage(node="plan", cycle=1, input_tokens=100, output_tokens=50, cost_usd=0.001)
-        u2 = TokenUsage(node="compact", cycle=5, input_tokens=500, output_tokens=200, cost_usd=0.005)
+        u2 = TokenUsage(
+            node="compact", cycle=5, input_tokens=500, output_tokens=200, cost_usd=0.005
+        )
         summary = summarize_token_usage([u1, u2])
         assert summary["total_tokens"] == 850
         assert "plan" in summary["by_node"]
@@ -282,9 +288,11 @@ class TestSSETokenUsageEvent:
         loop = asyncio.new_event_loop()
         events = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(e)
+
             loop.run_until_complete(collect())
         finally:
             loop.close()

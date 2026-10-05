@@ -72,22 +72,26 @@ class SSEEventEmitter:
 
     def emit_thought(self, cycle: int, text: str) -> None:
         """Emit a thought event (agent reasoning)."""
-        self._emit({
-            "type": "thought",
-            "cycle": cycle,
-            "text": text,
-            "timestamp": self._timestamp(),
-        })
+        self._emit(
+            {
+                "type": "thought",
+                "cycle": cycle,
+                "text": text,
+                "timestamp": self._timestamp(),
+            }
+        )
 
     def emit_tool_call(self, cycle: int, tool: str, args: dict[str, Any]) -> None:
         """Emit a tool_call event."""
-        self._emit({
-            "type": "tool_call",
-            "cycle": cycle,
-            "tool": tool,
-            "args": args,
-            "timestamp": self._timestamp(),
-        })
+        self._emit(
+            {
+                "type": "tool_call",
+                "cycle": cycle,
+                "tool": tool,
+                "args": args,
+                "timestamp": self._timestamp(),
+            }
+        )
 
     def emit_tool_result(
         self,
@@ -116,14 +120,16 @@ class SSEEventEmitter:
             }
             result_data["confidence"] = result.grounding.confidence
 
-        self._emit({
-            "type": "tool_result",
-            "cycle": cycle,
-            "tool": tool,
-            "result": result_data,
-            "crop_thumbnail": crop_thumbnail,
-            "timestamp": self._timestamp(),
-        })
+        self._emit(
+            {
+                "type": "tool_result",
+                "cycle": cycle,
+                "tool": tool,
+                "result": result_data,
+                "crop_thumbnail": crop_thumbnail,
+                "timestamp": self._timestamp(),
+            }
+        )
 
     def emit_progress(
         self,
@@ -132,12 +138,14 @@ class SSEEventEmitter:
         failing_fields: int,
     ) -> None:
         """Emit a progress event."""
-        self._emit({
-            "type": "progress",
-            "completed_fields": completed_fields,
-            "total_fields": total_fields,
-            "failing_fields": failing_fields,
-        })
+        self._emit(
+            {
+                "type": "progress",
+                "completed_fields": completed_fields,
+                "total_fields": total_fields,
+                "failing_fields": failing_fields,
+            }
+        )
 
     def emit_field_update(
         self,
@@ -157,21 +165,23 @@ class SSEEventEmitter:
         The frontend expects ``{ type: 'field_update', field: ExtractedField }``
         where ``field`` is a nested object [SCRUM-484].
         """
-        self._emit({
-            "type": "field_update",
-            "field": {
-                "id": field_id,
-                "name": name,
-                "value": value,
-                "confidence": confidence,
-                "bbox": bbox,
-                "page": page,
-                "status": status,
-            },
-            "extracted_fields_count": extracted_fields_count,
-            "total_fields": total_fields,
-            "risk_tier": risk_tier,
-        })
+        self._emit(
+            {
+                "type": "field_update",
+                "field": {
+                    "id": field_id,
+                    "name": name,
+                    "value": value,
+                    "confidence": confidence,
+                    "bbox": bbox,
+                    "page": page,
+                    "status": status,
+                },
+                "extracted_fields_count": extracted_fields_count,
+                "total_fields": total_fields,
+                "risk_tier": risk_tier,
+            }
+        )
 
     def emit_status_change(
         self,
@@ -183,12 +193,14 @@ class SSEEventEmitter:
 
         Fired on every run status transition (idle → running → paused → etc).
         """
-        self._emit({
-            "type": "status_change",
-            "status": status,
-            "cycle": cycle,
-            "previous_status": previous_status,
-        })
+        self._emit(
+            {
+                "type": "status_change",
+                "status": status,
+                "cycle": cycle,
+                "previous_status": previous_status,
+            }
+        )
 
     def emit_compaction(self, entries_compacted: int, summary_length: int) -> None:
         """Emit a compaction event — trace was summarized [§12.4, BLK-039].
@@ -197,11 +209,13 @@ class SSEEventEmitter:
             entries_compacted: Number of trace entries that were compacted.
             summary_length: Character length of the resulting compaction_summary.
         """
-        self._emit({
-            "type": "compaction",
-            "entries_compacted": entries_compacted,
-            "summary_length": summary_length,
-        })
+        self._emit(
+            {
+                "type": "compaction",
+                "entries_compacted": entries_compacted,
+                "summary_length": summary_length,
+            }
+        )
 
     def emit_paused(self, cycle: int) -> None:
         """Emit a paused event — agent halted after current cycle [BLK-046]."""
@@ -213,41 +227,49 @@ class SSEEventEmitter:
 
     def emit_stopped(self, cycle: int, partial_result: dict[str, Any] | None = None) -> None:
         """Emit a stopped event — emergency halt with partial results [BLK-046]."""
-        self._emit({
-            "type": "stopped",
-            "cycle": cycle,
-            "partial_result": partial_result,
-        })
+        self._emit(
+            {
+                "type": "stopped",
+                "cycle": cycle,
+                "partial_result": partial_result,
+            }
+        )
 
     def emit_rolled_back(self, from_cycle: int, to_cycle: int) -> None:
         """Emit a rolled_back event — state restored to earlier cycle [BLK-046]."""
-        self._emit({
-            "type": "rolled_back",
-            "from_cycle": from_cycle,
-            "to_cycle": to_cycle,
-        })
+        self._emit(
+            {
+                "type": "rolled_back",
+                "from_cycle": from_cycle,
+                "to_cycle": to_cycle,
+            }
+        )
 
     def emit_trajectory_warning(self, cycle: int, consecutive_non_improving: int) -> None:
         """Emit a trajectory_warning event — agent may be stuck [BLK-049].
 
         Fired after 3 consecutive non-improving cycles.
         """
-        self._emit({
-            "type": "trajectory_warning",
-            "cycle": cycle,
-            "consecutive_non_improving": consecutive_non_improving,
-        })
+        self._emit(
+            {
+                "type": "trajectory_warning",
+                "cycle": cycle,
+                "consecutive_non_improving": consecutive_non_improving,
+            }
+        )
 
     def emit_trajectory_critical(self, cycle: int, consecutive_non_improving: int) -> None:
         """Emit a trajectory_critical event — agent likely in a loop [BLK-049].
 
         Fired after 5 consecutive non-improving cycles. Agent auto-pauses.
         """
-        self._emit({
-            "type": "trajectory_critical",
-            "cycle": cycle,
-            "consecutive_non_improving": consecutive_non_improving,
-        })
+        self._emit(
+            {
+                "type": "trajectory_critical",
+                "cycle": cycle,
+                "consecutive_non_improving": consecutive_non_improving,
+            }
+        )
 
     def emit_gate_triggered(
         self,
@@ -262,15 +284,17 @@ class SSEEventEmitter:
 
         Fired when a high-risk or critical action needs user approval.
         """
-        self._emit({
-            "type": "gate_triggered",
-            "field": field,
-            "risk_tier": risk_tier,
-            "confidence": confidence,
-            "reason": reason,
-            "cycle": cycle,
-            "required_action": required_action,
-        })
+        self._emit(
+            {
+                "type": "gate_triggered",
+                "field": field,
+                "risk_tier": risk_tier,
+                "confidence": confidence,
+                "reason": reason,
+                "cycle": cycle,
+                "required_action": required_action,
+            }
+        )
 
     def emit_token_usage(
         self,
@@ -295,17 +319,19 @@ class SSEEventEmitter:
             running_total_tokens: Cumulative tokens across the run.
             running_total_cost: Cumulative cost across the run.
         """
-        self._emit({
-            "type": "token_usage",
-            "node": node,
-            "cycle": cycle,
-            "input_tokens": input_tokens,
-            "output_tokens": output_tokens,
-            "total_tokens": total_tokens,
-            "cost_usd": round(cost_usd, 6),
-            "running_total_tokens": running_total_tokens,
-            "running_total_cost": round(running_total_cost, 6),
-        })
+        self._emit(
+            {
+                "type": "token_usage",
+                "node": node,
+                "cycle": cycle,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+                "cost_usd": round(cost_usd, 6),
+                "running_total_tokens": running_total_tokens,
+                "running_total_cost": round(running_total_cost, 6),
+            }
+        )
 
     def emit_budget_warning(
         self,
@@ -325,16 +351,18 @@ class SSEEventEmitter:
             budget_cost_usd: Cost limit for this level.
         """
         percentage = int((consumed_tokens / budget_tokens * 100)) if budget_tokens > 0 else 0
-        self._emit({
-            "type": "budget_warning",
-            "level": level,
-            "consumed_tokens": consumed_tokens,
-            "budget_tokens": budget_tokens,
-            "consumed_cost_usd": round(consumed_cost_usd, 6),
-            "budget_cost_usd": budget_cost_usd,
-            "percentage": percentage,
-            "message": f"Approaching {level} budget limit — {percentage}% consumed",
-        })
+        self._emit(
+            {
+                "type": "budget_warning",
+                "level": level,
+                "consumed_tokens": consumed_tokens,
+                "budget_tokens": budget_tokens,
+                "consumed_cost_usd": round(consumed_cost_usd, 6),
+                "budget_cost_usd": budget_cost_usd,
+                "percentage": percentage,
+                "message": f"Approaching {level} budget limit — {percentage}% consumed",
+            }
+        )
 
     def emit_budget_exceeded(
         self,
@@ -353,15 +381,17 @@ class SSEEventEmitter:
             consumed_cost_usd: Cost consumed so far.
             budget_cost_usd: Cost limit for this level.
         """
-        self._emit({
-            "type": "budget_exceeded",
-            "level": level,
-            "consumed_tokens": consumed_tokens,
-            "budget_tokens": budget_tokens,
-            "consumed_cost_usd": round(consumed_cost_usd, 6),
-            "budget_cost_usd": budget_cost_usd,
-            "message": f"{level} budget exceeded — terminating with partial results",
-        })
+        self._emit(
+            {
+                "type": "budget_exceeded",
+                "level": level,
+                "consumed_tokens": consumed_tokens,
+                "budget_tokens": budget_tokens,
+                "consumed_cost_usd": round(consumed_cost_usd, 6),
+                "budget_cost_usd": budget_cost_usd,
+                "message": f"{level} budget exceeded — terminating with partial results",
+            }
+        )
 
     def emit_warning(self, code: str, message: str) -> None:
         """Emit a warning event — advisory message that doesn't halt the run [SCRUM-9].
@@ -370,16 +400,22 @@ class SSEEventEmitter:
             code: Short machine-readable warning code (e.g. "definition_mismatch").
             message: Human-readable warning message.
         """
-        self._emit({
-            "type": "warning",
-            "code": code,
-            "message": message,
-            "timestamp": self._timestamp(),
-        })
+        self._emit(
+            {
+                "type": "warning",
+                "code": code,
+                "message": message,
+                "timestamp": self._timestamp(),
+            }
+        )
 
-    def emit_complete(self, status: str, summary: str | None = None,
-                      run_id: str | None = None,
-                      execution_mode: str | None = None) -> None:
+    def emit_complete(
+        self,
+        status: str,
+        summary: str | None = None,
+        run_id: str | None = None,
+        execution_mode: str | None = None,
+    ) -> None:
         """Emit the complete event and close the stream [BLK-129].
 
         Includes run_id for multi-tab client disambiguation (frontend addition).

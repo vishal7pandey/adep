@@ -14,16 +14,20 @@ from typing import Any, Iterator
 
 # Context variables — propagated automatically across async boundaries
 request_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "request_id", default=None,
+    "request_id",
+    default=None,
 )
 run_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "run_id", default=None,
+    "run_id",
+    default=None,
 )
 definition_id_var: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "definition_id", default=None,
+    "definition_id",
+    default=None,
 )
 cycle_var: contextvars.ContextVar[int | None] = contextvars.ContextVar(
-    "cycle", default=None,
+    "cycle",
+    default=None,
 )
 
 

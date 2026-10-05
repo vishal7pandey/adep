@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  ZoomIn, 
-  ZoomOut, 
-  RotateCw, 
-  Maximize2, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize2,
   FileText,
   Thermometer
 } from 'lucide-react';
@@ -260,4 +260,3 @@ export const Pane3DocumentViewer: React.FC = () => {
     </div>
   );
 };
-

@@ -46,13 +46,20 @@ from src.ai.workflow_optimizer import (
 # Test fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_workflow() -> WorkflowTopology:
     return WorkflowTopology.default_react()
 
 
-def _make_eval_fn(coverage: float = 0.8, confidence: float = 0.85, efficiency: float = 0.001,
-                  gap_severity: float = 0.1, speed: float = 0.75) -> Any:
+def _make_eval_fn(
+    coverage: float = 0.8,
+    confidence: float = 0.85,
+    efficiency: float = 0.001,
+    gap_severity: float = 0.1,
+    speed: float = 0.75,
+) -> Any:
     """Create a mock evaluation function with fixed scores."""
+
     def eval_fn(wf: WorkflowTopology) -> dict[str, float]:
         return {
             "field_coverage": coverage,
@@ -61,12 +68,14 @@ def _make_eval_fn(coverage: float = 0.8, confidence: float = 0.85, efficiency: f
             "gap_severity": gap_severity,
             "speed_score": speed,
         }
+
     return eval_fn
 
 
 # ---------------------------------------------------------------------------
 # Unit tests — WorkflowTopology
 # ---------------------------------------------------------------------------
+
 
 class TestWorkflowTopology:
     def test_default_react(self):
@@ -102,6 +111,7 @@ class TestWorkflowTopology:
 # Unit tests — MCTSNode
 # ---------------------------------------------------------------------------
 
+
 class TestMCTSNode:
     def test_avg_score_no_visits(self):
         node = MCTSNode(workflow=_make_workflow())
@@ -123,6 +133,7 @@ class TestMCTSNode:
         node.total_score = 5.0
         # avg_score=0.5, exploration = sqrt(ln(10)/10) * 1.41
         import math
+
         expected = 0.5 + 1.41 * math.sqrt(math.log(10) / 10)
         assert abs(node.ucb1 - expected) < 0.001
 
@@ -134,6 +145,7 @@ class TestMCTSNode:
         child.total_score = 3.0
         # avg_score=0.6, exploration = sqrt(ln(20)/5) * 1.41
         import math
+
         expected = 0.6 + 1.41 * math.sqrt(math.log(20) / 5)
         assert abs(child.ucb1 - expected) < 0.001
 
@@ -141,6 +153,7 @@ class TestMCTSNode:
 # ---------------------------------------------------------------------------
 # Unit tests — Selection
 # ---------------------------------------------------------------------------
+
 
 class TestSelect:
     def test_select_root_no_children(self):
@@ -170,6 +183,7 @@ class TestSelect:
 # Unit tests — Expansion
 # ---------------------------------------------------------------------------
 
+
 class TestExpand:
     def test_expand_with_llm_add_node(self):
         root = MCTSNode(workflow=_make_workflow())
@@ -184,7 +198,9 @@ class TestExpand:
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
                 content=json.dumps(action),
-                input_tokens=100, output_tokens=200, total_tokens=300,
+                input_tokens=100,
+                output_tokens=200,
+                total_tokens=300,
             )
             child, tu = _expand(root, "feedback", "experience")
 
@@ -199,7 +215,9 @@ class TestExpand:
         root = MCTSNode(workflow=_make_workflow())
 
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="", input_tokens=0, output_tokens=0, total_tokens=0)
+            mock_llm.return_value = MagicMock(
+                content="", input_tokens=0, output_tokens=0, total_tokens=0
+            )
             child, tu = _expand(root, "feedback", "experience")
 
             assert "review" in child.workflow.nodes
@@ -209,7 +227,9 @@ class TestExpand:
         root = MCTSNode(workflow=_make_workflow())
 
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
-            mock_llm.return_value = MagicMock(content="not json", input_tokens=10, output_tokens=20, total_tokens=30)
+            mock_llm.return_value = MagicMock(
+                content="not json", input_tokens=10, output_tokens=20, total_tokens=30
+            )
             child, _ = _expand(root, "feedback", "experience")
 
             assert "review" in child.workflow.nodes
@@ -219,6 +239,7 @@ class TestExpand:
 # ---------------------------------------------------------------------------
 # Unit tests — Action application
 # ---------------------------------------------------------------------------
+
 
 class TestApplyAction:
     def test_add_node(self):
@@ -266,7 +287,11 @@ class TestApplyAction:
         wf = _make_workflow()
         action = {
             "action": "rewire_edge",
-            "details": {"edge_source": "observe", "edge_target": "plan", "edge_condition": "skip_reflect"},
+            "details": {
+                "edge_source": "observe",
+                "edge_target": "plan",
+                "edge_condition": "skip_reflect",
+            },
             "description": "Skip reflect sometimes",
         }
         new_wf = _apply_action(wf, action)
@@ -286,7 +311,9 @@ class TestApplyAction:
 
     def test_modify_node_params(self):
         wf = _make_workflow()
-        wf.nodes["review"] = WorkflowNode(name="review", node_type="optional", params={"threshold": 0.85})
+        wf.nodes["review"] = WorkflowNode(
+            name="review", node_type="optional", params={"threshold": 0.85}
+        )
         action = {
             "action": "modify_node_params",
             "details": {"node_name": "review", "node_params": {"threshold": 0.90}},
@@ -299,6 +326,7 @@ class TestApplyAction:
 # ---------------------------------------------------------------------------
 # Unit tests — Heuristic expansion
 # ---------------------------------------------------------------------------
+
 
 class TestHeuristicExpand:
     def test_adds_review_if_missing(self):
@@ -319,10 +347,13 @@ class TestHeuristicExpand:
 # Unit tests — Evaluation
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateWorkflow:
     def test_basic_evaluation(self):
         wf = _make_workflow()
-        eval_fn = _make_eval_fn(coverage=0.9, confidence=0.85, efficiency=0.002, gap_severity=0.1, speed=0.8)
+        eval_fn = _make_eval_fn(
+            coverage=0.9, confidence=0.85, efficiency=0.002, gap_severity=0.1, speed=0.8
+        )
         score, feedback = _evaluate_workflow(wf, eval_fn)
         # 0.9*0.35 + 0.85*0.25 + 0.002*0.15 + 0.8*0.15 - 0.1*0.1
         # = 0.315 + 0.2125 + 0.0003 + 0.12 - 0.01 = 0.6378
@@ -358,6 +389,7 @@ class TestEvaluateWorkflow:
 # Unit tests — Backpropagation
 # ---------------------------------------------------------------------------
 
+
 class TestBackpropagate:
     def test_single_node(self):
         node = MCTSNode(workflow=_make_workflow())
@@ -382,6 +414,7 @@ class TestBackpropagate:
 # Unit tests — Experience accumulation
 # ---------------------------------------------------------------------------
 
+
 class TestAccumulateExperience:
     def test_no_parent(self):
         root = MCTSNode(workflow=_make_workflow())
@@ -404,6 +437,7 @@ class TestAccumulateExperience:
 # Unit tests — Count nodes
 # ---------------------------------------------------------------------------
 
+
 class TestCountNodes:
     def test_single_node(self):
         root = MCTSNode(workflow=_make_workflow())
@@ -423,12 +457,21 @@ class TestCountNodes:
 # Unit tests — Full optimize_workflow loop
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizeWorkflow:
     def test_default_seed(self):
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_workflow(
                 max_iterations=3,
@@ -442,8 +485,16 @@ class TestOptimizeWorkflow:
     def test_max_iterations(self):
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_workflow(
                 seed_workflow=_make_workflow(),
@@ -451,14 +502,27 @@ class TestOptimizeWorkflow:
                 rng_seed=42,
             )
             assert result.iterations <= 5
-            assert "max iterations" in result.convergence_reason or "Converged" in result.convergence_reason
+            assert (
+                "max iterations" in result.convergence_reason
+                or "Converged" in result.convergence_reason
+            )
 
     def test_convergence_plateau(self):
-        eval_fn = _make_eval_fn(coverage=0.8, confidence=0.85, efficiency=0.001, gap_severity=0.1, speed=0.75)
+        eval_fn = _make_eval_fn(
+            coverage=0.8, confidence=0.85, efficiency=0.001, gap_severity=0.1, speed=0.75
+        )
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_workflow(
                 seed_workflow=_make_workflow(),
@@ -473,8 +537,16 @@ class TestOptimizeWorkflow:
     def test_token_usage_accumulated(self):
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=100, output_tokens=200, total_tokens=300,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=100,
+                output_tokens=200,
+                total_tokens=300,
             )
             result = optimize_workflow(
                 seed_workflow=_make_workflow(),
@@ -487,8 +559,16 @@ class TestOptimizeWorkflow:
     def test_history_records_iterations(self):
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_workflow(
                 seed_workflow=_make_workflow(),
@@ -504,8 +584,16 @@ class TestOptimizeWorkflow:
     def test_to_dict(self):
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_workflow(
                 seed_workflow=_make_workflow(),
@@ -525,8 +613,16 @@ class TestOptimizeWorkflow:
         """Test that adding a review node improves the default evaluator score."""
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
             result = optimize_workflow(
                 seed_workflow=_make_workflow(),
@@ -547,6 +643,7 @@ class TestOptimizeWorkflow:
 # Integration tests — API endpoint
 # ---------------------------------------------------------------------------
 
+
 class TestOptimizeWorkflowAPI:
     @pytest.fixture
     def client(self, tmp_path) -> TestClient:
@@ -560,6 +657,7 @@ class TestOptimizeWorkflowAPI:
         config_module.settings.auth_enabled = False
 
         from src.api.main import create_app
+
         app = create_app()
         test_client = TestClient(app)
 
@@ -571,13 +669,24 @@ class TestOptimizeWorkflowAPI:
     def test_optimize_workflow_endpoint(self, client: TestClient):
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "add_node", "description": "Add review", "details": {"node_name": "review"}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "add_node",
+                        "description": "Add review",
+                        "details": {"node_name": "review"},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
-            response = client.post("/api/v1/workflows/optimize", json={
-                "max_iterations": 3,
-                "rng_seed": 42,
-            })
+            response = client.post(
+                "/api/v1/workflows/optimize",
+                json={
+                    "max_iterations": 3,
+                    "rng_seed": 42,
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert "best_workflow" in data
@@ -590,14 +699,25 @@ class TestOptimizeWorkflowAPI:
         seed = _make_workflow().to_dict()
         with patch("src.ai.workflow_optimizer.invoke_llm") as mock_llm:
             mock_llm.return_value = MagicMock(
-                content=json.dumps({"action": "tune_parameter", "description": "Increase cycles", "details": {"parameter_name": "max_cycles_per_field", "parameter_value": 8}}),
-                input_tokens=10, output_tokens=20, total_tokens=30,
+                content=json.dumps(
+                    {
+                        "action": "tune_parameter",
+                        "description": "Increase cycles",
+                        "details": {"parameter_name": "max_cycles_per_field", "parameter_value": 8},
+                    }
+                ),
+                input_tokens=10,
+                output_tokens=20,
+                total_tokens=30,
             )
-            response = client.post("/api/v1/workflows/optimize", json={
-                "seed_workflow": seed,
-                "max_iterations": 2,
-                "rng_seed": 42,
-            })
+            response = client.post(
+                "/api/v1/workflows/optimize",
+                json={
+                    "seed_workflow": seed,
+                    "max_iterations": 2,
+                    "rng_seed": 42,
+                },
+            )
             assert response.status_code == 200
             data = response.json()
             assert data["best_workflow"] is not None

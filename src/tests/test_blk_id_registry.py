@@ -93,7 +93,9 @@ class TestBlkIdRegistry:
 
     def test_register_existing_advances_next_id(self, registry: BlkIdRegistry):
         """register_existing() must advance next_id past the highest registered ID."""
-        registry.register_existing("BLK-084", "Audit logging", "src/agent/guardrails/audit_logging.py")
+        registry.register_existing(
+            "BLK-084", "Audit logging", "src/agent/guardrails/audit_logging.py"
+        )
         registry.register_existing("BLK-150", "Webhook get_raw", "src/agent/webhooks.py")
 
         next_id = registry.next_blk_id("New bug", "src/test.py")
@@ -126,7 +128,7 @@ class TestBlkIdRegistry:
         """validate() must flag BLK-IDs in the codebase that aren't registered."""
         # Create a temp file with a BLK-ID
         test_file = tmp_path / "test_code.py"
-        test_file.write_text('# BLK-999: Some unregistered bug\n')
+        test_file.write_text("# BLK-999: Some unregistered bug\n")
 
         issues = registry.validate(scan_root=str(tmp_path))
         assert len(issues) > 0
@@ -137,7 +139,7 @@ class TestBlkIdRegistry:
         registry.register_existing("BLK-999", "Registered bug", "test.py")
 
         test_file = tmp_path / "test_code.py"
-        test_file.write_text('# BLK-999: Some registered bug\n')
+        test_file.write_text("# BLK-999: Some registered bug\n")
 
         issues = registry.validate(scan_root=str(tmp_path))
         assert len(issues) == 0

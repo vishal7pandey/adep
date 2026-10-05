@@ -24,9 +24,11 @@ logger = logging.getLogger(__name__)
 # Template field extraction — serializes Pydantic model_fields into dicts [BLK-108]
 # ---------------------------------------------------------------------------
 
+
 def _pydantic_type_to_str(annotation: Any) -> str:
     """Convert a Pydantic field annotation to a readable string."""
     import typing
+
     origin = typing.get_origin(annotation)
     if origin is list:
         args = typing.get_args(annotation)
@@ -46,18 +48,21 @@ def _extract_template_fields(template_cls: Any) -> list[dict[str, Any]]:
     """Extract field schemas from a Template Pydantic model class [BLK-108]."""
     fields = []
     for name, field_info in template_cls.model_fields.items():
-        fields.append({
-            "name": name,
-            "type": _pydantic_type_to_str(field_info.annotation),
-            "description": field_info.description or "",
-            "required": field_info.is_required(),
-        })
+        fields.append(
+            {
+                "name": name,
+                "type": _pydantic_type_to_str(field_info.annotation),
+                "description": field_info.description or "",
+                "required": field_info.is_required(),
+            }
+        )
     return fields
 
 
 # ---------------------------------------------------------------------------
 # Skill serialization — converts Skill dataclass to dict [BLK-108]
 # ---------------------------------------------------------------------------
+
 
 def _serialize_skill(skill: Any) -> dict[str, Any]:
     """Serialize a Skill dataclass instance to a JSON-compatible dict [BLK-108]."""
@@ -113,7 +118,15 @@ _skill_tools: dict[str, list[str]] = {
     "compliance_audit": ["detect_layout", "ocr", "vlm", "crop"],
     "commercial_lease": ["detect_layout", "ocr", "vlm", "crop"],
     "commodity_trade": ["detect_layout", "ocr", "vlm", "read_table", "crop"],
-    "metallurgical_assay": ["detect_layout", "detect_tables", "ocr", "read_table", "vlm", "crop", "deskew"],
+    "metallurgical_assay": [
+        "detect_layout",
+        "detect_tables",
+        "ocr",
+        "read_table",
+        "vlm",
+        "crop",
+        "deskew",
+    ],
     "store_audit": ["detect_layout", "ocr", "vlm", "crop"],
     "ad_buy": ["detect_layout", "detect_tables", "ocr", "read_table"],
     "purchase_order_sf1449": ["detect_layout", "ocr", "read_table", "crop"],
@@ -205,7 +218,15 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "version": "1.0.0",
         "skill_id": "metallurgical_assay",
         "template_id": "metallurgical_assay",
-        "tool_names": ["detect_layout", "detect_tables", "ocr", "read_table", "vlm", "crop", "deskew"],
+        "tool_names": [
+            "detect_layout",
+            "detect_tables",
+            "ocr",
+            "read_table",
+            "vlm",
+            "crop",
+            "deskew",
+        ],
         "agent_config": {
             "max_cycles_per_field": 5,
             "max_cycles_per_document": 20,
@@ -389,10 +410,19 @@ PREBUILT_DEFINITIONS: list[dict] = [
         "skill_id": "pid_to_dexpi",
         "template_id": "pid_to_dexpi",
         "tool_names": [
-            "detect_layout", "detect_symbols", "classify_symbol",
-            "ocr", "vlm", "read_tag", "trace_line", "detect_connections",
-            "build_graph", "validate_topology", "serialize_graph",
-            "crop", "deskew"
+            "detect_layout",
+            "detect_symbols",
+            "classify_symbol",
+            "ocr",
+            "vlm",
+            "read_tag",
+            "trace_line",
+            "detect_connections",
+            "build_graph",
+            "validate_topology",
+            "serialize_graph",
+            "crop",
+            "deskew",
         ],
         "agent_config": {
             "max_cycles_per_field": 10,
@@ -417,6 +447,7 @@ def get_prebuilt_definitions() -> list[AgentDefinition]:
 # ---------------------------------------------------------------------------
 # Skill and template metadata for seeding [BLK-092, BLK-108]
 # ---------------------------------------------------------------------------
+
 
 def _build_prebuilt_skills() -> list[dict]:
     """Build PREBUILT_SKILLS by serializing actual Skill objects [BLK-108]."""
@@ -443,13 +474,26 @@ def _build_prebuilt_skills() -> list[dict]:
     from src.skills.pid_diagram import PnIDSkill
 
     skill_objects = [
-        InvoiceSkill, TradeFinanceScrutinySkill, BillOfQuantitiesSkill,
-        UtilityBillSkill, ThermalReceiptSkill, MedicalClaimSkill,
-        ComplianceAuditSkill, CommercialLeaseSkill, CommodityTradeSkill,
-        MetallurgicalAssaySkill, StoreAuditSkill, AdBuySkill,
-        BankStatementSkill, PurchaseOrderSkill, PackingListSkill,
-        PurchaseOrderSF1449Skill, TravelPackingChecklistSkill,
-        W2TaxFormSkill, PayStubSkill, InsurancePolicySkill,
+        InvoiceSkill,
+        TradeFinanceScrutinySkill,
+        BillOfQuantitiesSkill,
+        UtilityBillSkill,
+        ThermalReceiptSkill,
+        MedicalClaimSkill,
+        ComplianceAuditSkill,
+        CommercialLeaseSkill,
+        CommodityTradeSkill,
+        MetallurgicalAssaySkill,
+        StoreAuditSkill,
+        AdBuySkill,
+        BankStatementSkill,
+        PurchaseOrderSkill,
+        PackingListSkill,
+        PurchaseOrderSF1449Skill,
+        TravelPackingChecklistSkill,
+        W2TaxFormSkill,
+        PayStubSkill,
+        InsurancePolicySkill,
         PnIDSkill,
     ]
     return [_serialize_skill(s) for s in skill_objects]
@@ -484,26 +528,111 @@ def _build_prebuilt_templates() -> list[dict]:
 
     template_specs = [
         ("invoice", "Invoice", "Standard invoice template", InvoiceTemplate),
-        ("trade_finance_mt700", "Trade Finance MT700", "MT700 letter of credit template", TradeFinanceTemplate),
-        ("bill_of_quantities", "Bill of Quantities", "Construction BOQ template", BillOfQuantitiesTemplate),
+        (
+            "trade_finance_mt700",
+            "Trade Finance MT700",
+            "MT700 letter of credit template",
+            TradeFinanceTemplate,
+        ),
+        (
+            "bill_of_quantities",
+            "Bill of Quantities",
+            "Construction BOQ template",
+            BillOfQuantitiesTemplate,
+        ),
         ("utility_bill", "Utility Bill", "Utility bill template", UtilityBillTemplate),
-        ("thermal_receipt", "Thermal Receipt", "Consumer thermal receipt template", ThermalReceiptTemplate),
-        ("medical_claim_cms1500", "Medical Claim CMS-1500", "CMS-1500 claim form template", MedicalClaimTemplate),
-        ("compliance_audit_soc2", "Compliance Audit SOC 2", "SOC 2 / OSPAR audit template", ComplianceAuditTemplate),
-        ("commercial_lease", "Commercial Lease", "Commercial lease template", CommercialLeaseTemplate),
-        ("commodity_trade_assay", "Commodity Trade Assay", "Commodity trade reconciliation template", CommodityTradeTemplate),
-        ("metallurgical_assay", "Metallurgical Assay", "Metallurgical assay certificate template", MetallurgicalAssayTemplate),
-        ("store_audit_checklist", "Store Audit Checklist", "Retail store audit template", StoreAuditTemplate),
-        ("ad_insertion_order", "Ad Insertion Order", "Advertising insertion order template", AdInsertionOrderTemplate),
-        ("bank_statement", "Bank Statement", "Bank statement with transactions and running balances", BankStatementTemplate),
-        ("purchase_order", "Purchase Order", "Purchase order with line items and totals", PurchaseOrderTemplate),
-        ("purchase_order_sf1449", "Purchase Order SF-1449", "U.S. government SF-1449 structure", PurchaseOrderSF1449Template),
-        ("packing_list", "Packing List", "Shipping packing list with items and weights", PackingListTemplate),
-        ("packing_list_travel", "Travel Packing Checklist", "Travel checklist structure and section coverage", TravelPackingChecklistTemplate),
+        (
+            "thermal_receipt",
+            "Thermal Receipt",
+            "Consumer thermal receipt template",
+            ThermalReceiptTemplate,
+        ),
+        (
+            "medical_claim_cms1500",
+            "Medical Claim CMS-1500",
+            "CMS-1500 claim form template",
+            MedicalClaimTemplate,
+        ),
+        (
+            "compliance_audit_soc2",
+            "Compliance Audit SOC 2",
+            "SOC 2 / OSPAR audit template",
+            ComplianceAuditTemplate,
+        ),
+        (
+            "commercial_lease",
+            "Commercial Lease",
+            "Commercial lease template",
+            CommercialLeaseTemplate,
+        ),
+        (
+            "commodity_trade_assay",
+            "Commodity Trade Assay",
+            "Commodity trade reconciliation template",
+            CommodityTradeTemplate,
+        ),
+        (
+            "metallurgical_assay",
+            "Metallurgical Assay",
+            "Metallurgical assay certificate template",
+            MetallurgicalAssayTemplate,
+        ),
+        (
+            "store_audit_checklist",
+            "Store Audit Checklist",
+            "Retail store audit template",
+            StoreAuditTemplate,
+        ),
+        (
+            "ad_insertion_order",
+            "Ad Insertion Order",
+            "Advertising insertion order template",
+            AdInsertionOrderTemplate,
+        ),
+        (
+            "bank_statement",
+            "Bank Statement",
+            "Bank statement with transactions and running balances",
+            BankStatementTemplate,
+        ),
+        (
+            "purchase_order",
+            "Purchase Order",
+            "Purchase order with line items and totals",
+            PurchaseOrderTemplate,
+        ),
+        (
+            "purchase_order_sf1449",
+            "Purchase Order SF-1449",
+            "U.S. government SF-1449 structure",
+            PurchaseOrderSF1449Template,
+        ),
+        (
+            "packing_list",
+            "Packing List",
+            "Shipping packing list with items and weights",
+            PackingListTemplate,
+        ),
+        (
+            "packing_list_travel",
+            "Travel Packing Checklist",
+            "Travel checklist structure and section coverage",
+            TravelPackingChecklistTemplate,
+        ),
         ("w2_tax_form", "W-2 Tax Form", "IRS W-2 wage and tax statement", W2TaxFormTemplate),
         ("pay_stub", "Pay Stub", "Employee pay stub with earnings and deductions", PayStubTemplate),
-        ("insurance_policy", "Insurance Policy Declaration", "Insurance declaration page with coverages and premiums", InsurancePolicyTemplate),
-        ("pid_to_dexpi", "P&ID to DEXPI", "P&ID graph extraction to DEXPI XML and Smart P&ID JSON", PnIDContract),
+        (
+            "insurance_policy",
+            "Insurance Policy Declaration",
+            "Insurance declaration page with coverages and premiums",
+            InsurancePolicyTemplate,
+        ),
+        (
+            "pid_to_dexpi",
+            "P&ID to DEXPI",
+            "P&ID graph extraction to DEXPI XML and Smart P&ID JSON",
+            PnIDContract,
+        ),
     ]
     return [
         {

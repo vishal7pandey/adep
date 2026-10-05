@@ -81,16 +81,13 @@ _encryption_check = Invariant(
 
 _FAILURE_ACTIONS: dict[GapType, str] = {
     **VLM_FALLBACK_ACTIONS,
-    GapType.MISSING:
-        "Use locate with keywords like 'encryption', 'access control', "
-        "'penetration testing', 'data isolation', 'audit log'. Crop the "
-        "matching section and read with OCR.",
-    GapType.FORMAT_ERROR:
-        "Re-crop the section and re-read. Boolean fields need explicit "
-        "confirmation text. audit_log_retention must be an integer in days.",
-    GapType.INVARIANT_FAILED:
-        "Retention period check failed. Re-read the audit log retention "
-        "section. SOC 2 requires ≥ 365 days.",
+    GapType.MISSING: "Use locate with keywords like 'encryption', 'access control', "
+    "'penetration testing', 'data isolation', 'audit log'. Crop the "
+    "matching section and read with OCR.",
+    GapType.FORMAT_ERROR: "Re-crop the section and re-read. Boolean fields need explicit "
+    "confirmation text. audit_log_retention must be an integer in days.",
+    GapType.INVARIANT_FAILED: "Retention period check failed. Re-read the audit log retention "
+    "section. SOC 2 requires ≥ 365 days.",
 }
 
 

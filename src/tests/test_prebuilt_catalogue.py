@@ -126,14 +126,24 @@ class TestSkillStructure:
 
     def test_all_skills_have_confidence_overrides(self):
         for skill in ALL_SKILLS:
-            assert skill.confidence_overrides, f"Skill '{skill.name}' has empty confidence_overrides"
+            assert skill.confidence_overrides, (
+                f"Skill '{skill.name}' has empty confidence_overrides"
+            )
 
     def test_expected_skill_names(self):
         expected = {
-            "invoice", "trade_finance_scrutiny", "bill_of_quantities",
-            "utility_bill", "thermal_receipt", "medical_claim",
-            "compliance_audit", "commercial_lease", "commodity_trade",
-            "metallurgical_assay", "store_audit", "ad_buy",
+            "invoice",
+            "trade_finance_scrutiny",
+            "bill_of_quantities",
+            "utility_bill",
+            "thermal_receipt",
+            "medical_claim",
+            "compliance_audit",
+            "commercial_lease",
+            "commodity_trade",
+            "metallurgical_assay",
+            "store_audit",
+            "ad_buy",
         }
         actual = {s.name for s in ALL_SKILLS}
         assert actual == expected
@@ -258,17 +268,26 @@ class TestPrebuiltDefinitions:
 
     def test_expected_definition_ids(self):
         expected = {
-            "def-trade-finance-scrutiny", "def-boq-estimator",
-            "def-compliance-audit", "def-commercial-lease",
-            "def-commodity-trade", "def-metallurgical-assay",
-            "def-medical-claim", "def-store-audit",
-            "def-thermal-receipt", "def-ad-buy",
+            "def-trade-finance-scrutiny",
+            "def-boq-estimator",
+            "def-compliance-audit",
+            "def-commercial-lease",
+            "def-commodity-trade",
+            "def-metallurgical-assay",
+            "def-medical-claim",
+            "def-store-audit",
+            "def-thermal-receipt",
+            "def-ad-buy",
             "def-utility-bill",
-            "def-bank-statement", "def-purchase-order",
-            "def-packing-list", "def-w2-tax-form",
-            "def-pay-stub", "def-insurance-policy",
+            "def-bank-statement",
+            "def-purchase-order",
+            "def-packing-list",
+            "def-w2-tax-form",
+            "def-pay-stub",
+            "def-insurance-policy",
             "def-pnid-to-dexpi",
-            "def-invoice", "def-packing-list-travel",
+            "def-invoice",
+            "def-packing-list-travel",
             "def-purchase-order-sf1449",
         }
         actual = {d["id"] for d in PREBUILT_DEFINITIONS}
@@ -278,6 +297,7 @@ class TestPrebuiltDefinitions:
         defs = get_prebuilt_definitions()
         assert len(defs) == 21
         from src.definitions.base import AgentDefinition
+
         for d in defs:
             assert isinstance(d, AgentDefinition)
 
@@ -300,6 +320,7 @@ class TestPrebuiltDefinitions:
 
     def test_store_returns_all_prebuilt_definitions(self, tmp_path: Path):
         from src.definitions.store import DefinitionStore
+
         store = DefinitionStore(base_dir=tmp_path / ".adep")
         defs = store.list_definitions()
         assert len(defs) >= 18
@@ -311,6 +332,7 @@ class TestPrebuiltDefinitions:
 
     def test_store_get_definition_returns_prebuilt(self, tmp_path: Path):
         from src.definitions.store import DefinitionStore
+
         store = DefinitionStore(base_dir=tmp_path / ".adep")
         first_id = PREBUILT_DEFINITIONS[0]["id"]
         result = store.get_definition(first_id)
@@ -323,6 +345,7 @@ class TestSkillInvariantExecution:
 
     def test_thermal_receipt_sum_invariant_passes(self):
         from src.tools.base import FieldValue
+
         inv = ThermalReceiptSkill.invariants[0]
         extraction = {
             "subtotal": FieldValue(name="subtotal", value=100.00),
@@ -334,6 +357,7 @@ class TestSkillInvariantExecution:
 
     def test_thermal_receipt_sum_invariant_fails(self):
         from src.tools.base import FieldValue
+
         inv = ThermalReceiptSkill.invariants[0]
         extraction = {
             "subtotal": FieldValue(name="subtotal", value=100.00),
@@ -345,6 +369,7 @@ class TestSkillInvariantExecution:
 
     def test_medical_claim_npi_valid(self):
         from src.tools.base import FieldValue
+
         inv = [i for i in MedicalClaimSkill.invariants if i.name == "npi_format_valid"][0]
         extraction = {"provider_npi": FieldValue(name="provider_npi", value="1234567890")}
         passed, _ = inv.fn(extraction)
@@ -352,6 +377,7 @@ class TestSkillInvariantExecution:
 
     def test_medical_claim_npi_invalid(self):
         from src.tools.base import FieldValue
+
         inv = [i for i in MedicalClaimSkill.invariants if i.name == "npi_format_valid"][0]
         extraction = {"provider_npi": FieldValue(name="provider_npi", value="12345")}
         passed, _ = inv.fn(extraction)
@@ -359,6 +385,7 @@ class TestSkillInvariantExecution:
 
     def test_store_audit_cleanliness_valid(self):
         from src.tools.base import FieldValue
+
         inv = StoreAuditSkill.invariants[0]
         extraction = {"cleanliness_score": FieldValue(name="cleanliness_score", value=4)}
         passed, _ = inv.fn(extraction)
@@ -366,6 +393,7 @@ class TestSkillInvariantExecution:
 
     def test_store_audit_cleanliness_invalid(self):
         from src.tools.base import FieldValue
+
         inv = StoreAuditSkill.invariants[0]
         extraction = {"cleanliness_score": FieldValue(name="cleanliness_score", value=7)}
         passed, _ = inv.fn(extraction)
@@ -373,12 +401,16 @@ class TestSkillInvariantExecution:
 
     def test_ad_buy_budget_sum_valid(self):
         from src.tools.base import FieldValue
+
         inv = [i for i in AdBuySkill.invariants if i.name == "local_markets_sum_to_total_budget"][0]
         extraction = {
-            "local_markets": FieldValue(name="local_markets", value=[
-                {"market": "NYC", "spend": 50000, "impressions": 1000000},
-                {"market": "LA", "spend": 30000, "impressions": 800000},
-            ]),
+            "local_markets": FieldValue(
+                name="local_markets",
+                value=[
+                    {"market": "NYC", "spend": 50000, "impressions": 1000000},
+                    {"market": "LA", "spend": 30000, "impressions": 800000},
+                ],
+            ),
             "total_budget": FieldValue(name="total_budget", value=80000),
         }
         passed, _ = inv.fn(extraction)
@@ -386,12 +418,16 @@ class TestSkillInvariantExecution:
 
     def test_ad_buy_budget_sum_invalid(self):
         from src.tools.base import FieldValue
+
         inv = [i for i in AdBuySkill.invariants if i.name == "local_markets_sum_to_total_budget"][0]
         extraction = {
-            "local_markets": FieldValue(name="local_markets", value=[
-                {"market": "NYC", "spend": 50000, "impressions": 1000000},
-                {"market": "LA", "spend": 30000, "impressions": 800000},
-            ]),
+            "local_markets": FieldValue(
+                name="local_markets",
+                value=[
+                    {"market": "NYC", "spend": 50000, "impressions": 1000000},
+                    {"market": "LA", "spend": 30000, "impressions": 800000},
+                ],
+            ),
             "total_budget": FieldValue(name="total_budget", value=100000),
         }
         passed, _ = inv.fn(extraction)
@@ -399,6 +435,7 @@ class TestSkillInvariantExecution:
 
     def test_compliance_audit_retention_valid(self):
         from src.tools.base import FieldValue
+
         inv = ComplianceAuditSkill.invariants[0]
         extraction = {"audit_log_retention": FieldValue(name="audit_log_retention", value=365)}
         passed, _ = inv.fn(extraction)
@@ -406,6 +443,7 @@ class TestSkillInvariantExecution:
 
     def test_compliance_audit_retention_invalid(self):
         from src.tools.base import FieldValue
+
         inv = ComplianceAuditSkill.invariants[0]
         extraction = {"audit_log_retention": FieldValue(name="audit_log_retention", value=90)}
         passed, _ = inv.fn(extraction)

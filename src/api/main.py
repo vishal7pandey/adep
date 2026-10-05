@@ -107,10 +107,12 @@ def create_app() -> FastAPI:
 
     # Auth middleware [BLK-122]
     from src.api.auth import install_auth_middleware
+
     install_auth_middleware(app)
 
     # Rate limiting middleware [BLK-123]
     from src.api.rate_limit import install_rate_limit_middleware
+
     install_rate_limit_middleware(app)
 
     # Mount routes under /api/v1
@@ -178,6 +180,7 @@ def create_app() -> FastAPI:
     async def readiness_check() -> dict[str, str]:
         """Readiness check — verifies file store and config are available."""
         from src.definitions.store import get_store
+
         try:
             store = get_store()
             store.list_definitions()
@@ -193,6 +196,7 @@ def create_app() -> FastAPI:
     async def get_locales() -> list[dict[str, str]]:
         """List supported locales for i18n [BLK-065]."""
         from src.agent.i18n import get_locales as _get_locales
+
         return _get_locales()
 
     # Analytics endpoints [BLK-066]
@@ -200,24 +204,28 @@ def create_app() -> FastAPI:
     async def analytics_skills() -> list[dict[str, Any]]:
         """Per-skill analytics [BLK-066]."""
         from src.agent.analytics import get_skill_analytics
+
         return get_skill_analytics()
 
     @app.get("/api/v1/admin/analytics/templates")
     async def analytics_templates() -> list[dict[str, Any]]:
         """Per-template analytics [BLK-066]."""
         from src.agent.analytics import get_template_analytics
+
         return get_template_analytics()
 
     @app.get("/api/v1/admin/analytics/documents")
     async def analytics_documents() -> dict[str, Any]:
         """Per-document-type analytics [BLK-066]."""
         from src.agent.analytics import get_document_analytics
+
         return get_document_analytics()
 
     @app.get("/api/v1/admin/analytics/failures")
     async def analytics_failures() -> dict[str, Any]:
         """Failure analysis [BLK-066]."""
         from src.agent.analytics import get_failure_analytics
+
         return get_failure_analytics()
 
     # Cache management endpoints [BLK-124]
@@ -225,12 +233,14 @@ def create_app() -> FastAPI:
     async def cache_stats() -> dict[str, Any]:
         """Get tool result cache statistics [BLK-124]."""
         from src.tools.cache import get_cache
+
         return get_cache().stats()
 
     @app.delete("/api/v1/admin/cache")
     async def clear_cache() -> dict[str, Any]:
         """Clear the tool result cache [BLK-124]."""
         from src.tools.cache import get_cache
+
         cleared = get_cache().clear()
         return {"cleared": cleared}
 
@@ -264,6 +274,7 @@ def create_app() -> FastAPI:
     async def queue_status() -> dict[str, Any]:
         """Get async run queue status [BLK-129]."""
         from src.api.run_executor import get_executor
+
         return get_executor().get_queue_status()
 
     # Startup/shutdown hooks for RunExecutor [BLK-129]
@@ -271,6 +282,7 @@ def create_app() -> FastAPI:
     async def startup_executor() -> None:
         """Start the async run executor and recover orphaned runs [BLK-129]."""
         from src.api.run_executor import get_executor
+
         executor = get_executor()
         executor.start()
         orphans = executor.recover_orphans()
@@ -281,6 +293,7 @@ def create_app() -> FastAPI:
     async def shutdown_executor() -> None:
         """Graceful shutdown — drain in-flight runs [BLK-129]."""
         from src.api.run_executor import get_executor
+
         executor = get_executor()
         await executor.stop()
 

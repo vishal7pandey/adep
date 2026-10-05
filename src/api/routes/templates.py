@@ -14,6 +14,7 @@ router = APIRouter(tags=["templates"])
 
 class TemplateFieldSchema(BaseModel):
     """A single field in a template schema."""
+
     name: str
     type: str
     description: str = ""
@@ -23,6 +24,7 @@ class TemplateFieldSchema(BaseModel):
 
 class CreateTemplateRequest(BaseModel):
     """Request body for creating a template."""
+
     id: str = Field(description="Unique template identifier")
     name: str
     description: str = ""
@@ -31,6 +33,7 @@ class CreateTemplateRequest(BaseModel):
 
 class UpdateTemplateRequest(BaseModel):
     """Request body for updating a template."""
+
     name: str | None = None
     description: str | None = None
     fields: list[TemplateFieldSchema] | None = None
@@ -38,6 +41,7 @@ class UpdateTemplateRequest(BaseModel):
 
 class GenerateTemplateRequest(BaseModel):
     """Request body for AI template generation [BLK-067]."""
+
     description: str = Field(description="Natural language description of what to extract")
 
 
@@ -57,16 +61,13 @@ async def list_templates(
     if q:
         q_lower = q.lower()
         items = [
-            t for t in items
-            if q_lower in t.get("name", "").lower()
-            or q_lower in t.get("description", "").lower()
+            t
+            for t in items
+            if q_lower in t.get("name", "").lower() or q_lower in t.get("description", "").lower()
         ]
 
     if field_type:
-        items = [
-            t for t in items
-            if any(f.get("type") == field_type for f in t.get("fields", []))
-        ]
+        items = [t for t in items if any(f.get("type") == field_type for f in t.get("fields", []))]
 
     return items
 

@@ -33,12 +33,14 @@ def client(tmp_path: Path) -> TestClient:
     """Create a FastAPI TestClient with a temporary store."""
     import src.definitions.store as store_module
     import src.config as config_module
+
     old_store = store_module._store
     old_auth = config_module.settings.auth_enabled
     store_module._store = DefinitionStore(base_dir=tmp_path / ".adep")
     config_module.settings.auth_enabled = False
 
     from src.api.main import create_app
+
     app = create_app()
     test_client = TestClient(app)
 
@@ -51,6 +53,7 @@ def client(tmp_path: Path) -> TestClient:
 def _save_run(run_id: str, **overrides: Any) -> None:
     """Save a run to the test store with defaults."""
     import src.definitions.store as store_module
+
     data = {
         "id": run_id,
         "definition_id": "def-test",
@@ -60,7 +63,12 @@ def _save_run(run_id: str, **overrides: Any) -> None:
         "total_fields": 7,
         "extracted_fields_count": 3,
         "fields": [
-            {"id": "invoice_number", "name": "invoice_number", "value": "INV-001", "confidence": 0.95},
+            {
+                "id": "invoice_number",
+                "name": "invoice_number",
+                "value": "INV-001",
+                "confidence": 0.95,
+            },
         ],
     }
     data.update(overrides)
@@ -139,9 +147,11 @@ class TestSSEGateEvent:
         loop = asyncio.new_event_loop()
         events = []
         try:
+
             async def collect():
                 async for e in emitter.async_iter():
                     events.append(e)
+
             loop.run_until_complete(collect())
         finally:
             loop.close()
@@ -172,9 +182,12 @@ class TestApproveEndpoint:
 
     def test_approve_accept(self, client: TestClient):
         _save_run("run-1")
-        response = client.post("/api/v1/runs/run-1/approve", json={
-            "field": "total",
-        })
+        response = client.post(
+            "/api/v1/runs/run-1/approve",
+            json={
+                "field": "total",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["field"] == "total"
@@ -191,32 +204,44 @@ class TestApproveEndpoint:
 
     def test_reject_field(self, client: TestClient):
         _save_run("run-2")
-        response = client.post("/api/v1/runs/run-2/reject", json={
-            "field": "subtotal",
-        })
+        response = client.post(
+            "/api/v1/runs/run-2/reject",
+            json={
+                "field": "subtotal",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["action"] == "reject"
         assert data["field"] == "subtotal"
 
     def test_approve_nonexistent_run(self, client: TestClient):
-        response = client.post("/api/v1/runs/nonexistent/approve", json={
-            "field": "total",
-        })
+        response = client.post(
+            "/api/v1/runs/nonexistent/approve",
+            json={
+                "field": "total",
+            },
+        )
         assert response.status_code == 404
 
     def test_reject_nonexistent_run(self, client: TestClient):
-        response = client.post("/api/v1/runs/nonexistent/reject", json={
-            "field": "total",
-        })
+        response = client.post(
+            "/api/v1/runs/nonexistent/reject",
+            json={
+                "field": "total",
+            },
+        )
         assert response.status_code == 404
 
     def test_approve_resumes_paused_run(self, client: TestClient):
         """Approving a field should resume a paused run [BLK-047]."""
         _save_run("run-4", status="paused")
-        response = client.post("/api/v1/runs/run-4/approve", json={
-            "field": "total",
-        })
+        response = client.post(
+            "/api/v1/runs/run-4/approve",
+            json={
+                "field": "total",
+            },
+        )
         assert response.status_code == 200
         get_response = client.get("/api/v1/runs/run-4")
         assert get_response.json()["status"] == "running"
@@ -224,9 +249,12 @@ class TestApproveEndpoint:
     def test_reject_resumes_paused_run(self, client: TestClient):
         """Rejecting a field should also resume a paused run [BLK-047]."""
         _save_run("run-4b", status="paused")
-        response = client.post("/api/v1/runs/run-4b/reject", json={
-            "field": "total",
-        })
+        response = client.post(
+            "/api/v1/runs/run-4b/reject",
+            json={
+                "field": "total",
+            },
+        )
         assert response.status_code == 200
         get_response = client.get("/api/v1/runs/run-4b")
         assert get_response.json()["status"] == "running"
@@ -234,12 +262,18 @@ class TestApproveEndpoint:
     def test_approve_records_decision(self, client: TestClient):
         """Approval decisions should be recorded in run data [BLK-047]."""
         _save_run("run-5")
-        client.post("/api/v1/runs/run-5/approve", json={
-            "field": "total",
-        })
-        client.post("/api/v1/runs/run-5/reject", json={
-            "field": "vendor",
-        })
+        client.post(
+            "/api/v1/runs/run-5/approve",
+            json={
+                "field": "total",
+            },
+        )
+        client.post(
+            "/api/v1/runs/run-5/reject",
+            json={
+                "field": "vendor",
+            },
+        )
         get_response = client.get("/api/v1/runs/run-5")
         run_data = get_response.json()
         assert "gate_approvals" in run_data

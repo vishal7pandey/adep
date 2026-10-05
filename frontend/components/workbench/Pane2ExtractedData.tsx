@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  CheckCircle2, 
-  AlertTriangle, 
-  AlertCircle, 
-  MapPin, 
-  Download, 
-  FileText, 
-  Code, 
-  Edit2, 
-  Check, 
-  Search, 
-  Layers, 
+import {
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle,
+  MapPin,
+  Download,
+  FileText,
+  Code,
+  Edit2,
+  Check,
+  Search,
+  Layers,
   Sparkles,
   RotateCcw,
   Copy,

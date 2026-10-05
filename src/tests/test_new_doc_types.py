@@ -32,8 +32,10 @@ from src.agent.validator import GapType
 # Helper: mock FieldValue
 # ---------------------------------------------------------------------------
 
+
 class MockFieldValue:
     """Mock FieldValue for invariant testing."""
+
     def __init__(self, value):
         self.value = value
 
@@ -46,6 +48,7 @@ def mock_state(**kwargs):
 # ---------------------------------------------------------------------------
 # Template structure tests
 # ---------------------------------------------------------------------------
+
 
 class TestBankStatementTemplate:
     """Verify BankStatementTemplate structure."""
@@ -169,6 +172,7 @@ class TestInsurancePolicyTemplate:
 # Skill configuration tests
 # ---------------------------------------------------------------------------
 
+
 class TestSkillConfigurations:
     """Verify skill configurations for new document types."""
 
@@ -209,21 +213,26 @@ class TestSkillConfigurations:
 # Invariant tests
 # ---------------------------------------------------------------------------
 
+
 class TestBankStatementInvariants:
     """Verify bank statement balance continuity invariant."""
 
     def test_valid_balance(self):
         state = mock_state(
-            opening_balance=1000.0, total_credits=500.0,
-            total_debits=300.0, closing_balance=1200.0,
+            opening_balance=1000.0,
+            total_credits=500.0,
+            total_debits=300.0,
+            closing_balance=1200.0,
         )
         ok, msg = _check_balance_continuity(state)
         assert ok is True
 
     def test_invalid_balance(self):
         state = mock_state(
-            opening_balance=1000.0, total_credits=500.0,
-            total_debits=300.0, closing_balance=1100.0,
+            opening_balance=1000.0,
+            total_credits=500.0,
+            total_debits=300.0,
+            closing_balance=1100.0,
         )
         ok, msg = _check_balance_continuity(state)
         assert ok is False
@@ -240,30 +249,44 @@ class TestPurchaseOrderInvariants:
 
     def test_valid_totals(self):
         state = mock_state(
-            subtotal=100.0, tax=10.0, shipping=5.0, total=115.0,
+            subtotal=100.0,
+            tax=10.0,
+            shipping=5.0,
+            total=115.0,
         )
         ok, msg = _check_po_totals(state)
         assert ok is True
 
     def test_invalid_totals(self):
         state = mock_state(
-            subtotal=100.0, tax=10.0, shipping=5.0, total=120.0,
+            subtotal=100.0,
+            tax=10.0,
+            shipping=5.0,
+            total=120.0,
         )
         ok, msg = _check_po_totals(state)
         assert ok is False
 
     def test_valid_line_items_sum(self):
-        items = MockFieldValue([
-            {"amount": 50.0}, {"amount": 30.0}, {"amount": 20.0},
-        ])
+        items = MockFieldValue(
+            [
+                {"amount": 50.0},
+                {"amount": 30.0},
+                {"amount": 20.0},
+            ]
+        )
         state = {"line_items": items, "subtotal": MockFieldValue(100.0)}
         ok, msg = _check_line_items_sum(state)
         assert ok is True
 
     def test_invalid_line_items_sum(self):
-        items = MockFieldValue([
-            {"amount": 50.0}, {"amount": 30.0}, {"amount": 25.0},
-        ])
+        items = MockFieldValue(
+            [
+                {"amount": 50.0},
+                {"amount": 30.0},
+                {"amount": 25.0},
+            ]
+        )
         state = {"line_items": items, "subtotal": MockFieldValue(100.0)}
         ok, msg = _check_line_items_sum(state)
         assert ok is False
@@ -273,17 +296,24 @@ class TestPackingListInvariants:
     """Verify packing list weight sum invariant."""
 
     def test_valid_weight(self):
-        items = MockFieldValue([
-            {"weight": 10.0}, {"weight": 20.0}, {"weight": 5.0},
-        ])
+        items = MockFieldValue(
+            [
+                {"weight": 10.0},
+                {"weight": 20.0},
+                {"weight": 5.0},
+            ]
+        )
         state = {"items": items, "total_weight": MockFieldValue(35.0)}
         ok, msg = _check_total_weight(state)
         assert ok is True
 
     def test_invalid_weight(self):
-        items = MockFieldValue([
-            {"weight": 10.0}, {"weight": 20.0},
-        ])
+        items = MockFieldValue(
+            [
+                {"weight": 10.0},
+                {"weight": 20.0},
+            ]
+        )
         state = {"items": items, "total_weight": MockFieldValue(35.0)}
         ok, msg = _check_total_weight(state)
         assert ok is False
@@ -329,13 +359,19 @@ class TestPayStubInvariants:
     """Verify pay stub net pay invariant."""
 
     def test_valid_net_pay(self):
-        deductions = MockFieldValue([
-            {"amount": 100.0}, {"amount": 50.0},
-        ])
+        deductions = MockFieldValue(
+            [
+                {"amount": 100.0},
+                {"amount": 50.0},
+            ]
+        )
         state = mock_state(
-            gross_pay=2000.0, net_pay=1397.0,
-            federal_tax=200.0, state_tax=100.0,
-            social_security=124.0, medicare=29.0,
+            gross_pay=2000.0,
+            net_pay=1397.0,
+            federal_tax=200.0,
+            state_tax=100.0,
+            social_security=124.0,
+            medicare=29.0,
         )
         state["deductions"] = deductions
         ok, msg = _check_net_pay(state)
@@ -343,7 +379,8 @@ class TestPayStubInvariants:
 
     def test_invalid_net_pay(self):
         state = mock_state(
-            gross_pay=2000.0, net_pay=1900.0,
+            gross_pay=2000.0,
+            net_pay=1900.0,
             federal_tax=200.0,
         )
         ok, msg = _check_net_pay(state)
@@ -354,17 +391,24 @@ class TestInsurancePolicyInvariants:
     """Verify insurance premium sum invariant."""
 
     def test_valid_premium_sum(self):
-        coverages = MockFieldValue([
-            {"premium": 500.0}, {"premium": 300.0}, {"premium": 200.0},
-        ])
+        coverages = MockFieldValue(
+            [
+                {"premium": 500.0},
+                {"premium": 300.0},
+                {"premium": 200.0},
+            ]
+        )
         state = {"coverages": coverages, "total_premium": MockFieldValue(1000.0)}
         ok, msg = _check_premium_sum(state)
         assert ok is True
 
     def test_invalid_premium_sum(self):
-        coverages = MockFieldValue([
-            {"premium": 500.0}, {"premium": 300.0},
-        ])
+        coverages = MockFieldValue(
+            [
+                {"premium": 500.0},
+                {"premium": 300.0},
+            ]
+        )
         state = {"coverages": coverages, "total_premium": MockFieldValue(1000.0)}
         ok, msg = _check_premium_sum(state)
         assert ok is False
@@ -374,14 +418,20 @@ class TestInsurancePolicyInvariants:
 # Registry resolution tests
 # ---------------------------------------------------------------------------
 
+
 class TestRegistryResolution:
     """Verify new skills and templates are registered in run_engine."""
 
     def test_all_new_skills_resolvable(self):
         from src.api.run_engine import resolve_skill
+
         for skill_id in [
-            "bank_statement", "purchase_order", "packing_list",
-            "w2_tax_form", "pay_stub", "insurance_policy",
+            "bank_statement",
+            "purchase_order",
+            "packing_list",
+            "w2_tax_form",
+            "pay_stub",
+            "insurance_policy",
         ]:
             skill = resolve_skill(skill_id)
             assert skill is not None
@@ -389,9 +439,14 @@ class TestRegistryResolution:
 
     def test_all_new_templates_resolvable(self):
         from src.api.run_engine import resolve_template
+
         for template_id in [
-            "bank_statement", "purchase_order", "packing_list",
-            "w2_tax_form", "pay_stub", "insurance_policy",
+            "bank_statement",
+            "purchase_order",
+            "packing_list",
+            "w2_tax_form",
+            "pay_stub",
+            "insurance_policy",
         ]:
             template_cls = resolve_template(template_id)
             assert template_cls is not None
@@ -401,42 +456,62 @@ class TestRegistryResolution:
 # Prebuilt definition tests
 # ---------------------------------------------------------------------------
 
+
 class TestPrebuiltDefinitions:
     """Verify new prebuilt definitions are registered."""
 
     def test_no_duplicate_definition_ids(self):
         """BLK-172: Ensure no duplicate definition IDs in prebuilt definitions."""
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         def_ids = [d["id"] for d in PREBUILT_DEFINITIONS]
-        assert len(def_ids) == len(set(def_ids)), f"Duplicate definition IDs: {set(def_ids) - set(def_ids)}"
+        assert len(def_ids) == len(set(def_ids)), (
+            f"Duplicate definition IDs: {set(def_ids) - set(def_ids)}"
+        )
 
     def test_all_new_definitions_present(self):
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         def_ids = {d["id"] for d in PREBUILT_DEFINITIONS}
         for def_id in [
-            "def-bank-statement", "def-purchase-order", "def-packing-list",
-            "def-w2-tax-form", "def-pay-stub", "def-insurance-policy",
+            "def-bank-statement",
+            "def-purchase-order",
+            "def-packing-list",
+            "def-w2-tax-form",
+            "def-pay-stub",
+            "def-insurance-policy",
         ]:
             assert def_id in def_ids
 
     def test_definition_count(self):
         from src.definitions.prebuilt import PREBUILT_DEFINITIONS
+
         assert len(PREBUILT_DEFINITIONS) == 21
 
     def test_new_skills_in_prebuilt_skills(self):
         from src.definitions.prebuilt import PREBUILT_SKILLS
+
         skill_ids = {s["id"] for s in PREBUILT_SKILLS}
         for skill_id in [
-            "bank_statement", "purchase_order", "packing_list",
-            "w2_tax_form", "pay_stub", "insurance_policy",
+            "bank_statement",
+            "purchase_order",
+            "packing_list",
+            "w2_tax_form",
+            "pay_stub",
+            "insurance_policy",
         ]:
             assert skill_id in skill_ids
 
     def test_new_templates_in_prebuilt_templates(self):
         from src.definitions.prebuilt import PREBUILT_TEMPLATES
+
         template_ids = {t["id"] for t in PREBUILT_TEMPLATES}
         for template_id in [
-            "bank_statement", "purchase_order", "packing_list",
-            "w2_tax_form", "pay_stub", "insurance_policy",
+            "bank_statement",
+            "purchase_order",
+            "packing_list",
+            "w2_tax_form",
+            "pay_stub",
+            "insurance_policy",
         ]:
             assert template_id in template_ids

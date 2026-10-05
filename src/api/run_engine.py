@@ -99,6 +99,7 @@ def _build_planner_client() -> Any | None:
         return _PlannerLLMClient()
     return None
 
+
 # Skill registry — maps skill IDs to Skill instances [BLK-088]
 _SKILL_REGISTRY: dict[str, Skill] = {
     "invoice": InvoiceSkill,
@@ -223,7 +224,10 @@ def _build_dynamic_template(template_ref: str, store: DefinitionStore) -> type[T
             ),
         )
 
-    model_name = "".join(part.capitalize() for part in template_ref.replace("-", "_").split("_")) or "DynamicTemplate"
+    model_name = (
+        "".join(part.capitalize() for part in template_ref.replace("-", "_").split("_"))
+        or "DynamicTemplate"
+    )
     dynamic_model = create_model(model_name, __base__=Template, **field_definitions)
     dynamic_model.__doc__ = template_data.get("description", "Runtime-generated template")
     return dynamic_model
@@ -257,22 +261,24 @@ def _serialize_trace(trace: list[Any]) -> list[dict[str, Any]]:
     """Serialize trace entries for run-scoped verification."""
     serialized: list[dict[str, Any]] = []
     for entry in trace:
-        serialized.append({
-            "step": entry.step,
-            "thought": entry.thought,
-            "tool_name": entry.tool_name,
-            "tool_args": _serialize_json_safe(entry.tool_args),
-            "field": entry.field,
-            "result_summary": entry.result_summary,
-            "result": {
-                "ok": entry.result.ok,
-                "error": entry.result.error,
-                "tool": entry.result.tool,
-                "grounding": _serialize_grounding(entry.result.grounding),
-                "cost": _serialize_json_safe(entry.result.cost),
-                "data": _serialize_json_safe(entry.result.data),
-            },
-        })
+        serialized.append(
+            {
+                "step": entry.step,
+                "thought": entry.thought,
+                "tool_name": entry.tool_name,
+                "tool_args": _serialize_json_safe(entry.tool_args),
+                "field": entry.field,
+                "result_summary": entry.result_summary,
+                "result": {
+                    "ok": entry.result.ok,
+                    "error": entry.result.error,
+                    "tool": entry.result.tool,
+                    "grounding": _serialize_grounding(entry.result.grounding),
+                    "cost": _serialize_json_safe(entry.result.cost),
+                    "data": _serialize_json_safe(entry.result.data),
+                },
+            }
+        )
     return serialized
 
 
@@ -432,6 +438,7 @@ def map_status_to_frontend(status: str) -> str:
     Delegates to the canonical mapping in ``src.api.status``.
     """
     from src.api.status import map_status_to_frontend as _map
+
     return _map(status)
 
 
@@ -473,15 +480,19 @@ def serialize_extraction_result(
         if fv.grounding:
             bbox = bbox_to_frontend(fv.grounding.bbox)
             page = fv.grounding.page
-        fields.append({
-            "id": f"{run_id}_{name}",
-            "name": name,
-            "value": fv.value,
-            "confidence": fv.confidence,
-            "bbox": bbox,
-            "page": page,
-            "status": map_field_status(fv.confidence, fv.grounding is not None, result.is_complete),
-        })
+        fields.append(
+            {
+                "id": f"{run_id}_{name}",
+                "name": name,
+                "value": fv.value,
+                "confidence": fv.confidence,
+                "bbox": bbox,
+                "page": page,
+                "status": map_field_status(
+                    fv.confidence, fv.grounding is not None, result.is_complete
+                ),
+            }
+        )
 
     return {
         "id": run_id,
@@ -520,15 +531,17 @@ def _serialize_graph_result(
     for node in nodes:
         nid = node.get("id", "")
         bbox = result.node_grounding.get(nid)
-        graph_fields.append({
-            "id": f"{run_id}_node_{nid}",
-            "name": nid,
-            "value": node.get("tag") or node.get("type", "unknown"),
-            "confidence": node.get("confidence", 0.0),
-            "bbox": bbox_to_frontend(bbox) if bbox else None,
-            "page": 0,
-            "status": "verified" if node.get("confidence", 0) >= 0.8 else "low_confidence",
-        })
+        graph_fields.append(
+            {
+                "id": f"{run_id}_node_{nid}",
+                "name": nid,
+                "value": node.get("tag") or node.get("type", "unknown"),
+                "confidence": node.get("confidence", 0.0),
+                "bbox": bbox_to_frontend(bbox) if bbox else None,
+                "page": 0,
+                "status": "verified" if node.get("confidence", 0) >= 0.8 else "low_confidence",
+            }
+        )
 
     return {
         "id": run_id,
@@ -661,8 +674,10 @@ async def _execute_run_impl(
         run_id = f"run-{uuid.uuid4().hex[:8]}"
 
     # Set context for structured logging + tracing [BLK-130]
-    with set_context(run_id=run_id, definition_id=definition_id), \
-         span("run:execute", run_id=run_id, definition_id=definition_id):
+    with (
+        set_context(run_id=run_id, definition_id=definition_id),
+        span("run:execute", run_id=run_id, definition_id=definition_id),
+    ):
         return await _execute_run_inner(
             definition_id=definition_id,
             document_path=document_path,
@@ -725,6 +740,7 @@ async def _execute_run_inner(
     page_paths: list[str] | None = None
     try:
         from src.documents.store import get_document_store
+
         doc_store = get_document_store()
         try:
             doc_meta = doc_store.get_document(document_path)
@@ -736,14 +752,21 @@ async def _execute_run_inner(
             # Try to find a stored document whose original_filename matches.
             for d in doc_store.list_documents():
                 stored_paths = d.get("page_paths", [])
-                if stored_paths and Path(stored_paths[0]).resolve() == Path(document_path).resolve():
+                if (
+                    stored_paths
+                    and Path(stored_paths[0]).resolve() == Path(document_path).resolve()
+                ):
                     page_paths = stored_paths
                     break
     except Exception:
-        logger.debug("DocumentStore lookup failed — treating as single-page [BLK-220]", exc_info=True)
+        logger.debug(
+            "DocumentStore lookup failed — treating as single-page [BLK-220]", exc_info=True
+        )
 
     state = build_initial_state(
-        document_path, template_cls, skill,
+        document_path,
+        template_cls,
+        skill,
         task_type=task_type,
         page_paths=page_paths,
         confidence_threshold=confidence_threshold,
@@ -775,8 +798,14 @@ async def _execute_run_inner(
                 "AZURE_CHAT_ENDPOINT to run agent-based extraction."
             )
     if fallback_result is not None:
-        logger.info("Run %s using PDF fallback (execution_mode=fallback)", run_id, extra={"run_id": run_id, "execution_mode": "fallback"})
-        serialized = serialize_extraction_result(run_id, definition_id, document_path, fallback_result, {"trace": fallback_result.trace})
+        logger.info(
+            "Run %s using PDF fallback (execution_mode=fallback)",
+            run_id,
+            extra={"run_id": run_id, "execution_mode": "fallback"},
+        )
+        serialized = serialize_extraction_result(
+            run_id, definition_id, document_path, fallback_result, {"trace": fallback_result.trace}
+        )
         serialized["execution_mode"] = "fallback"
         try:
             existing = store.get_run(run_id)
@@ -785,7 +814,9 @@ async def _execute_run_inner(
         except FileNotFoundError:
             store.save_run(run_id, serialized)
         if emitter:
-            complete_status = "completed" if fallback_result.is_complete else "max_iterations_reached"
+            complete_status = (
+                "completed" if fallback_result.is_complete else "max_iterations_reached"
+            )
             emitter.emit_complete(complete_status, run_id=run_id, execution_mode="fallback")
 
         # Fire webhook notification (non-blocking) [BLK-242]
@@ -793,13 +824,16 @@ async def _execute_run_inner(
         webhook_event = status_to_webhook_event(frontend_status)
         if webhook_event:
             try:
-                await emit_webhook_event_async(webhook_event, {
-                    "run_id": run_id,
-                    "definition_id": definition_id,
-                    "document_url": document_path,
-                    "status": frontend_status,
-                    "execution_mode": "fallback",
-                })
+                await emit_webhook_event_async(
+                    webhook_event,
+                    {
+                        "run_id": run_id,
+                        "definition_id": definition_id,
+                        "document_url": document_path,
+                        "status": frontend_status,
+                        "execution_mode": "fallback",
+                    },
+                )
             except Exception as e:
                 logger.warning("Webhook emission failed for run %s: %s [BLK-242]", run_id, e)
 
@@ -823,13 +857,15 @@ async def _execute_run_inner(
     audit_logger = AuditLogger(run_id=run_id)
 
     # Select graph mode: OneFlow (single-agent) or standard ReAct [BLK-074]
-    execution_mode = (agent_config.get("execution_mode", "react")
-                      if agent_config else "react")
+    execution_mode = agent_config.get("execution_mode", "react") if agent_config else "react"
     use_oneflow = execution_mode == "oneflow"
 
     if use_oneflow:
-        logger.info("Run %s using OneFlow single-agent mode [BLK-074]", run_id,
-                     extra={"run_id": run_id, "execution_mode": "oneflow"})
+        logger.info(
+            "Run %s using OneFlow single-agent mode [BLK-074]",
+            run_id,
+            extra={"run_id": run_id, "execution_mode": "oneflow"},
+        )
         graph = build_oneflow_graph(
             registry=registry,
             skill=skill,
@@ -860,7 +896,14 @@ async def _execute_run_inner(
     if emitter:
         emitter.emit_progress(0, result_gap_count(state), 0)
         if event_buffer is not None:
-            event_buffer.append({"type": "progress", "completed_fields": 0, "total_fields": result_gap_count(state), "failing_fields": 0})
+            event_buffer.append(
+                {
+                    "type": "progress",
+                    "completed_fields": 0,
+                    "total_fields": result_gap_count(state),
+                    "failing_fields": 0,
+                }
+            )
 
     # Invoke graph [BLK-094] — run in a thread to avoid blocking the event loop [BLK-240]
     recursion_limit = (max_cycles or settings.max_cycles_per_document) + 10
@@ -878,13 +921,16 @@ async def _execute_run_inner(
 
         # Fire webhook notification (non-blocking) [BLK-242]
         try:
-            await emit_webhook_event_async(WebhookEvent.RUN_FAILED, {
-                "run_id": run_id,
-                "definition_id": definition_id,
-                "document_url": document_path,
-                "status": "failed",
-                "error": str(e),
-            })
+            await emit_webhook_event_async(
+                WebhookEvent.RUN_FAILED,
+                {
+                    "run_id": run_id,
+                    "definition_id": definition_id,
+                    "document_url": document_path,
+                    "status": "failed",
+                    "error": str(e),
+                },
+            )
         except Exception as we:
             logger.warning("Webhook emission failed for run %s: %s [BLK-242]", run_id, we)
 
@@ -912,6 +958,7 @@ async def _execute_run_inner(
         if task_type == "graph_extraction":
             from src.agent.graph import _build_graph_result
             from src.agent.validator import TaskValidator
+
             validator = TaskValidator()
             graph_result = _build_graph_result(
                 state=final_state,
@@ -980,7 +1027,11 @@ async def _execute_run_inner(
                 summary_length=len(compaction_summary),
             )
         complete_status = map_store_status_to_sse(map_status_to_frontend(result.status))
-        complete_msg = "All fields extracted" if result.is_complete else f"Run ended with {len(result.gap_report.gaps)} gaps remaining"
+        complete_msg = (
+            "All fields extracted"
+            if result.is_complete
+            else f"Run ended with {len(result.gap_report.gaps)} gaps remaining"
+        )
         emitter.emit_complete(
             complete_status,
             complete_msg,
@@ -992,16 +1043,26 @@ async def _execute_run_inner(
             # RunStatus.ERROR correctly surfaces as "failed" instead of being
             # collapsed into "max_iterations_reached".
             complete_status = map_store_status_to_sse(map_status_to_frontend(result.status))
-            complete_msg = "All fields extracted" if result.is_complete else f"Run ended with {len(result.gap_report.gaps)} gaps remaining"
+            complete_msg = (
+                "All fields extracted"
+                if result.is_complete
+                else f"Run ended with {len(result.gap_report.gaps)} gaps remaining"
+            )
             emitter.emit_complete(
                 complete_status,
                 complete_msg,
                 run_id=run_id,
             )
 
-    logger.info("Run %s completed via ReAct agent (execution_mode=agent)", run_id, extra={"run_id": run_id, "execution_mode": "agent"})
+    logger.info(
+        "Run %s completed via ReAct agent (execution_mode=agent)",
+        run_id,
+        extra={"run_id": run_id, "execution_mode": "agent"},
+    )
     # Serialize and persist [BLK-165]
-    serialized = serialize_extraction_result(run_id, definition_id, document_path, result, final_state)
+    serialized = serialize_extraction_result(
+        run_id, definition_id, document_path, result, final_state
+    )
     # Merge with existing record to preserve created_at/started_at from executor
     try:
         existing = store.get_run(run_id)
@@ -1015,12 +1076,15 @@ async def _execute_run_inner(
     webhook_event = status_to_webhook_event(frontend_status)
     if webhook_event:
         try:
-            await emit_webhook_event_async(webhook_event, {
-                "run_id": run_id,
-                "definition_id": definition_id,
-                "document_url": document_path,
-                "status": frontend_status,
-            })
+            await emit_webhook_event_async(
+                webhook_event,
+                {
+                    "run_id": run_id,
+                    "definition_id": definition_id,
+                    "document_url": document_path,
+                    "status": frontend_status,
+                },
+            )
         except Exception as e:
             logger.warning("Webhook emission failed for run %s: %s [BLK-242]", run_id, e)
 
@@ -1049,6 +1113,7 @@ def result_gap_count(state: dict[str, Any]) -> int:
         output_formats = getattr(template, "output_formats", [])
         return len(node_types) + len(edge_types) + len(output_formats)
     from src.agent.validator import _required_fields
+
     return len(_required_fields(template))
 
 
@@ -1096,6 +1161,7 @@ def _emit_trace_events(
             page = fv.grounding.page
         # Determine risk tier [BLK-047]
         from src.agent.hitl import classify_extraction_risk
+
         risk_tier = classify_extraction_risk(
             confidence=fv.confidence,
             semantic_failed=False,
@@ -1123,4 +1189,6 @@ def _emit_trace_events(
     # Emit final status_change — use canonical status mapping [BLK-281]
     # so max_iterations_reached is NOT collapsed into "failed".
     final_status = map_status_to_frontend(result.status)
-    emitter.emit_status_change(status=final_status, cycle=result.total_cycles, previous_status="running")
+    emitter.emit_status_change(
+        status=final_status, cycle=result.total_cycles, previous_status="running"
+    )

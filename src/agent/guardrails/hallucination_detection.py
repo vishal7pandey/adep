@@ -95,7 +95,10 @@ def check_grounding(
                 if value_str not in ocr_str:
                     logger.warning(
                         "Hallucination suspected for field '%s': value '%s' not found in OCR text '%s' (distance=%d) [BLK-081]",
-                        field_name, value_str, ocr_str, distance,
+                        field_name,
+                        value_str,
+                        ocr_str,
+                        distance,
                     )
                     return GroundingCheckResult(
                         status="hallucination_suspected",
@@ -154,7 +157,8 @@ def check_invariants(
             violations.append((invariant.name, message))
             logger.warning(
                 "Invariant violation: %s — %s [BLK-081]",
-                invariant.name, message,
+                invariant.name,
+                message,
             )
 
     return violations

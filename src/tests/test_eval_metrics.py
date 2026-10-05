@@ -31,7 +31,9 @@ from src.templates.base import ExtractedResult
 from src.tools.base import FieldValue, Grounding
 
 
-def _fv(value: any, bbox: tuple[int, int, int, int] | None = None, confidence: float = 0.9) -> FieldValue:
+def _fv(
+    value: any, bbox: tuple[int, int, int, int] | None = None, confidence: float = 0.9
+) -> FieldValue:
     """Build a FieldValue with optional grounding."""
     grounding = Grounding(bbox=bbox, source_tool="ocr", confidence=confidence) if bbox else None
     return FieldValue(name="test", value=value, grounding=grounding, confidence=confidence)
@@ -274,7 +276,9 @@ class TestEvaluateExtractionWithANLSSmudge:
         result = _result({"invoice_number": _fv("INV-002", bbox=(10, 10, 100, 50))})
         truth = GroundTruthSample(
             document_path="test.png",
-            fields=[GroundTruthField(name="invoice_number", value="INV-001", bbox=(10, 10, 100, 50))],
+            fields=[
+                GroundTruthField(name="invoice_number", value="INV-001", bbox=(10, 10, 100, 50))
+            ],
         )
         evals = evaluate_extraction(result, truth)
         _, _, _, anls, _ = evals["invoice_number"]
@@ -330,6 +334,7 @@ class TestRunEvaluationWithANLSSmudge:
         )
         report = run_evaluation([result], [truth])
         import json
+
         d = json.loads(report.to_json())
         assert "overall_anls" in d
         assert "overall_smudge" in d

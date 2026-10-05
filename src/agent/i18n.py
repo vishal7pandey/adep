@@ -184,7 +184,8 @@ def detect_document_language(text_sample: str) -> str:
 
     # Check for CJK characters (Chinese, Japanese, Korean)
     cjk_count = sum(
-        1 for c in text_sample
+        1
+        for c in text_sample
         if "\u4e00" <= c <= "\u9fff"  # CJK Unified Ideographs
     )
     if cjk_count > len(text_sample) * 0.3:

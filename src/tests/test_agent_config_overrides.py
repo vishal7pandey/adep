@@ -29,7 +29,9 @@ class TestAgentConfigOverridesApplied:
             validator_config.default_confidence_threshold = confidence_threshold
 
         assert validator_config.default_confidence_threshold == 0.95
-        assert validator_config.default_confidence_threshold != settings.default_confidence_threshold
+        assert (
+            validator_config.default_confidence_threshold != settings.default_confidence_threshold
+        )
 
     def test_no_confidence_threshold_override_keeps_default(self):
         """When agent_config has no confidence_threshold, validator_config
@@ -44,7 +46,9 @@ class TestAgentConfigOverridesApplied:
         if confidence_threshold is not None:
             validator_config.default_confidence_threshold = confidence_threshold
 
-        assert validator_config.default_confidence_threshold == settings.default_confidence_threshold
+        assert (
+            validator_config.default_confidence_threshold == settings.default_confidence_threshold
+        )
 
     def test_max_cycles_overrides_applied_to_loop_detector(self):
         """When agent_config has max_cycles overrides, they must be used

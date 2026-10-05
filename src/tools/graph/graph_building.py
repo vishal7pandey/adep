@@ -35,25 +35,29 @@ def build_graph(
 
     nodes = []
     for sym in symbols:
-        nodes.append({
-            "id": sym["id"],
-            "type": sym.get("class", "unknown"),
-            "bbox": sym.get("bbox"),
-            "confidence": sym.get("confidence", 0.0),
-            "tag": sym.get("tag"),
-            "tag_components": sym.get("tag_components"),
-        })
+        nodes.append(
+            {
+                "id": sym["id"],
+                "type": sym.get("class", "unknown"),
+                "bbox": sym.get("bbox"),
+                "confidence": sym.get("confidence", 0.0),
+                "tag": sym.get("tag"),
+                "tag_components": sym.get("tag_components"),
+            }
+        )
 
     edges = []
     for conn in connections:
-        edges.append({
-            "id": conn.get("id", f"edge_{len(edges)}"),
-            "source": conn["from_id"],
-            "target": conn["to_id"],
-            "type": conn.get("type", "pipe"),
-            "path_bbox": conn.get("path_bbox", []),
-            "confidence": conn.get("confidence", 0.0),
-        })
+        edges.append(
+            {
+                "id": conn.get("id", f"edge_{len(edges)}"),
+                "source": conn["from_id"],
+                "target": conn["to_id"],
+                "type": conn.get("type", "pipe"),
+                "path_bbox": conn.get("path_bbox", []),
+                "confidence": conn.get("confidence", 0.0),
+            }
+        )
 
     return ToolResult(
         ok=True,
@@ -100,11 +104,13 @@ def validate_topology(
     if "no_orphans" in rules:
         for node in nodes:
             if node["id"] not in connected_ids:
-                violations.append({
-                    "rule": "no_orphans",
-                    "node": node["id"],
-                    "message": f"Node {node['id']} ({node.get('type', 'unknown')}) has no connections",
-                })
+                violations.append(
+                    {
+                        "rule": "no_orphans",
+                        "node": node["id"],
+                        "message": f"Node {node['id']} ({node.get('type', 'unknown')}) has no connections",
+                    }
+                )
 
     # Check: every valve connected to at least one pipe
     if "valve_connected" in rules:
@@ -113,25 +119,30 @@ def validate_topology(
         for node in nodes:
             node_type = node.get("type", "").lower()
             if "valve" in node_type and node["id"] not in pipe_connected:
-                violations.append({
-                    "rule": "valve_connected",
-                    "node": node["id"],
-                    "message": f"Valve {node['id']} is not connected to any pipe",
-                })
+                violations.append(
+                    {
+                        "rule": "valve_connected",
+                        "node": node["id"],
+                        "message": f"Valve {node['id']} is not connected to any pipe",
+                    }
+                )
 
     # Check: ISA-5.1 tag format
     if "isa_tag_format" in rules:
         from src.tools.graph.tag_reading import parse_isa_tag
+
         for node in nodes:
             tag = node.get("tag")
             if tag:
                 parsed = parse_isa_tag(tag)
                 if parsed.get("parse_error"):
-                    violations.append({
-                        "rule": "isa_tag_format",
-                        "node": node["id"],
-                        "message": f"Tag '{tag}' does not follow ISA-5.1 format",
-                    })
+                    violations.append(
+                        {
+                            "rule": "isa_tag_format",
+                            "node": node["id"],
+                            "message": f"Tag '{tag}' does not follow ISA-5.1 format",
+                        }
+                    )
 
     # Check: control loop completeness
     if "control_loop" in rules:
@@ -189,17 +200,21 @@ def _check_control_loops(
         has_controller = any(c["id"] in reachable for c in controllers)
         has_final = any(f["id"] in reachable for f in final_elements)
         if not has_controller:
-            violations.append({
-                "rule": "control_loop",
-                "node": tx_id,
-                "message": f"Transmitter {tx_id} has no reachable controller in the graph",
-            })
+            violations.append(
+                {
+                    "rule": "control_loop",
+                    "node": tx_id,
+                    "message": f"Transmitter {tx_id} has no reachable controller in the graph",
+                }
+            )
         if not has_final:
-            violations.append({
-                "rule": "control_loop",
-                "node": tx_id,
-                "message": f"Transmitter {tx_id} has no reachable final element (valve) in the graph",
-            })
+            violations.append(
+                {
+                    "rule": "control_loop",
+                    "node": tx_id,
+                    "message": f"Transmitter {tx_id} has no reachable final element (valve) in the graph",
+                }
+            )
 
 
 def _bfs(adj: dict[str, list[str]], start: str, max_depth: int = 3) -> set[str]:

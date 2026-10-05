@@ -49,11 +49,13 @@ def _get_candidate_types(candidates: list[str] | None = None) -> list[dict[str, 
         # Use the skill_id as the type identifier (matches template/task naming)
         doc_type = data.get("skill_id", def_id)
         description = data.get("name", doc_type)
-        result.append({
-            "type": doc_type,
-            "description": description,
-            "definition_id": def_id,
-        })
+        result.append(
+            {
+                "type": doc_type,
+                "description": description,
+                "definition_id": def_id,
+            }
+        )
     return result
 
 
@@ -222,7 +224,9 @@ def classify_document(
         type_best: dict[str, dict[str, Any]] = {}
         for pred in all_predictions:
             dt = pred.get("document_type", "unknown")
-            if dt not in type_best or pred.get("confidence", 0) > type_best[dt].get("confidence", 0):
+            if dt not in type_best or pred.get("confidence", 0) > type_best[dt].get(
+                "confidence", 0
+            ):
                 type_best[dt] = pred
 
         predictions = sorted(
