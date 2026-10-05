@@ -9,6 +9,13 @@ import pytest
 from src.config import Settings
 
 
+@pytest.fixture(autouse=True)
+def _azure_semantics(monkeypatch):
+    """These tests are about the Azure path: pin it, so a developer's real OPENAI_API_KEY (ADE-41
+    adds an OpenAI provider that auto-selects when a key is set) cannot change what they assert."""
+    monkeypatch.setenv("ADE_LLM_PROVIDER", "azure")
+
+
 class TestProviderConfigValidation:
     """Tests for Settings.validate_provider_config() [BLK-173]."""
 

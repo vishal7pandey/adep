@@ -94,8 +94,8 @@ class _PlannerLLMClient:
 
 
 def _build_planner_client() -> Any | None:
-    """Return an LLM client when Azure planner settings are configured."""
-    if settings.azure_api_key and settings.azure_chat_endpoint:
+    """Return an LLM client when the active provider (OpenAI or Azure) is configured."""
+    if settings.is_llm_configured():
         return _PlannerLLMClient()
     return None
 
