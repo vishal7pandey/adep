@@ -40,7 +40,14 @@ Verified by running each on 2026-10-05 (Windows, Git Bash). Notes from that run:
 * Venv launchers (`pytest.exe` etc.) break when the folder is moved; `uv run python -m pytest` always works.
   Repair with `uv sync --frozen --inexact --reinstall-package <name>` (ADE-6).
 * Python `>=3.10` in `pyproject.toml`; CI uses 3.11. Backend code is in `src/`, tests in `src/tests/`.
-* Secrets (`AZURE_API_KEY` and others) live in the gitignored `.env`; copy `.env.example`. Never commit it.
+* Secrets (`OPENAI_API_KEY`, `AZURE_API_KEY` and others) live in the gitignored `.env`; copy `.env.example`.
+  Never commit it, and never open, print or grep it (not even key names): use `.env.example` for names.
+* **Model provider (ADE-41):** `ADE_LLM_PROVIDER=auto` (default) uses OpenAI when `OPENAI_API_KEY` is set,
+  otherwise Azure; force one with `openai` or `azure`. `OPENAI_CHAT_MODEL` defaults to `gpt-5.4`. Both the old
+  and the new engine follow this one switch. Check that a real call works with
+  `uv run python -m src.providers.smoke` (prints booleans, model names and error types only; costs a
+  fraction of a cent). The Azure endpoint that was configured before ADE-41 no longer resolves in DNS.
+  Any code path that calls the API spends the owner's money: keep real runs small and report the cost.
 * Run data goes to `.adep/` (gitignored runtime data); `make reset` clears it.
 * `sample-data/` (about 70 MB of documents plus `*.expected.json`) is the demo and evaluation set and is
   committed on purpose: do not prune, compress or move it out of git in a cleanup. Known problem: some

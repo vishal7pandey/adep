@@ -55,6 +55,12 @@ class Settings(BaseSettings):
         default="text-embedding-3-large", alias="AZURE_EMBEDDING_DEPLOYMENT"
     )
 
+    # OpenAI (direct API) [ADE-41]. llm_provider (ADE_LLM_PROVIDER) is "auto" (OpenAI when
+    # OPENAI_API_KEY is set, otherwise Azure: the legacy behaviour), "openai" or "azure".
+    llm_provider: str = "auto"
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_chat_model: str = Field(default="gpt-5.4", alias="OPENAI_CHAT_MODEL")
+
     # Validation thresholds [§4.1]
     default_confidence_threshold: float = 0.8
 
@@ -130,6 +136,10 @@ class Settings(BaseSettings):
             ValueError: If provider credentials are partially or fully missing
                 and no PDF fallback is available.
         """
+        provider = self.active_llm_provider  # raises a clear ValueError for an unknown name
+        if provider == "openai":
+            return  # leftover Azure settings are irrelevant when OpenAI is the provider
+
         azure_fields = {
             "AZURE_API_KEY": self.azure_api_key,
             "AZURE_CHAT_ENDPOINT": self.azure_chat_endpoint,
@@ -147,8 +157,33 @@ class Settings(BaseSettings):
                 f"to use PDF fallback. Partial config causes silent zero-output runs."
             )
 
+    @property
+    def active_llm_provider(self) -> str:
+        """The provider in use: "openai" or "azure" [ADE-41].
+
+        An explicit llm_provider wins. "auto" (the default) picks OpenAI when an OpenAI key is
+        set and otherwise Azure, which keeps existing Azure-only setups working unchanged.
+        """
+        choice = (self.llm_provider or "auto").strip().lower()
+        if choice in ("openai", "azure"):
+            return choice
+        if choice != "auto":
+            raise ValueError(
+                f"llm_provider must be 'auto', 'openai' or 'azure', got {self.llm_provider!r}"
+            )
+        return "openai" if self.openai_api_key.strip() else "azure"
+
+    @property
+    def chat_model(self) -> str:
+        """The model name for the active provider (OpenAI model, or Azure deployment)."""
+        if self.active_llm_provider == "openai":
+            return self.openai_chat_model
+        return self.azure_chat_deployment
+
     def is_llm_configured(self) -> bool:
-        """Return True if all required Azure OpenAI credentials are set [BLK-173]."""
+        """Return True if the active provider's credentials are set [BLK-173, ADE-41]."""
+        if self.active_llm_provider == "openai":
+            return bool(self.openai_api_key.strip())
         return bool(self.azure_api_key.strip() and self.azure_chat_endpoint.strip())
 
 
