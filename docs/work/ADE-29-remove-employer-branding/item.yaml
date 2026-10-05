@@ -2,7 +2,7 @@ id: ADE-29
 type: feature
 title: Remove employer branding
 slug: remove-employer-branding
-status: plan-approved
+status: in-review
 risk: low
 jira: ADE-29
 branch: feature/ade-29-remove-employer-branding
