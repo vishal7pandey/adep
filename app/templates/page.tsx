@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { Database, Plus, Edit2, ArrowLeft } from 'lucide-react';
 import { Template, fetchTemplates } from '@/lib/api';
-import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { TemplateEditorComponent } from '@/components/templates/TemplateEditor';
 
 export default function TemplatesPage() {
@@ -20,7 +20,7 @@ export default function TemplatesPage() {
     return (
       <div className="h-full flex flex-col">
         <div className="p-3 bg-[var(--pane-bg)] border-b border-[var(--pane-border)] flex items-center gap-2">
-          <AdeButton
+          <Button
             variant="tertiary"
             size="sm"
             onClick={() => {
@@ -29,7 +29,7 @@ export default function TemplatesPage() {
             }}
           >
             <ArrowLeft className="w-4 h-4" /> Back to Registry
-          </AdeButton>
+          </Button>
         </div>
         <div className="flex-1">
           <TemplateEditorComponent
@@ -54,7 +54,7 @@ export default function TemplatesPage() {
           </h1>
           <p className="text-xs text-muted mt-1">Define outcome contracts, field data types, required constraints, and confidence thresholds</p>
         </div>
-        <AdeButton
+        <Button
           variant="primary"
           onClick={() => {
             setEditingTemplate(null);
@@ -62,7 +62,7 @@ export default function TemplatesPage() {
           }}
         >
           <Plus className="w-4 h-4" /> Create Template
-        </AdeButton>
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -77,7 +77,7 @@ export default function TemplatesPage() {
                 <p className="text-xs text-muted">{tmpl.description}</p>
               </div>
 
-              <AdeButton
+              <Button
                 variant="tertiary"
                 size="sm"
                 onClick={() => {
@@ -86,7 +86,7 @@ export default function TemplatesPage() {
                 }}
               >
                 <Edit2 className="w-3.5 h-3.5" /> Edit Schema
-              </AdeButton>
+              </Button>
             </div>
 
             <div className="border rounded-lg overflow-hidden border-[var(--pane-border)]">

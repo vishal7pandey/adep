@@ -4,8 +4,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Database, Plus, Edit2, ArrowLeft, Search, X } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Template, fetchTemplates, ApiError } from '@/lib/api';
-import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { FieldCardSkeleton } from '@/components/ui/SkeletonLoader';
 
 const TemplateEditorComponent = dynamic(
@@ -47,7 +47,7 @@ export default function TemplatesPage() {
     return (
       <div className="h-full flex flex-col">
         <div className="p-3 bg-[var(--pane-bg)] border-b border-[var(--pane-border)] flex items-center gap-2">
-          <AdeButton
+          <Button
             variant="tertiary"
             size="sm"
             onClick={() => {
@@ -56,7 +56,7 @@ export default function TemplatesPage() {
             }}
           >
             <ArrowLeft className="w-4 h-4" /> Back to Registry
-          </AdeButton>
+          </Button>
         </div>
         <div className="flex-1">
           <TemplateEditorComponent
@@ -81,7 +81,7 @@ export default function TemplatesPage() {
           </h1>
           <p className="text-xs text-muted mt-1">Define what fields to extract from each document type</p>
         </div>
-        <AdeButton
+        <Button
           variant="primary"
           onClick={() => {
             setEditingTemplate(null);
@@ -89,7 +89,7 @@ export default function TemplatesPage() {
           }}
         >
           <Plus className="w-4 h-4" /> Create Template
-        </AdeButton>
+        </Button>
       </div>
 
       {error && (
@@ -150,7 +150,7 @@ export default function TemplatesPage() {
                   <p className="text-xs text-muted">{tmpl.description}</p>
                 </div>
 
-                <AdeButton
+                <Button
                   variant="tertiary"
                   size="sm"
                   onClick={() => {
@@ -159,19 +159,19 @@ export default function TemplatesPage() {
                   }}
                 >
                   <Edit2 className="w-3.5 h-3.5" /> Edit
-                </AdeButton>
+                </Button>
               </div>
 
               <div className="flex items-center gap-2 pt-1 font-mono text-xs">
-                <AdeBadge variant="neutral">{tmpl.fields.length} Fields</AdeBadge>
-                <AdeBadge variant="tool">{requiredCount} Required</AdeBadge>
+                <Badge variant="neutral">{tmpl.fields.length} Fields</Badge>
+                <Badge variant="tool">{requiredCount} Required</Badge>
               </div>
 
               <div className="flex flex-wrap gap-1">
                 {tmpl.fields.slice(0, 5).map((f) => (
-                  <AdeBadge key={f.name} variant="info">
+                  <Badge key={f.name} variant="info">
                     {f.name}
-                  </AdeBadge>
+                  </Badge>
                 ))}
                 {tmpl.fields.length > 5 && (
                   <span className="text-xs text-muted self-center">

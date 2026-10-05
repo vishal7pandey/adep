@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { Database, Plus, Trash2, Save, Copy, CheckCircle2, Wand2 } from 'lucide-react';
 import { Template, FieldSchema, createTemplate, GeneratedTemplate } from '@/lib/api';
-import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { AiTemplateComposer } from '@/components/templates/AiTemplateComposer';
 
@@ -63,12 +63,12 @@ export const TemplateEditorComponent: React.FC<{ initialTemplate?: Template | nu
         </div>
 
         <div className="flex items-center gap-3">
-          <AdeButton variant="secondary" onClick={() => setShowComposer(true)}>
+          <Button variant="secondary" onClick={() => setShowComposer(true)}>
             <Wand2 className="w-4 h-4" /> Auto-generate from Description
-          </AdeButton>
-          <AdeButton variant="primary" onClick={handleSave} disabled={!name.trim() || fields.length === 0}>
+          </Button>
+          <Button variant="primary" onClick={handleSave} disabled={!name.trim() || fields.length === 0}>
             <Save className="w-4 h-4" /> Save Template
-          </AdeButton>
+          </Button>
         </div>
       </div>
 
@@ -122,9 +122,9 @@ export const TemplateEditorComponent: React.FC<{ initialTemplate?: Template | nu
               <h3 className="font-bold text-sm text-[var(--primary-text)]">2. Document Target Fields</h3>
               <p className="text-[11px] text-muted">Add and configure each field the Agent Definition should extract from documents.</p>
             </div>
-            <AdeButton variant="secondary" size="sm" onClick={addField}>
+            <Button variant="secondary" size="sm" onClick={addField}>
               <Plus className="w-3.5 h-3.5" /> Add Field
-            </AdeButton>
+            </Button>
           </div>
 
           {fields.length === 0 ? (
@@ -134,9 +134,9 @@ export const TemplateEditorComponent: React.FC<{ initialTemplate?: Template | nu
               <p className="text-xs max-w-sm mx-auto text-muted">
                 Start by adding your first target extraction field for this document schema template.
               </p>
-              <AdeButton variant="primary" size="sm" onClick={addField}>
+              <Button variant="primary" size="sm" onClick={addField}>
                 <Plus className="w-3.5 h-3.5" /> Add First Field
-              </AdeButton>
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">

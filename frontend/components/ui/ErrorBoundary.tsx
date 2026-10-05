@@ -2,7 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Copy, Check, ShieldAlert } from 'lucide-react';
-import { AdeButton } from '@/components/ui/AdeButton';
+import { Button } from '@/components/ui/Button';
 
 interface Props {
   children: ReactNode;
@@ -94,13 +94,13 @@ ${errorInfo?.componentStack || 'N/A'}`;
           </div>
 
           <div className="flex items-center gap-2 pt-2">
-            <AdeButton variant="primary" size="sm" onClick={this.handleReset}>
+            <Button variant="primary" size="sm" onClick={this.handleReset}>
               <RefreshCw className="w-3.5 h-3.5" /> Retry
-            </AdeButton>
-            <AdeButton variant="secondary" size="sm" onClick={this.handleCopyError}>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={this.handleCopyError}>
               {this.state.copied ? <Check className="w-3.5 h-3.5 text-[var(--status-success)]" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{this.state.copied ? 'Copied' : 'Copy Diagnostics'}</span>
-            </AdeButton>
+            </Button>
           </div>
         </div>
       );

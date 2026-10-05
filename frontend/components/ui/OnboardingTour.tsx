@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ArrowRight, ArrowLeft, X, Check, HelpCircle } from 'lucide-react';
-import { AdeButton } from './AdeButton';
+import { Button } from './Button';
 
 export interface TourStep {
   target: string; // CSS selector or identifier
@@ -169,14 +169,14 @@ export const OnboardingTour: React.FC = () => {
 
           <div className="flex items-center gap-2">
             {!isFirst && (
-              <AdeButton variant="tertiary" size="sm" onClick={handlePrev}>
+              <Button variant="tertiary" size="sm" onClick={handlePrev}>
                 <ArrowLeft className="w-3.5 h-3.5" /> Previous
-              </AdeButton>
+              </Button>
             )}
-            <AdeButton variant="primary" size="sm" onClick={handleNext}>
+            <Button variant="primary" size="sm" onClick={handleNext}>
               <span>{isLast ? 'Get Started' : 'Next Step'}</span>
               {!isLast && <ArrowRight className="w-3.5 h-3.5" />}
-            </AdeButton>
+            </Button>
           </div>
         </div>
       </div>

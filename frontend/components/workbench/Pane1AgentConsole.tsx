@@ -43,8 +43,8 @@ import {
   AgentSuggestionResult,
 } from '@/lib/api';
 import { connectToRunStream, SSEThoughtEvent, SSEToolCallEvent, SSEToolResultEvent } from '@/lib/sse';
-import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import { useWorkbench, RunStatusType } from '@/context/WorkbenchContext';
 import { useActiveHighlight } from '@/context/ActiveHighlightContext';
 
@@ -500,13 +500,13 @@ export const Pane1AgentConsole: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-xs leading-tight">Extraction Agent Definition</h2>
-              {runState === 'running' && <AdeBadge variant="info">Running</AdeBadge>}
-              {runState === 'paused' && <AdeBadge variant="medium">Paused</AdeBadge>}
-              {runState === 'completed' && <AdeBadge variant="verified">Completed</AdeBadge>}
-              {runState === 'failed' && <AdeBadge variant="failed">Failed</AdeBadge>}
-              {runState === 'cancelled' && <AdeBadge variant="neutral">Cancelled</AdeBadge>}
-              {runState === 'max_iterations_reached' && <AdeBadge variant="medium">Max Iterations Reached</AdeBadge>}
-              {runState === 'idle' && <AdeBadge variant="neutral">Idle</AdeBadge>}
+              {runState === 'running' && <Badge variant="info">Running</Badge>}
+              {runState === 'paused' && <Badge variant="medium">Paused</Badge>}
+              {runState === 'completed' && <Badge variant="verified">Completed</Badge>}
+              {runState === 'failed' && <Badge variant="failed">Failed</Badge>}
+              {runState === 'cancelled' && <Badge variant="neutral">Cancelled</Badge>}
+              {runState === 'max_iterations_reached' && <Badge variant="medium">Max Iterations Reached</Badge>}
+              {runState === 'idle' && <Badge variant="neutral">Idle</Badge>}
 
             </div>
           </div>
@@ -545,40 +545,40 @@ export const Pane1AgentConsole: React.FC = () => {
         <div className="px-4 py-2 flex items-center justify-between bg-black/5 dark:bg-white/5 border-b border-[var(--pane-border)]">
           <div className="flex items-center gap-1.5">
             {runState === 'idle' && (
-              <AdeButton variant="primary" size="sm" onClick={() => { void handleStartRun(); }} disabled={!uploadedFileName && !documentFileName}>
+              <Button variant="primary" size="sm" onClick={() => { void handleStartRun(); }} disabled={!uploadedFileName && !documentFileName}>
                 <Play className="w-3.5 h-3.5" /> Start Run
-              </AdeButton>
+              </Button>
             )}
 
             {runState === 'running' && (
-              <AdeButton variant="primary" size="sm" onClick={handlePauseResume}>
+              <Button variant="primary" size="sm" onClick={handlePauseResume}>
                 <Pause className="w-3.5 h-3.5" /> Pause
-              </AdeButton>
+              </Button>
             )}
 
             {runState === 'paused' && (
-              <AdeButton variant="primary" size="sm" onClick={handlePauseResume}>
+              <Button variant="primary" size="sm" onClick={handlePauseResume}>
                 <Play className="w-3.5 h-3.5" /> Resume
-              </AdeButton>
+              </Button>
             )}
 
             {(runState === 'running' || runState === 'paused') && (
-              <AdeButton variant="destructive" size="sm" onClick={handleStop}>
+              <Button variant="destructive" size="sm" onClick={handleStop}>
                 <Square className="w-3.5 h-3.5 fill-current" /> Stop
-              </AdeButton>
+              </Button>
             )}
 
             {runState === 'completed' && (
-              <AdeButton variant="primary" size="sm" onClick={() => { void handleStartRun(); }}>
+              <Button variant="primary" size="sm" onClick={() => { void handleStartRun(); }}>
                 <RotateCcw className="w-3.5 h-3.5" /> Re-run
-              </AdeButton>
+              </Button>
             )}
 
             {cycles.length > 0 && (
               <div className="relative">
-                <AdeButton variant="tertiary" size="sm" onClick={() => setShowRollbackDropdown(!showRollbackDropdown)}>
+                <Button variant="tertiary" size="sm" onClick={() => setShowRollbackDropdown(!showRollbackDropdown)}>
                   <Undo2 className="w-3.5 h-3.5 text-[var(--brand-primary)]" /> Rollback
-                </AdeButton>
+                </Button>
 
                 {showRollbackDropdown && (
                   <div className="absolute top-full left-0 mt-1 w-40 bg-[var(--pane-bg)] border border-[var(--pane-border)] rounded-lg shadow-xl py-1 z-30 text-xs">
@@ -600,9 +600,9 @@ export const Pane1AgentConsole: React.FC = () => {
               </div>
             )}
 
-            <AdeButton variant="tertiary" size="sm" onClick={handleCompact} disabled={cycles.length < 3 || isCompacting}>
+            <Button variant="tertiary" size="sm" onClick={handleCompact} disabled={cycles.length < 3 || isCompacting}>
               <Minimize2 className="w-3.5 h-3.5" /> {isCompacting ? 'Compacting…' : 'Compact Memory'}
-            </AdeButton>
+            </Button>
           </div>
 
           {/* Agent Definition Selector */}
@@ -745,9 +745,9 @@ export const Pane1AgentConsole: React.FC = () => {
                       This looks like an {suggestionResult.predictions[0]?.document_type.toUpperCase() || 'DOCUMENT'}
                     </span>
                   </div>
-                  <AdeBadge variant="verified">
+                  <Badge variant="verified">
                     {Math.round((suggestionResult.predictions[0]?.confidence || 0.92) * 100)}% Confident
-                  </AdeBadge>
+                  </Badge>
                 </div>
 
                 <p className="text-xs text-muted leading-relaxed">
@@ -777,10 +777,10 @@ export const Pane1AgentConsole: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">
-                    <AdeButton variant="primary" size="sm" onClick={() => { void handleStartRun(); }} className="flex-1">
+                    <Button variant="primary" size="sm" onClick={() => { void handleStartRun(); }} className="flex-1">
                       <Play className="w-3.5 h-3.5" /> Start Run with Suggested Agent Definition
-                    </AdeButton>
-                    <AdeButton
+                    </Button>
+                    <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => {
@@ -789,7 +789,7 @@ export const Pane1AgentConsole: React.FC = () => {
                       }}
                     >
                       <Sparkles className="w-3.5 h-3.5" /> Let ADEP Auto-Route
-                    </AdeButton>
+                    </Button>
                   </div>
                 </div>
 
@@ -831,9 +831,9 @@ export const Pane1AgentConsole: React.FC = () => {
                     <span>Cycle #{cycle.cycleNumber}</span>
                   </span>
                   <div className="flex items-center gap-1">
-                    {cycle.thought && <AdeBadge variant="info">Thought</AdeBadge>}
-                    {cycle.toolCall && <AdeBadge variant="tool">{cycle.toolCall.tool}</AdeBadge>}
-                    {cycle.toolResult && <AdeBadge variant="verified">Observation</AdeBadge>}
+                    {cycle.thought && <Badge variant="info">Thought</Badge>}
+                    {cycle.toolCall && <Badge variant="tool">{cycle.toolCall.tool}</Badge>}
+                    {cycle.toolResult && <Badge variant="verified">Observation</Badge>}
                   </div>
                 </div>
 
@@ -851,12 +851,12 @@ export const Pane1AgentConsole: React.FC = () => {
                           <span className="font-semibold text-muted flex items-center gap-1">
                             <Wrench className="w-3 h-3 text-[var(--brand-primary)]" /> Action Invocation:
                           </span>
-                          <AdeBadge variant="tool">{cycle.toolCall.tool}</AdeBadge>
+                          <Badge variant="tool">{cycle.toolCall.tool}</Badge>
                         </div>
                         <div className="flex items-center gap-2">
-                          <AdeBadge variant="neutral">
+                          <Badge variant="neutral">
                             args
-                          </AdeBadge>
+                          </Badge>
                           <span className="text-[11px] font-mono text-muted overflow-hidden text-ellipsis whitespace-nowrap max-w-[200px]">
                             {JSON.stringify(cycle.toolCall.args)}
                           </span>
@@ -870,7 +870,7 @@ export const Pane1AgentConsole: React.FC = () => {
                                 <ShieldAlert className="w-4 h-4" />
                                 <span>Human-in-the-Loop Safety Gate</span>
                               </div>
-                              <AdeBadge variant="info">Paused for Approval</AdeBadge>
+                              <Badge variant="info">Paused for Approval</Badge>
                             </div>
                             <p className="text-xs text-[var(--primary-text)] font-medium">
                               {gateInfo?.reason || `Tool "${cycle.toolCall.tool}" is flagged for high-impact visual or external operation.`}
@@ -879,12 +879,12 @@ export const Pane1AgentConsole: React.FC = () => {
                               <p className="text-[11px] font-mono text-muted">Action Required: {gateInfo.required_action}</p>
                             )}
                             <div className="flex items-center gap-2 pt-1">
-                              <AdeButton variant="primary" size="sm" onClick={handleApproveGate}>
+                              <Button variant="primary" size="sm" onClick={handleApproveGate}>
                                 <Check className="w-3.5 h-3.5" /> Approve Action
-                              </AdeButton>
-                              <AdeButton variant="secondary" size="sm" onClick={handleRejectGate}>
+                              </Button>
+                              <Button variant="secondary" size="sm" onClick={handleRejectGate}>
                                 <X className="w-3.5 h-3.5" /> Reject Action
-                              </AdeButton>
+                              </Button>
                             </div>
                           </div>
                         )}

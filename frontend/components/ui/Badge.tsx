@@ -4,13 +4,13 @@ import React from 'react';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-interface AdeBadgeProps {
+interface BadgeProps {
   variant?: 'verified' | 'medium' | 'failed' | 'tool' | 'info' | 'neutral';
   children: React.ReactNode;
   className?: string;
 }
 
-export const AdeBadge: React.FC<AdeBadgeProps> = ({
+export const Badge: React.FC<BadgeProps> = ({
   variant = 'neutral',
   children,
   className,

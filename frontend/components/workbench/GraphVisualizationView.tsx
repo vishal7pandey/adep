@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Info,
 } from 'lucide-react';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Badge } from '@/components/ui/Badge';
 import { useActiveHighlight } from '@/context/ActiveHighlightContext';
 
 export interface GraphNode {
@@ -126,11 +126,11 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
           <Network className="w-4 h-4 text-[var(--brand-primary)]" />
           <h3 className="font-bold text-xs text-[var(--primary-text)]">P&amp;ID Topology Graph</h3>
           {nodes.length > 0 ? (
-            <AdeBadge variant="verified">
+            <Badge variant="verified">
               {nodes.length} Nodes · {edges.length} Edges (Backend P&ID)
-            </AdeBadge>
+            </Badge>
           ) : (
-            <AdeBadge variant="neutral">No Nodes Extracted</AdeBadge>
+            <Badge variant="neutral">No Nodes Extracted</Badge>
           )}
         </div>
 
@@ -202,9 +202,9 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
 
                       <span className="text-[10px] text-muted font-medium">{node.class}</span>
 
-                      <AdeBadge variant={node.confidence > 0.9 ? 'verified' : 'medium'}>
+                      <Badge variant={node.confidence > 0.9 ? 'verified' : 'medium'}>
                         {Math.round(node.confidence * 100)}% Conf
-                      </AdeBadge>
+                      </Badge>
                     </div>
                   );
                 })}
@@ -218,7 +218,7 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-[var(--primary-text)]">{selectedNode.tag || selectedNode.id}</span>
-                  <AdeBadge variant="info">{selectedNode.class}</AdeBadge>
+                  <Badge variant="info">{selectedNode.class}</Badge>
                 </div>
                 {selectedNode.bbox && (
                   <button
@@ -257,9 +257,9 @@ export const GraphVisualizationView: React.FC<GraphVisualizationViewProps> = ({
                 <ShieldCheck className="w-4 h-4 text-[var(--status-success)]" />
                 <span>Topology Rules Validation</span>
               </div>
-              <AdeBadge variant={topologyRules.length > 0 ? 'verified' : 'info'}>
+              <Badge variant={topologyRules.length > 0 ? 'verified' : 'info'}>
                 {topologyRules.length > 0 ? `${passedRulesCount}/${topologyRules.length} Rules Passed` : '0 Rules Evaluated'}
-              </AdeBadge>
+              </Badge>
             </div>
 
             {showTopologyPanel && (

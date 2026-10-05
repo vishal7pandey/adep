@@ -3,8 +3,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Layers, Plus, Sparkles, Database, ArrowRight, ArrowLeft, CheckCircle2, Edit2, Trash2, Search, X } from 'lucide-react';
 import { AgentDefinition, Skill, Template, fetchDefinitions, fetchSkills, fetchTemplates, createDefinition, updateDefinition, deleteDefinition, ApiError } from '@/lib/api';
-import { AdeButton } from '@/components/ui/AdeButton';
-import { AdeBadge } from '@/components/ui/AdeBadge';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 export default function DefinitionsPage() {
   const [definitions, setDefinitions] = useState<AgentDefinition[]>([]);
@@ -159,9 +159,9 @@ export default function DefinitionsPage() {
           </h1>
           <p className="text-xs text-muted mt-1">View, create, edit, and delete agent definitions</p>
         </div>
-        <AdeButton variant="primary" onClick={handleOpenCreate}>
+        <Button variant="primary" onClick={handleOpenCreate}>
           <Plus className="w-4 h-4" /> Create Agent Definition
-        </AdeButton>
+        </Button>
       </div>
 
       {error && (
@@ -280,9 +280,9 @@ export default function DefinitionsPage() {
                 </h2>
                 <p className="text-xs text-muted">Step {step} of 7</p>
               </div>
-              <AdeButton variant="tertiary" size="sm" onClick={() => setShowWizard(false)}>
+              <Button variant="tertiary" size="sm" onClick={() => setShowWizard(false)}>
                 Cancel
-              </AdeButton>
+              </Button>
             </div>
 
             {/* Step 1: Name & Description */}
@@ -332,14 +332,14 @@ export default function DefinitionsPage() {
                       >
                         <div className="flex items-center justify-between">
                           <h4 className="font-bold text-xs">{s.name}</h4>
-                          {s.semantic_checks_enabled && <AdeBadge variant="verified">Semantic Check</AdeBadge>}
+                          {s.semantic_checks_enabled && <Badge variant="verified">Semantic Check</Badge>}
                         </div>
                         <p className="text-muted text-[11px]">{s.description}</p>
                         <div className="flex gap-1 pt-1">
                           {s.tools?.map((t) => (
-                            <AdeBadge key={t} variant="tool">
+                            <Badge key={t} variant="tool">
                               {t}
-                            </AdeBadge>
+                            </Badge>
                           ))}
                         </div>
                       </div>
@@ -368,7 +368,7 @@ export default function DefinitionsPage() {
                       >
                         <div className="flex items-center justify-between">
                           <h4 className="font-bold text-xs">{t.name}</h4>
-                          <AdeBadge variant="info">{t.fields.length} Fields</AdeBadge>
+                          <Badge variant="info">{t.fields.length} Fields</Badge>
                         </div>
                         <p className="text-muted text-[11px]">{t.description}</p>
                         <div className="font-mono text-[10px] text-muted pt-1">
@@ -453,30 +453,30 @@ export default function DefinitionsPage() {
 
             {/* Wizard Footer Navigation with Per-Step Validation */}
             <div className="flex justify-between border-t border-[var(--pane-border)] pt-4">
-              <AdeButton
+              <Button
                 variant="tertiary"
                 onClick={() => setStep((prev) => Math.max(prev - 1, 1))}
                 disabled={step === 1}
               >
                 <ArrowLeft className="w-3.5 h-3.5" /> Back
-              </AdeButton>
+              </Button>
 
               {step < 7 ? (
-                <AdeButton
+                <Button
                   variant="primary"
                   onClick={() => setStep((prev) => Math.min(prev + 1, 7))}
                   disabled={!isStepValid()}
                 >
                   Next <ArrowRight className="w-3.5 h-3.5" />
-                </AdeButton>
+                </Button>
               ) : (
-                <AdeButton
+                <Button
                   variant="primary"
                   onClick={handleSaveDefinition}
                   disabled={!isStepValid()}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" /> {editingDefId ? 'Save Changes' : 'Create Agent Definition'}
-                </AdeButton>
+                </Button>
               )}
             </div>
           </div>
