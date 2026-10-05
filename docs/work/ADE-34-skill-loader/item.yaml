@@ -2,7 +2,7 @@ id: ADE-34
 type: feature
 title: "Engine: skill loader — read SKILL.md + schema.json as data"
 slug: skill-loader
-status: plan-approved
+status: implementing
 risk: low
 jira: ADE-34
 branch: feature/ade-34-skill-loader
