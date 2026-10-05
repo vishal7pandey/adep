@@ -17,6 +17,9 @@ cd frontend && pnpm install && pnpm test && pnpm lint # frontend (Next.js, vites
 * Python `>=3.10` in `pyproject.toml`; CI uses 3.11. Backend code is in `src/`, tests in `src/tests/`.
 * Secrets (`AZURE_API_KEY` and others) live in the gitignored `.env`; copy `.env.example`. Never commit it.
 * Run data goes to `.adep/` (gitignored runtime data); `make reset` clears it.
+* `sample-data/` (about 70 MB of documents plus `*.expected.json`) is the demo and evaluation set and is
+  committed on purpose: do not prune, compress or move it out of git in a cleanup. Known problem: some
+  expected values do not match their documents (ADE-10), so treat evaluation scores with care until fixed.
 * The default branch is `master`. The existing `ci.yml` triggers only on `main`, so CI does not run on
   pull requests to `master` until that is fixed (Jira ADE-1).
 
