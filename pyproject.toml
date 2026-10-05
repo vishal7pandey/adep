@@ -59,6 +59,13 @@ dev = [
     "mypy>=1.10.0",
     "pre-commit>=3.7.0",
 ]
+engine = [
+    # pydantic-ai 2.x needs openai>=2.29, incompatible with the old engine's
+    # langchain-openai<0.3.0 (needs openai<2.0) — pinned to the 1.x line until ADE-33.
+    "pydantic-ai>=1.22.0,<2.0.0",
+    # pydantic-ai 1.22.0 imports opentelemetry._events, removed from opentelemetry-api>=1.41 (ADE-39).
+    "opentelemetry-api<1.41",
+]
 
 [build-system]
 requires = ["hatchling"]
