@@ -8,7 +8,7 @@
    by simply swapping token values via the .dark class.
 
    Token naming convention:
-     --brand-*      Brand colors (LTTS palette)
+     --brand-*      Brand colors
      --surface-*    Background surfaces
      --text-*       Text colors
      --border-*     Border colors
@@ -17,20 +17,20 @@
    ============================================================ */
 
 @theme {
-  --color-ltts-blue: #00205C;
-  --color-mobility-blue: #0071CE;
-  --color-s-green: #4DB848;
-  --color-tech-yellow: #F2E500;
-  --color-neutral-dark: #101820;
-  --color-electric-blue: #00B5E2;
+  --color-navy: #00205C;
+  --color-blue: #0071CE;
+  --color-green: #4DB848;
+  --color-yellow: #F2E500;
+  --color-ink: #101820;
+  --color-cyan: #00B5E2;
   --color-purple: #A27CC9;
-  --color-periwinkle: #C5B4E3;
-  --color-neutral-light: #E1E1E1;
+  --color-lavender: #C5B4E3;
+  --color-silver: #E1E1E1;
 
-  --color-light-blue: #8FD3E8;
-  --color-skobeloff: #007A78;
+  --color-sky: #8FD3E8;
+  --color-teal: #007A78;
   --color-coral: #F47C6D;
-  --color-dark-blue: #374785;
+  --color-indigo: #374785;
   --color-grey: #A7A9AC;
 }
 

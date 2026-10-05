@@ -42,7 +42,7 @@ describe('ThemeContext', () => {
 
     expect(result.current.theme).toBe('dark');
     expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(localStorage.getItem('ltts_theme')).toBe('dark');
+    expect(localStorage.getItem('adep_theme')).toBe('dark');
   });
 
   it('toggleTheme switches from dark to light and removes class', () => {
@@ -55,7 +55,7 @@ describe('ThemeContext', () => {
 
     expect(result.current.theme).toBe('light');
     expect(document.documentElement.classList.contains('dark')).toBe(false);
-    expect(localStorage.getItem('ltts_theme')).toBe('light');
+    expect(localStorage.getItem('adep_theme')).toBe('light');
   });
 
   it('should throw when used outside provider', () => {
@@ -71,12 +71,12 @@ describe('ThemeContext', () => {
       result.current.toggleTheme();
     });
 
-    expect(localStorage.getItem('ltts_theme')).toBe('dark');
+    expect(localStorage.getItem('adep_theme')).toBe('dark');
 
     act(() => {
       result.current.toggleTheme();
     });
 
-    expect(localStorage.getItem('ltts_theme')).toBe('light');
+    expect(localStorage.getItem('adep_theme')).toBe('light');
   });
 });
