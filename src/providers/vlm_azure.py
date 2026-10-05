@@ -23,21 +23,36 @@ _client: Any = None
 
 
 def _get_client() -> Any:
-    """Lazy-load the Azure OpenAI client (singleton per process)."""
+    """Lazy-load the OpenAI or Azure OpenAI client (singleton per process) [ADE-41]."""
     global _client
     if _client is not None:
         return _client
     try:
-        from openai import AzureOpenAI
+        if settings.active_llm_provider == "openai":
+            from openai import OpenAI
 
-        _client = AzureOpenAI(
-            api_key=settings.azure_api_key,
-            azure_endpoint=settings.azure_chat_endpoint,
-            api_version="2024-02-15-preview",
-        )
+            _client = OpenAI(api_key=settings.openai_api_key)
+        else:
+            from openai import AzureOpenAI
+
+            _client = AzureOpenAI(
+                api_key=settings.azure_api_key,
+                azure_endpoint=settings.azure_chat_endpoint,
+                api_version="2024-02-15-preview",
+            )
         return _client
     except ImportError:
         raise RuntimeError("openai package not installed. Install with: uv add openai")
+
+
+def token_limit_kwargs(limit: int) -> dict[str, int]:
+    """The output-token limit under the name the active provider accepts.
+
+    Current OpenAI models reject `max_tokens` and require `max_completion_tokens`; the Azure
+    API version this project pins still takes `max_tokens`.
+    """
+    key = "max_completion_tokens" if settings.active_llm_provider == "openai" else "max_tokens"
+    return {key: limit}
 
 
 def _encode_image(image_path: str) -> str:
@@ -60,7 +75,7 @@ def _call_vlm(image_path: str, question: str, model: str | None = None) -> str:
     Retries on transient failures (429, timeout) with exponential backoff [EH].
     """
     client = _get_client()
-    deployment = model or settings.azure_chat_deployment
+    deployment = model or settings.chat_model
     image_data = _encode_image(image_path)
 
     response = client.chat.completions.create(
@@ -74,7 +89,7 @@ def _call_vlm(image_path: str, question: str, model: str | None = None) -> str:
                 ],
             }
         ],
-        max_tokens=1000,
+        **token_limit_kwargs(1000),
     )
     return response.choices[0].message.content
 

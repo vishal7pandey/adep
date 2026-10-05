@@ -14,6 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.agent.token_tracking import LLMResponse, estimate_tokens
 from src.config import settings
+from src.providers.vlm_azure import token_limit_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ def _call_llm(system_prompt: str, user_prompt: str, *, max_tokens: int = 2000) -
     Returns the raw chat completion response, or None if all retries failed.
     """
     client = _get_azure_client()
-    deployment = settings.azure_chat_deployment
+    deployment = settings.chat_model
 
     response = client.chat.completions.create(
         model=deployment,
@@ -44,7 +45,7 @@ def _call_llm(system_prompt: str, user_prompt: str, *, max_tokens: int = 2000) -
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        max_tokens=max_tokens,
+        **token_limit_kwargs(max_tokens),
     )
     return response
 
