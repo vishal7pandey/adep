@@ -72,7 +72,13 @@ def _encode_image(image_path: str) -> str:
     """
     roots = (os.path.realpath(os.getcwd()), os.path.realpath(tempfile.gettempdir()))
     real_path = os.path.realpath(image_path)
-    if not any(real_path.startswith(root + os.sep) for root in roots):
+    try:
+        contained = any(
+            os.path.commonpath((real_path, root)) == root and real_path != root for root in roots
+        )
+    except ValueError:
+        contained = False
+    if not contained:
         raise ImagePathNotAllowed("Image path is outside the allowed directories")
     with open(real_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode("utf-8")

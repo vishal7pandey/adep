@@ -30,6 +30,10 @@ AC3: after the merge and the push scan of `master`, run the query
 `AaESHmAUjNIvKL1jZh9X` and read `status` and `resolution`. It cannot be automated before the merge: the push analysis of the
 default branch only exists after it. Record the state and date in each Jira ticket.
 
+Before merge, the PR CodeQL check must also pass without introducing a new high-severity finding. Its first scan reported
+alert 50 (`py/path-injection`) at `src/providers/vlm_azure.py:77`; the path guard now uses canonical `commonpath` containment.
+The re-run is pending and must be recorded before this PR is ready to merge.
+
 ## Audit (after implementation)
 
 AC1 and AC2, `src/tests/test_sonar_path_containment.py` (14 tests: 13 passed and 1 skipped here, the symlink test, because
@@ -56,3 +60,7 @@ baseline `test_compact_run_not_in_executor_returns_false` (ADE-24) and `test_see
 (unused import and a long line in `batches.py`, ADE-20) before and after this change, none introduced.
 
 AC3: pending, read after merge and the push scan.
+
+CodeQL PR finding: alert 50 exposed that CodeQL did not recognize the custom string-prefix guard. The guard now compares
+canonical path components with `os.path.commonpath` and rejects cross-drive paths; focused containment and VLM caller tests
+pass. The PR CodeQL check must be re-queried after pushing this follow-up; do not merge unless it is green.
