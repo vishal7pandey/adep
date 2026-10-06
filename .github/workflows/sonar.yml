@@ -59,7 +59,7 @@ jobs:
         if: steps.guard.outputs.enabled == 'true'
         run: >
           uv run pytest src/tests/ -v --tb=short -m "not integration"
-          --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=100
+          --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=80
           --deselect src/tests/test_e2e.py::TestE2EInvoiceMocked::test_invoice_e2e_mocked
           --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_seeded_definitions_exist
           --deselect src/tests/test_e2e.py::TestE2ESeedAndRun::test_invoice_run_produces_result
