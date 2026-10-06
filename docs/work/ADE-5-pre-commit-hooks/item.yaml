@@ -2,16 +2,16 @@ id: ADE-5
 type: feature
 title: Install the pre-commit hooks (config existed, hook was not installed)
 slug: pre-commit-hooks
-status: in-review
+status: merged
 risk: low
 jira: ADE-5
 branch: feature/ade-5-pre-commit-hooks
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: "6"
+    at: '2026-10-05'
+pr: '6'

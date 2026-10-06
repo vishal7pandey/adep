@@ -3,7 +3,7 @@ type: bug
 title: Contain paths in key delete, benchmark fixture dir and page file (CodeQL path-injection
   alerts 3, 4, 5, 6)
 slug: contain-paths-in-key-delete-benchmark
-status: in-review
+status: merged
 risk: high
 jira: ADE-51
 branch: fix/ade-51-contain-paths-in-key-delete-benchmark

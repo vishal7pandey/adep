@@ -2,16 +2,16 @@ id: ADE-4
 type: bug
 title: AGENTS.md commands were never executed; some are wrong or fail
 slug: agents-commands
-status: in-review
+status: merged
 risk: low
 jira: ADE-4
 branch: fix/ade-4-agents-commands
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: "5"
+    at: '2026-10-05'
+pr: '5'

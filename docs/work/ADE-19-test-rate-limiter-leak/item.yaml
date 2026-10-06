@@ -1,17 +1,18 @@
 id: ADE-19
 type: bug
-title: Rate limiter state leaks between tests (duplicate-run and other API tests fail with 429)
+title: Rate limiter state leaks between tests (duplicate-run and other API tests fail
+  with 429)
 slug: test-rate-limiter-leak
-status: in-review
+status: merged
 risk: low
 jira: ADE-19
 branch: fix/ade-19-test-rate-limiter-leak
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: "3"
+    at: '2026-10-05'
+pr: '3'

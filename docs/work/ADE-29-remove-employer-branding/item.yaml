@@ -2,7 +2,7 @@ id: ADE-29
 type: feature
 title: Remove employer branding
 slug: remove-employer-branding
-status: in-review
+status: merged
 risk: low
 jira: ADE-29
 branch: feature/ade-29-remove-employer-branding
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-05'
     delegated: true
-pr: "18"
+pr: '18'

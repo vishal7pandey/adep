@@ -1,0 +1,19 @@
+id: ADE-26
+type: feature
+title: Sync the factory kit
+slug: sync-the-factory-kit
+status: in-review
+risk: low
+jira: ADE-26
+branch: feature/ade-26-sync-the-factory-kit
+created: '2026-10-06'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+pr: '22'

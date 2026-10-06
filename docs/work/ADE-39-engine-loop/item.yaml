@@ -1,17 +1,18 @@
 id: ADE-39
 type: feature
-title: "Engine: the loop itself — pydantic-ai agent wiring the skill loader, budget, validation, tools and history together"
+title: 'Engine: the loop itself — pydantic-ai agent wiring the skill loader, budget,
+  validation, tools and history together'
 slug: engine-loop
-status: in-review
+status: merged
 risk: high
 jira: ADE-39
 branch: feature/ade-39-engine-loop
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: null
+    at: '2026-10-05'
+pr: '13'
