@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import logging
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,29 @@ from src.definitions.store import get_store
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["runs"])
+
+
+def _validate_local_image_path_for_autoroute(path_value: str) -> str:
+    """Validate request-supplied image path for auto-routing.
+
+    Allowed roots:
+    - current working directory
+    - system temporary directory
+    """
+    allowed_suffixes = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+    candidate = Path(path_value).expanduser().resolve(strict=False)
+    roots = (Path.cwd().resolve(), Path(tempfile.gettempdir()).resolve())
+
+    if candidate.suffix.lower() not in allowed_suffixes:
+        raise HTTPException(status_code=400, detail="document_url must be a supported image path")
+
+    if not any(candidate != root and root in candidate.parents for root in roots):
+        raise HTTPException(status_code=400, detail="document_url path is outside allowed directories")
+
+    if not candidate.exists() or not candidate.is_file():
+        raise HTTPException(status_code=400, detail="document_url image file not found")
+
+    return str(candidate)
 
 
 def _get_run_or_404(run_id: str) -> dict[str, Any]:
@@ -93,7 +117,7 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
             first_page = page_paths[0] if page_paths else doc_path
         except FileNotFoundError:
             # Treat as a file path
-            first_page = doc_path
+            first_page = _validate_local_image_path_for_autoroute(doc_path)
 
         try:
             route_result = auto_route(
