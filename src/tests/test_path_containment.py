@@ -93,6 +93,18 @@ class TestApiKeyDeleteContainment:
 
         assert outside.exists()
 
+    def test_delete_rejects_sibling_dir_sharing_the_key_dir_name_prefix(self, tmp_path: Path):
+        store = ApiKeyStore(base_dir=tmp_path / ".adep")
+        sibling = store.base_dir.parent / f"{store.base_dir.name}_evil"  # "api_keys_evil"
+        sibling.mkdir()
+        outside = sibling / "victim.json"
+        outside.write_text("{}", encoding="utf-8")
+
+        with pytest.raises(FileNotFoundError):
+            store.delete(f"../{sibling.name}/victim")
+
+        assert outside.exists()
+
     def test_delete_still_removes_a_legitimate_key(self, tmp_path: Path):
         store = ApiKeyStore(base_dir=tmp_path / ".adep")
         key = _make_key(store)
@@ -161,6 +173,18 @@ class TestBenchmarkFixtureDirContainment:
         outside.mkdir()
 
         resp = client.post("/api/v1/admin/benchmarks", json={"fixture_dir": "../outside"})
+
+        assert resp.status_code == 404
+        assert calls == []
+
+    def test_sibling_dir_sharing_the_cwd_name_prefix_is_rejected(
+        self, benchmark_env, tmp_path: Path
+    ):
+        client, work, calls = benchmark_env
+        sibling = tmp_path / f"{work.name}_evil"  # "work_evil" starts with "work"
+        sibling.mkdir()
+
+        resp = client.post("/api/v1/admin/benchmarks", json={"fixture_dir": f"../{sibling.name}"})
 
         assert resp.status_code == 404
         assert calls == []
