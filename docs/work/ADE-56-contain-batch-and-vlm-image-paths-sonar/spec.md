@@ -6,8 +6,8 @@ Status: draft · Risk: high · Jira: ADE-56
 Covers two SonarCloud findings, one rule (`pythonsecurity:S2083`, BLOCKER vulnerability): ADE-56 (Sonar issue
 `AaESHl-HjNIvKL1jZh79`, `src/api/routes/batches.py:53`, `save_batch`) and ADE-57 (Sonar issue `AaESHmAUjNIvKL1jZh9X`,
 `src/providers/vlm_azure.py:60`, `_encode_image`). ADE-56 is the key of this work item; ADE-57 closes separately on its own
-re-queried Sonar issue. Only these two issues are in scope; other Sonar issues and the CodeQL path-injection alerts belong to a
-later sweep.
+re-queried Sonar issue. The PR also surfaced CodeQL alert 50 (`py/path-injection`) at the same VLM path sink; it is tracked
+separately as ADE-67 and the same containment change must clear it before PR #24 can merge. Other findings remain out of scope.
 
 ## Repro
 
@@ -38,6 +38,8 @@ Reproducibility: always.
   with `tempfile.mkstemp`). Any other path is refused with `ValueError`; `vlm()` and the other callers turn it into the tool's
   normal failure result (`ok=False`) at once, without the model-call retry and backoff, and the model client is never called.
 - Legitimate inputs behave as before.
+- The VLM containment guard is visible to CodeQL at the file-open sink: the PR CodeQL check introduces no `py/path-injection`
+  alert for `_encode_image`, and alert 50 is reported `fixed` after the change reaches the default branch.
 
 ## Actual
 
@@ -86,6 +88,10 @@ AC3: After the fix is merged and the push scan on `master` has run, the SonarClo
 (`https://sonarcloud.io/api/issues/search?issues=<key>&componentKeys=vishal7pandey_adep`) shows both issues closed
 (`AaESHl-HjNIvKL1jZh79` for ADE-56, `AaESHmAUjNIvKL1jZh9X` for ADE-57; verified after merge, the Jira tickets close only on that).
 
+AC4: The PR CodeQL check passes without a new high-severity `py/path-injection` alert at `_encode_image`; after merge, CodeQL
+reports alert 50 (`https://github.com/vishal7pandey/adep/security/code-scanning/50`) as `fixed`. ADE-67 remains open until
+that re-query confirms closure.
+
 ## Fix constraints
 
 - Containment is checked inline at the point of use with the pattern that closed the equivalent CodeQL and chatpid findings:
@@ -100,5 +106,5 @@ AC3: After the fix is merged and the push scan on `master` has run, the SonarClo
 
 - Risk high: security fix on a file-writing route and on the model-input path. A legitimate image outside the working directory
   and temp directory is now refused (see Blast radius). Rollback: revert the merge commit.
-- If SonarCloud does not recognise the inline check the issue stays open; then the fix is improved (not dismissed) and the
-  tickets stay open meanwhile.
+- If either SonarCloud or CodeQL does not recognise the inline check, the findings stay open; improve the guard rather than
+  dismissing an alert, and keep the related Jira issues open meanwhile.

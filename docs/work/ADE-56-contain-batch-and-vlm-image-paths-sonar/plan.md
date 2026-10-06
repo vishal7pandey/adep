@@ -5,9 +5,10 @@ Created: 2026-10-06 · Slug: contain-batch-and-vlm-image-paths-sonar · Spec: sp
 
 ## Summary
 
-Resolve each externally influenced path with `os.path.realpath`, require it to stay under the resolved base directory with a
-`startswith(base + os.sep)` check written inline at the point of use, and refuse otherwise. Two call sites, no shared helper, so the
-sanitizer stays visible to the scanner at each sink.
+Resolve each externally influenced path with `os.path.realpath`, require it to stay under an allowed root with a direct
+`startswith(root + os.sep)` condition written inline at the point of use, and refuse otherwise. Keep the VLM's working-directory
+and temp-directory checks as two named operands in one explicit boolean condition; do not hide them in a collection, generator,
+or helper, because CodeQL did not recognize those forms as guarding the sink.
 
 **Size:** S
 
@@ -27,9 +28,11 @@ sanitizer stays visible to the scanner at each sink.
 1. `save_batch`: `base = os.path.realpath(os.path.join(os.getcwd(), ".adep", "batches"))` (same directory `_batches_dir()`
    creates, which is still called first so it exists), `path = os.path.realpath(os.path.join(base, f"{batch_id}.json"))`; if
    `not path.startswith(base + os.sep)` raise `ValueError`; then `open(path, "w", encoding="utf-8")` on the checked string.
-2. `_encode_image`: `roots = (realpath(os.getcwd()), realpath(tempfile.gettempdir()))`; `real_path = os.path.realpath(image_path)`;
-   if no root satisfies `real_path.startswith(root + os.sep)` raise `ImagePathNotAllowed` (a `ValueError` subclass defined in the
-   module); then `open(real_path, "rb")` on the checked string. The MIME type is still taken from the extension.
+2. `_encode_image`: name `working_root = os.path.realpath(os.getcwd())` and `temp_root = os.path.realpath(tempfile.gettempdir())`;
+  resolve `real_path = os.path.realpath(image_path)`; then use an explicit check equivalent to
+  `if not (real_path.startswith(working_root + os.sep) or real_path.startswith(temp_root + os.sep)): raise ImagePathNotAllowed(...)`.
+  Keep the checked `real_path` as the argument to `open(real_path, "rb")`. Do not wrap roots in `any(...)`, a generator, or a
+  shared helper. The MIME type is still taken from the extension.
 3. `_call_vlm`: add `retry=retry_if_not_exception_type(ImagePathNotAllowed)` so a refusal is raised at once instead of
    waiting through three backoff rounds; `vlm()` already turns an exception into `ToolResult(ok=False, ...)`, and `classify.py`
    catches `Exception` around its calls.
@@ -43,15 +46,17 @@ sanitizer stays visible to the scanner at each sink.
   noted in notes.md for the later sweep.
 - Catching the refusal inside `_call_vlm` and returning `None`: hides the reason; the exception carries the message into
   `ToolResult.error`.
+- A generator or shared containment helper for the two VLM roots: CodeQL continued to report the tainted path at `realpath` or
+  `open`; use the same direct conditional pattern already present in `src/api/routes/documents.py` instead.
 
 ## Tasks
 
 | # | Task | Files | Serves | Verify by |
 |---|------|-------|--------|-----------|
 | T1 | Contain `save_batch` | `src/api/routes/batches.py` | AC1, AC2 | `uv run python -m pytest src/tests/test_sonar_path_containment.py src/tests/test_batches.py -q` passes |
-| T2 | Contain `_encode_image`, no retry of the refusal | `src/providers/vlm_azure.py` | AC1, AC2 | same file plus `test_read_chart.py`, `test_classify.py`, `test_engine_tools.py`, `test_openai_provider.py` pass |
+| T2 | Contain `_encode_image` with explicit root checks; do not retry the refusal | `src/providers/vlm_azure.py` | AC1, AC2, AC4 | containment and VLM caller tests pass; PR CodeQL check reports no new alert 50 |
 | T3 | Full backend suite, ruff check and format on touched files, mutation audit | none | AC1, AC2 | `-m "not integration"`: only ADE-23 and ADE-24 fail; ruff no worse on touched files |
-| T4 | After merge and the push scan, read both Sonar issues | none (Jira comments) | AC3 | Sonar API shows `AaESHl-HjNIvKL1jZh79` and `AaESHmAUjNIvKL1jZh9X` closed |
+| T4 | After merge and the push scan, re-query Sonar and CodeQL | none (Jira comments) | AC3, AC4 | both Sonar issues are closed and CodeQL alert 50 is `fixed` |
 
 ## Data, API and migration impact
 
