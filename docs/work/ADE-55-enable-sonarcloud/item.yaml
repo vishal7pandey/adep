@@ -2,7 +2,7 @@ id: ADE-55
 type: feature
 title: Enable SonarCloud
 slug: enable-sonarcloud
-status: implementing
+status: in-review
 risk: low
 jira: ADE-55
 branch: feature/ade-55-enable-sonarcloud
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-06'
     delegated: true
-pr: null
+pr: '23'
