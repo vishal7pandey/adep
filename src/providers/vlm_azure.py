@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import base64
 import logging
+import os
+import tempfile
 from typing import Any
 
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_not_exception_type, stop_after_attempt, wait_exponential
 
 from src.config import settings
 from src.tools.base import Grounding, ToolResult
@@ -55,9 +57,24 @@ def token_limit_kwargs(limit: int) -> dict[str, int]:
     return {key: limit}
 
 
+class ImagePathNotAllowed(ValueError):
+    """The image path resolves outside the directories images are read from."""
+
+
 def _encode_image(image_path: str) -> str:
-    """Encode an image file as a base64 data URI."""
-    with open(image_path, "rb") as f:
+    """Encode an image file as a base64 data URI.
+
+    Only files under the working directory (``.adep/documents``, ``sample-data``) or the
+    system temp directory (survey images and crops) are read.
+
+    Raises:
+        ImagePathNotAllowed: If the resolved path is outside both directories.
+    """
+    roots = (os.path.realpath(os.getcwd()), os.path.realpath(tempfile.gettempdir()))
+    real_path = os.path.realpath(image_path)
+    if not any(real_path.startswith(root + os.sep) for root in roots):
+        raise ImagePathNotAllowed("Image path is outside the allowed directories")
+    with open(real_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode("utf-8")
     ext = image_path.rsplit(".", 1)[-1].lower()
     mime = "image/png" if ext == "png" else "image/jpeg"
@@ -67,6 +84,7 @@ def _encode_image(image_path: str) -> str:
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_not_exception_type(ImagePathNotAllowed),
     retry_error_callback=lambda retry_state: None,
 )
 def _call_vlm(image_path: str, question: str, model: str | None = None) -> str:

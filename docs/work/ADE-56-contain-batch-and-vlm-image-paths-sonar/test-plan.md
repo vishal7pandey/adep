@@ -32,4 +32,27 @@ default branch only exists after it. Record the state and date in each Jira tick
 
 ## Audit (after implementation)
 
-<!-- filled after implementation -->
+AC1 and AC2, `src/tests/test_sonar_path_containment.py` (14 tests: 13 passed and 1 skipped here, the symlink test, because
+symlinks are not permitted on this Windows account; it runs where they are). Evidence the tests fail when the behaviour breaks:
+
+- Before the fix (commit "test(ADE-56): failing containment tests ..."): 7 failed, 6 passed, 1 skipped. The save tests ended with
+  `DID NOT RAISE ValueError`; the image tests got `ok is True` (the file was read and the client called) and `_encode_image` did not raise.
+- Mutation 1, `save_batch` guard replaced by `if False:`: `test_relative_traversal_id_is_rejected_and_nothing_is_written`,
+  `test_sibling_dir_sharing_the_batches_name_prefix_is_rejected` and `test_absolute_id_is_rejected_and_nothing_is_written` failed (3). Restored.
+- Mutation 2, `save_batch` prefix check without `os.sep`: `test_sibling_dir_sharing_the_batches_name_prefix_is_rejected` failed (1). Restored.
+- Mutation 3, `_encode_image` guard replaced by `if False:`: the three `vlm()` refusal tests and
+  `test_encode_image_raises_for_a_path_outside` failed (4). Restored.
+- Mutation 4, `_encode_image` prefix check without `os.sep`: `test_sibling_dir_sharing_the_working_dir_name_prefix_is_refused` failed (1). Restored.
+- Mutation 5, system temp directory dropped from the allowed roots: `test_image_in_the_system_temp_dir_is_still_read` failed (1)
+  (`ok=False`, "outside the allowed directories"). Restored.
+- Mutation 6, `retry=retry_if_not_exception_type(...)` removed from `_call_vlm`: `test_refusal_is_immediate_not_retried_with_backoff`
+  failed (1; the run took 16 s because of the backoff). Restored.
+- The legitimate-path tests (batch round trip and overwrite, working-dir image, `.jpg` MIME) stayed green in every mutation, so they
+  pin behaviour the fix must preserve. The working tree held only the fix after the audit.
+
+Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 1997 passed, 2 skipped, 19 deselected, 2 failed, the known
+baseline `test_compact_run_not_in_executor_returns_false` (ADE-24) and `test_seeded_definitions_exist` (ADE-23); nothing else failed.
+`uv run ruff format --check` clean on the three touched files; `uv run ruff check` reports the same 2 pre-existing findings
+(unused import and a long line in `batches.py`, ADE-20) before and after this change, none introduced.
+
+AC3: pending, read after merge and the push scan.

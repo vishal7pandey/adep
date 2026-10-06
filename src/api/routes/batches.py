@@ -11,6 +11,7 @@ import csv
 import io
 import json
 import logging
+import os
 import tempfile
 import uuid
 from datetime import datetime, timezone
@@ -48,9 +49,17 @@ def _batch_path(batch_id: str) -> Path:
 
 
 def save_batch(batch_id: str, data: dict[str, Any]) -> None:
-    """Persist batch metadata to disk."""
-    path = _batch_path(batch_id)
-    path.write_text(json.dumps(data, indent=2, default=str))
+    """Persist batch metadata to disk.
+
+    Raises:
+        ValueError: If ``batch_id`` resolves to a file outside the batches directory.
+    """
+    base = os.path.realpath(_batches_dir())
+    path = os.path.realpath(os.path.join(base, f"{batch_id}.json"))
+    if not path.startswith(base + os.sep):
+        raise ValueError(f"Invalid batch id '{batch_id}': outside the batches directory")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(json.dumps(data, indent=2, default=str))
 
 
 def load_batch(batch_id: str) -> dict[str, Any]:
