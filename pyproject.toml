@@ -27,7 +27,7 @@ dependencies = [
 
     # OCR providers
     "pytesseract>=0.3.10",
-    "paddleocr>=2.7.0",
+    "paddleocr>=3.7.0",
 
     # VLM / LLM
     "openai>=1.0.0",
