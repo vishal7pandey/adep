@@ -189,6 +189,14 @@ class TestBenchmarkFixtureDirContainment:
         assert resp.status_code == 404
         assert calls == []
 
+    def test_the_cwd_itself_is_rejected(self, benchmark_env):
+        client, _work, calls = benchmark_env
+
+        resp = client.post("/api/v1/admin/benchmarks", json={"fixture_dir": "."})
+
+        assert resp.status_code == 404
+        assert calls == []
+
     def test_absolute_path_outside_cwd_is_rejected(self, benchmark_env, tmp_path: Path):
         client, _work, calls = benchmark_env
         outside = tmp_path / "outside_abs"

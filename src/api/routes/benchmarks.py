@@ -63,11 +63,11 @@ def trigger_benchmark(req: BenchmarkRequest) -> BenchmarkResponse:
 
     # fixture_dir comes from the request body: resolve it and require it to stay inside the
     # working directory before it is probed (CodeQL py/path-injection). An absolute value
-    # replaces the base in os.path.join and is checked the same way. Anything outside gets the
-    # same 404 as a missing directory.
+    # replaces the base in os.path.join and is checked the same way. Anything outside (or the
+    # working directory itself) gets the same 404 as a missing directory.
     base = os.path.realpath(os.getcwd())
     fixture_path = os.path.realpath(os.path.join(base, req.fixture_dir))
-    if fixture_path != base and not fixture_path.startswith(base + os.sep):
+    if not fixture_path.startswith(base + os.sep):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Fixture directory not found: {req.fixture_dir}",

@@ -31,7 +31,8 @@ map a refusal to the route's existing error. Three call sites, no shared helper,
 2. `benchmarks.py` `trigger_benchmark`: validate provider names first (so an invalid provider is a 400 whatever the directory),
    then `base = os.path.realpath(os.getcwd())`, `fixture_dir = os.path.realpath(os.path.join(base, req.fixture_dir))` (an
    absolute `fixture_dir` replaces the base in `os.path.join`, and is then checked like any other); if it is not under
-   `base + os.sep` (or equal to `base`) raise the existing 404 with the user-supplied value in the message; continue with the
+   `base + os.sep` (so the working directory itself is refused too; a compound "equal to base or under base" condition was
+   not recognised by CodeQL on PR #21, alert 47, and benchmarking the whole working directory is not a use case) raise the existing 404 with the user-supplied value in the message; continue with the
    checked string.
 3. `documents.py` `get_page`: also catch `ValueError` (invalid id) as 404; resolve `docs_root = os.path.realpath(store.docs_dir)` and
    `page_file = os.path.realpath(page_path)`; if not under `docs_root + os.sep` raise the same 404; `FileResponse(page_file)`.

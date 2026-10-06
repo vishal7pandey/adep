@@ -90,7 +90,7 @@ returns `state: fixed` for ids 3, 4, 5 and 6 (verified after merge; the Jira tic
   the candidate, then `candidate.startswith(base + os.sep)`, before any `exists()`, `unlink()`, `FileResponse` or suite run.
 - Minimal diff: only `src/api/auth.py` (`delete`), `src/api/routes/benchmarks.py` (`trigger_benchmark`),
   `src/api/routes/documents.py` (`get_page`) and the new test file, plus this work item folder. No API shape change.
-- The benchmark base directory is the working directory, matching how relative `fixture_dir` values are already resolved.
+- The benchmark base directory is the working directory (the directory itself is refused too, only subdirectories are allowed), matching how relative `fixture_dir` values are already resolved.
   Out-of-base values get the same 404 as a missing directory (no filesystem probing, no existence oracle).
 - Do not touch the other path-injection alerts or unrelated files.
 

@@ -9,3 +9,7 @@
   id; left for the later sweep (not in the four alerts).
 - 2026-10-06: the mutation audit found a gap (prefix check without `os.sep` survived); closed with two sibling-prefix tests.
 - Closure: Jira tickets close only when each alert reads `fixed` (`factory-findings`).
+- 2026-10-06 (amendment): CodeQL on PR #21 flagged the benchmark probe (new alert 47) because the compound guard
+  `fixture_path != base and not fixture_path.startswith(base + os.sep)` is not recognised as a barrier. Changed to the plain
+  `if not fixture_path.startswith(base + os.sep)`: the working directory itself is now refused too (404), pinned by
+  `test_the_cwd_itself_is_rejected`. Plan approach item 2 amended accordingly; spec intent unchanged (inside the working directory).
