@@ -73,10 +73,9 @@ def _encode_image(image_path: str) -> str:
     working_root = os.path.realpath(os.getcwd())
     temp_root = os.path.realpath(tempfile.gettempdir())
     real_path = os.path.realpath(image_path)
-    if not (
-        real_path.startswith(working_root + os.sep) or real_path.startswith(temp_root + os.sep)
-    ):
-        raise ImagePathNotAllowed("Image path is outside the allowed directories")
+    if not real_path.startswith(working_root + os.sep):
+        if not real_path.startswith(temp_root + os.sep):
+            raise ImagePathNotAllowed("Image path is outside the allowed directories")
     with open(real_path, "rb") as f:
         encoded = base64.b64encode(f.read()).decode("utf-8")
     ext = image_path.rsplit(".", 1)[-1].lower()

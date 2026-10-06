@@ -14,3 +14,7 @@
   containment/VLM caller tests: 89 passed, 1 skipped. PR CodeQL must still pass before merge.
 - 2026-10-06: Full non-integration suite: 1997 passed, 2 skipped, 19 deselected, 2 known baseline failures (ADE-23
   `test_seeded_definitions_exist` and ADE-24 `test_compact_run_not_in_executor_returns_false`). No additional failures.
+- 2026-10-07: After current `master` was merged to restore CodeQL configuration, alert 50 still appeared on the direct
+  two-root condition. Changed it to nested single-root early-return guards to match CodeQL's documented pattern; focused
+  caller tests remain green (89 passed, 1 skipped). The previous CodeQL run on the base-synced head was `neutral` because
+  configurations were missing; this variant requires a fresh scan before assessing closure.
