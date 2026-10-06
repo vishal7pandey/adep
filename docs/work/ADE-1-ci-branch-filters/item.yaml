@@ -2,16 +2,16 @@ id: ADE-1
 type: bug
 title: CI never runs on PRs - ci.yml targets main but the default branch is master
 slug: ci-branch-filters
-status: in-review
+status: merged
 risk: medium
 jira: ADE-1
 branch: fix/ade-1-ci-branch-filters
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: "4"
+    at: '2026-10-05'
+pr: '4'

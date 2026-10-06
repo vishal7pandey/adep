@@ -1,17 +1,17 @@
 id: ADE-37
 type: feature
-title: "Engine: run history store — SQLite-backed, no global lock"
+title: 'Engine: run history store — SQLite-backed, no global lock'
 slug: run-history
-status: in-review
+status: merged
 risk: low
 jira: ADE-37
 branch: feature/ade-37-run-history
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: null
+    at: '2026-10-05'
+pr: '11'

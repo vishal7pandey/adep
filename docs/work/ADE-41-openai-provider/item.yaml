@@ -1,17 +1,18 @@
 id: ADE-41
 type: bug
-title: "The configured Azure endpoint does not resolve: support the owner's OpenAI key for both engines"
+title: 'The configured Azure endpoint does not resolve: support the owner''s OpenAI
+  key for both engines'
 slug: openai-provider
-status: in-review
+status: merged
 risk: medium
 jira: ADE-41
 branch: fix/ade-41-openai-provider
-created: 2026-10-05
+created: '2026-10-05'
 approvals:
   spec:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
+    at: '2026-10-05'
   plan:
     by: Vishal Pandey (delegated to agent)
-    at: 2026-10-05
-pr: null
+    at: '2026-10-05'
+pr: '16'

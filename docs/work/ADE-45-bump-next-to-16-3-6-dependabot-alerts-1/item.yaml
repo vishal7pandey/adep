@@ -2,7 +2,7 @@ id: ADE-45
 type: bug
 title: Bump next to 16.3.6 (Dependabot alerts 1, 2, 3, 6, 7, 27)
 slug: bump-next-to-16-3-6-dependabot-alerts-1
-status: in-review
+status: merged
 risk: medium
 jira: ADE-45
 branch: fix/ade-45-bump-next-to-16-3-6-dependabot-alerts-1
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-05'
     delegated: true
-pr: "20"
+pr: '20'
