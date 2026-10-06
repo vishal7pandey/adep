@@ -2,7 +2,7 @@ id: ADE-63
 type: feature
 title: 'Apply the dependency loop: dependabot config, triage, failing runs'
 slug: apply-the-dependency-loop-dependabot
-status: implementing
+status: in-review
 risk: low
 jira: ADE-63
 branch: feature/ade-63-apply-the-dependency-loop-dependabot
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-06'
     delegated: true
-pr: null
+pr: https://github.com/vishal7pandey/adep/pull/25
