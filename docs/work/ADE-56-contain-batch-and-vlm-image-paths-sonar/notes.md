@@ -9,3 +9,8 @@
 - 2026-10-06: Alert 50 is separately tracked as ADE-67 (`finding-codeql-50`) per the findings policy; the existing Sonar
   issues remain ADE-56 and ADE-57. The direct-guard plan amendment invalidates the prior plan approval; wait for human
   re-approval before further implementation.
+- 2026-10-06: Human approved the amended design in conversation. Replaced the VLM root collection/generator checks with two
+  named roots and a direct `or`-combined separator-aware prefix condition. Ruff and factory verification pass; focused
+  containment/VLM caller tests: 89 passed, 1 skipped. PR CodeQL must still pass before merge.
+- 2026-10-06: Full non-integration suite: 1997 passed, 2 skipped, 19 deselected, 2 known baseline failures (ADE-23
+  `test_seeded_definitions_exist` and ADE-24 `test_compact_run_not_in_executor_returns_false`). No additional failures.
