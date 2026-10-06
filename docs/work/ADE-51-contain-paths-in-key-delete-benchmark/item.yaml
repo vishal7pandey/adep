@@ -1,0 +1,20 @@
+id: ADE-51
+type: bug
+title: Contain paths in key delete, benchmark fixture dir and page file (CodeQL path-injection
+  alerts 3, 4, 5, 6)
+slug: contain-paths-in-key-delete-benchmark
+status: implementing
+risk: high
+jira: ADE-51
+branch: fix/ade-51-contain-paths-in-key-delete-benchmark
+created: '2026-10-06'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+pr: null
