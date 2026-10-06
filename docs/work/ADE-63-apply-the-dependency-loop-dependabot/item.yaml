@@ -1,0 +1,19 @@
+id: ADE-63
+type: feature
+title: 'Apply the dependency loop: dependabot config, triage, failing runs'
+slug: apply-the-dependency-loop-dependabot
+status: implementing
+risk: low
+jira: ADE-63
+branch: feature/ade-63-apply-the-dependency-loop-dependabot
+created: '2026-10-06'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+pr: null
