@@ -31,7 +31,8 @@ AC3: after the merge and the push scan of `master`, run the query
 default branch only exists after it. Record the state and date in each Jira ticket.
 
 Before merge, the PR CodeQL check must also pass without introducing a new high-severity finding. Its first scan reported
-alert 50 (`py/path-injection`) at `src/providers/vlm_azure.py:77`; the path guard now uses canonical `commonpath` containment.
+alert 50 (`py/path-injection`) at `src/providers/vlm_azure.py:77`; the path guard now rejects a normalized absolute path
+outside the allowed roots before `realpath`, then checks the canonical result with `commonpath` for symlink escapes.
 The re-run is pending and must be recorded before this PR is ready to merge.
 
 ## Audit (after implementation)
@@ -61,6 +62,7 @@ baseline `test_compact_run_not_in_executor_returns_false` (ADE-24) and `test_see
 
 AC3: pending, read after merge and the push scan.
 
-CodeQL PR finding: alert 50 exposed that CodeQL did not recognize the custom string-prefix guard. The guard now compares
-canonical path components with `os.path.commonpath` and rejects cross-drive paths; focused containment and VLM caller tests
-pass. The PR CodeQL check must be re-queried after pushing this follow-up; do not merge unless it is green.
+CodeQL PR finding: alert 50 exposed that CodeQL did not recognize the post-resolution custom guard as sufficient. The
+function now checks the normalized absolute path against allowed roots before `realpath`, then rechecks the canonical
+path with `os.path.commonpath` and rejects cross-drive paths. Focused containment tests pass. The PR CodeQL check must be
+re-queried after pushing this follow-up; do not merge unless it is green.
