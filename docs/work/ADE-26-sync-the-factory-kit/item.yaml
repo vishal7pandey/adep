@@ -2,7 +2,7 @@ id: ADE-26
 type: feature
 title: Sync the factory kit
 slug: sync-the-factory-kit
-status: implementing
+status: in-review
 risk: low
 jira: ADE-26
 branch: feature/ade-26-sync-the-factory-kit
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-06'
     delegated: true
-pr: null
+pr: '22'
