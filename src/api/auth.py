@@ -295,10 +295,15 @@ class ApiKeyStore:
 
     def delete(self, key_id: str) -> None:
         """Delete an API key."""
-        path = self._path_for(key_id)
-        if not path.exists():
+        # key_id comes from the request URL: resolve the file and require it to stay inside
+        # the key directory before it is probed or removed (CodeQL py/path-injection).
+        base = os.path.realpath(self.base_dir)
+        path = os.path.realpath(os.path.join(base, f"{key_id}.json"))
+        if not path.startswith(base + os.sep):
             raise FileNotFoundError(f"API key '{key_id}' not found")
-        path.unlink()
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"API key '{key_id}' not found")
+        os.unlink(path)
         self._invalidate_cache()
 
     def is_empty(self) -> bool:

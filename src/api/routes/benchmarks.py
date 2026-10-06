@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
+import os
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
@@ -53,16 +53,6 @@ def trigger_benchmark(req: BenchmarkRequest) -> BenchmarkResponse:
     Runs extraction on labeled fixtures for each provider, produces a comparison
     report, and persists it to `.adep/reports/`.
     """
-    fixture_path = Path(req.fixture_dir)
-    if not fixture_path.is_absolute():
-        fixture_path = Path.cwd() / req.fixture_dir
-
-    if not fixture_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Fixture directory not found: {fixture_path}",
-        )
-
     # Validate provider names
     invalid = [p for p in req.providers if p not in PROVIDER_CONFIGS]
     if invalid:
@@ -71,9 +61,27 @@ def trigger_benchmark(req: BenchmarkRequest) -> BenchmarkResponse:
             detail=f"Unknown providers: {invalid}. Available: {list(PROVIDER_CONFIGS.keys())}",
         )
 
+    # fixture_dir comes from the request body: resolve it and require it to stay inside the
+    # working directory before it is probed (CodeQL py/path-injection). An absolute value
+    # replaces the base in os.path.join and is checked the same way. Anything outside (or the
+    # working directory itself) gets the same 404 as a missing directory.
+    base = os.path.realpath(os.getcwd())
+    fixture_path = os.path.realpath(os.path.join(base, req.fixture_dir))
+    if not fixture_path.startswith(base + os.sep):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Fixture directory not found: {req.fixture_dir}",
+        )
+
+    if not os.path.exists(fixture_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Fixture directory not found: {fixture_path}",
+        )
+
     try:
         report = run_benchmark_suite(
-            fixture_dir=str(fixture_path),
+            fixture_dir=fixture_path,
             providers=req.providers,
             baseline_provider=req.baseline_provider,
         )

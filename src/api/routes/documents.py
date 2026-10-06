@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -110,14 +111,23 @@ async def get_page(document_id: str, page_number: int) -> FileResponse:
         document_id: Document ID.
         page_number: Page number (1-indexed).
     """
+    not_found = HTTPException(
+        status_code=404,
+        detail=f"Page {page_number} not found for document '{document_id}'",
+    )
+    store = get_document_store()
     try:
-        page_path = get_document_store().get_page_path(document_id, page_number)
-        return FileResponse(str(page_path), media_type="image/png")
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Page {page_number} not found for document '{document_id}'",
-        )
+        page_path = store.get_page_path(document_id, page_number)
+    except (FileNotFoundError, ValueError):
+        # ValueError: the document id is not a valid id (never a document).
+        raise not_found
+    # The path derives from the request: resolve it and require it to stay inside the document
+    # store before it is served (CodeQL py/path-injection).
+    docs_root = os.path.realpath(store.docs_dir)
+    page_file = os.path.realpath(page_path)
+    if not page_file.startswith(docs_root + os.sep):
+        raise not_found
+    return FileResponse(page_file, media_type="image/png")
 
 
 @router.get("/documents/{document_id}/thumbnail")
