@@ -9,7 +9,7 @@ Command for all: `uv run python -m pytest src/tests -q -m "not integration"`; ba
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | integration | `src/tests/test_iteration_limits.py`: `TestGepaIterationLimit::test_loop_never_runs_past_the_limit[...]`, `TestMctsIterationLimit::...`, `TestCoEvolveIterationLimit::...`, `test_module_limit_matches_the_api_request_limit[...]` | a request of exactly the limit (50, 100, 10) runs exactly that many rounds | limit+1 (51, 101, 11) is clamped to the limit | 10**9 is clamped to the limit (a counting stub raises past limit+3 so a regression fails instead of hanging); module constants equal the API request limits | verified |
 | AC2 | integration | `src/tests/test_iteration_limits.py::Test*::test_a_value_below_the_limit_is_untouched`; existing `test_prompt_evolver.py`, `test_workflow_optimizer.py`, `test_skill_composer.py` | 4, 4 and 2 requested rounds run exactly 4, 4 and 2 and report "Reached max iterations (4)" | n/a: the limit boundary is AC1 | n/a: no new abuse input beyond AC1 | verified |
-| AC3 | manual | n/a (scanner re-query) | Sonar API shows the three issues CLOSED after the push scan | n/a: single state read per issue | OPEN: the ticket stays open, the fix is improved, never dismissed | planned (after merge) |
+| AC3 | manual | n/a (scanner re-query) | Sonar API shows the three issues CLOSED after the push scan | n/a: single state read per issue | OPEN: the ticket stays open, the fix is improved, never dismissed | verified |
 
 ## Regression risk
 
@@ -42,4 +42,4 @@ Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 2012 pas
 (ADE-23, ADE-24). `ruff format --check` clean on the four touched files; `ruff check` on the three modules reports 53 findings before and
 after (ADE-20 baseline, none added; two over-long lines of mine were shortened).
 
-AC3: pending, read after the PR scan, the merge and the push scan.
+AC3: verified 2026-10-07: after the push scan on master the Sonar API shows AaESHmBojNIvKL1jZh97 (ADE-60), AaESHmBOjNIvKL1jZh9u (ADE-61) and AaESHmBxjNIvKL1jZh-B (ADE-62) CLOSED, resolution FIXED.

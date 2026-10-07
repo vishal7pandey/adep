@@ -8,7 +8,7 @@ Test framework: pytest via `uv run python -m pytest`; command for all: `uv run p
 | AC | Level | Test (name/path) | Happy | Boundary | Negative | Status |
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | integration | `src/tests/test_sonar_path_containment.py::TestImagePathContainment` (all), `::TestImagePathSiblingPrefix::{test_sibling_of_the_working_dir_is_refused, test_sibling_of_the_temp_dir_is_refused}` | `test_image_in_the_working_dir_is_still_read`, `test_image_in_the_system_temp_dir_is_still_read`, `test_jpeg_mime_is_kept_for_non_png` | `work-evil/` and `systmp-evil/` siblings share the root's string prefix and are refused | outside absolute path, `..` traversal, symlink out (skipped where not permitted) | verified |
-| AC2 | manual | n/a (scanner re-query) | Sonar API shows `AaEUi-pJNs-rcCYFSaoq` CLOSED after the push scan; CodeQL check green on the PR | n/a: single state read | still OPEN: ticket stays open, investigate, never dismiss | planned (after merge) |
+| AC2 | manual | n/a (scanner re-query) | Sonar API shows `AaEUi-pJNs-rcCYFSaoq` CLOSED after the push scan; CodeQL check green on the PR | n/a: single state read | still OPEN: ticket stays open, investigate, never dismiss | verified |
 
 ## Regression risk
 
@@ -36,4 +36,4 @@ they bite is mutation:
 Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 1999 passed, 2 skipped, 19 deselected, 2 failed, the known
 baseline (ADE-23, ADE-24). `ruff format --check` and `ruff check` clean on the two touched files.
 
-AC2: pending, read after the PR scan, the merge and the push scan.
+AC2: verified 2026-10-07: after the push scan on master the Sonar API shows AaEUi-pJNs-rcCYFSaoq CLOSED, resolution FIXED; CodeQL check green on the PR.
