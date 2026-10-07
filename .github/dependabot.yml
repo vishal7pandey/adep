@@ -17,6 +17,11 @@ updates:
     groups:
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # ADE-70: paddleocr 3.x broke the provider (PR #28); the provider speaks the 2.x API and the
+      # old engine is retired by ADE-33. Lift this only with a deliberate migration of the provider.
+      - dependency-name: "paddleocr"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "npm"
     directory: "/frontend"

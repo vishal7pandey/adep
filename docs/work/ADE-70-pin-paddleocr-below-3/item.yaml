@@ -1,0 +1,19 @@
+id: ADE-70
+type: bug
+title: Pin paddleocr below 3
+slug: pin-paddleocr-below-3
+status: implementing
+risk: medium
+jira: ADE-70
+branch: fix/ade-70-pin-paddleocr-below-3
+created: '2026-10-07'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+pr: null
