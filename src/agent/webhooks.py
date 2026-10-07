@@ -15,6 +15,7 @@ import ipaddress
 import json
 import logging
 import os
+import re
 import socket
 import tempfile
 import time
@@ -25,7 +26,12 @@ from typing import Any
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+from src.definitions.base import InvalidEntityIdError
+
 logger = logging.getLogger(__name__)
+
+# Webhook id: alphanumeric, dash, underscore (no path separators or dots)
+_HOOK_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
 WEBHOOK_TIMEOUT = 10  # seconds
 MAX_RETRIES = 3
@@ -143,16 +149,17 @@ def _check_ip_blocked(ip: ipaddress.IPAddress) -> None:
         )
 
 
-def _atomic_write(path: Path, content: str) -> None:
+def _atomic_write(path: str | os.PathLike[str], content: str) -> None:
     """Write content to a file atomically [BLK-155].
 
     Writes to a temp file in the same directory, then os.replace() into place.
     This prevents partial writes from corrupting JSON on crash/kill.
     """
     encoding = "utf-8"
+    target = os.fspath(path)
     tmp_fd, tmp_path = tempfile.mkstemp(
-        dir=str(path.parent),
-        prefix=path.stem + ".",
+        dir=os.path.dirname(target),
+        prefix=os.path.splitext(os.path.basename(target))[0] + ".",
         suffix=".tmp",
     )
     try:
@@ -160,7 +167,7 @@ def _atomic_write(path: Path, content: str) -> None:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, str(path))
+        os.replace(tmp_path, target)
     except Exception:
         try:
             os.unlink(tmp_path)
@@ -240,8 +247,18 @@ class WebhookStore:
         self.hooks_dir = self.base_dir / "webhooks"
         self.hooks_dir.mkdir(parents=True, exist_ok=True)
 
-    def _path(self, hook_id: str) -> Path:
-        return self.hooks_dir / f"{hook_id}.json"
+    # hook_id comes from the request URL or body. Each operation validates the id, resolves the
+    # target with os.path.realpath and touches it only inside the true branch of an inline
+    # ``startswith(root + os.sep)`` guard on the store root (CodeQL py/path-injection, ADE-71).
+    # A symlinked file or directory that leaves the store fails the guard.
+
+    @staticmethod
+    def _check_id(hook_id: str) -> None:
+        """Raise InvalidEntityIdError unless hook_id is a plain identifier (no separators)."""
+        if not _HOOK_ID_PATTERN.match(hook_id):
+            raise InvalidEntityIdError(
+                f"Invalid webhook ID '{hook_id}': must match {_HOOK_ID_PATTERN.pattern}"
+            )
 
     def create(self, hook_id: str, config: WebhookConfig) -> dict[str, Any]:
         """Create a new webhook config.
@@ -249,35 +266,48 @@ class WebhookStore:
         Validates the webhook URL against SSRF rules [BLK-152].
         """
         _validate_webhook_url(config.url)
-        path = self._path(hook_id)
-        if path.exists():
-            raise FileExistsError(f"Webhook '{hook_id}' already exists")
-        data = config.to_dict()
-        # Store actual secret in file (not masked)
-        data["secret"] = config.secret
-        _atomic_write(path, json.dumps(data, indent=2))
-        return config.to_dict()
+        self._check_id(hook_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, "webhooks", f"{hook_id}.json"))
+        if real.startswith(root + os.sep):
+            if os.path.exists(real):
+                raise FileExistsError(f"Webhook '{hook_id}' already exists")
+            data = config.to_dict()
+            # Store actual secret in file (not masked)
+            data["secret"] = config.secret
+            _atomic_write(real, json.dumps(data, indent=2))
+            return config.to_dict()
+        raise InvalidEntityIdError(f"Invalid webhook ID '{hook_id}': outside the store")
 
     def get(self, hook_id: str) -> dict[str, Any]:
         """Get webhook config by ID (secret masked)."""
-        path = self._path(hook_id)
-        if not path.exists():
-            raise FileNotFoundError(f"Webhook '{hook_id}' not found")
-        data = json.loads(path.read_text(encoding="utf-8"))
-        # Mask secret in response
-        data["secret"] = "***" if data.get("secret") else ""
-        return data
+        self._check_id(hook_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, "webhooks", f"{hook_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"Webhook '{hook_id}' not found")
+            with open(real, encoding="utf-8") as f:
+                data = json.load(f)
+            # Mask secret in response
+            data["secret"] = "***" if data.get("secret") else ""
+            return data
+        raise InvalidEntityIdError(f"Invalid webhook ID '{hook_id}': outside the store")
 
     def get_raw(self, hook_id: str) -> dict[str, Any]:
         """Get webhook config by ID with unmasked secret (internal use only).
 
         Used by the test_webhook endpoint to send signed payloads.
         """
-        path = self._path(hook_id)
-        if not path.exists():
-            raise FileNotFoundError(f"Webhook '{hook_id}' not found")
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data
+        self._check_id(hook_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, "webhooks", f"{hook_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"Webhook '{hook_id}' not found")
+            with open(real, encoding="utf-8") as f:
+                return json.load(f)
+        raise InvalidEntityIdError(f"Invalid webhook ID '{hook_id}': outside the store")
 
     def list(self) -> list[dict[str, Any]]:
         """List all webhook configs."""
@@ -293,25 +323,35 @@ class WebhookStore:
 
         Validates the webhook URL if it's being changed [BLK-152].
         """
-        path = self._path(hook_id)
-        if not path.exists():
-            raise FileNotFoundError(f"Webhook '{hook_id}' not found")
-        existing = json.loads(path.read_text(encoding="utf-8"))
-        existing.update(data)
-        # Validate URL if it's being changed
-        if "url" in data:
-            _validate_webhook_url(data["url"])
-        _atomic_write(path, json.dumps(existing, indent=2))
-        result = existing.copy()
-        result["secret"] = "***" if result.get("secret") else ""
-        return result
+        self._check_id(hook_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, "webhooks", f"{hook_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"Webhook '{hook_id}' not found")
+            with open(real, encoding="utf-8") as f:
+                existing = json.load(f)
+            existing.update(data)
+            # Validate URL if it's being changed
+            if "url" in data:
+                _validate_webhook_url(data["url"])
+            _atomic_write(real, json.dumps(existing, indent=2))
+            result = existing.copy()
+            result["secret"] = "***" if result.get("secret") else ""
+            return result
+        raise InvalidEntityIdError(f"Invalid webhook ID '{hook_id}': outside the store")
 
     def delete(self, hook_id: str) -> None:
         """Delete a webhook config."""
-        path = self._path(hook_id)
-        if not path.exists():
-            raise FileNotFoundError(f"Webhook '{hook_id}' not found")
-        path.unlink()
+        self._check_id(hook_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, "webhooks", f"{hook_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"Webhook '{hook_id}' not found")
+            os.unlink(real)
+            return
+        raise InvalidEntityIdError(f"Invalid webhook ID '{hook_id}': outside the store")
 
     def get_all_for_event(self, event: str) -> list[WebhookConfig]:
         """Get all active webhooks subscribed to an event."""

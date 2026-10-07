@@ -1,0 +1,19 @@
+id: ADE-71
+type: bug
+title: Contain webhook store paths
+slug: contain-webhook-store-paths
+status: in-review
+risk: high
+jira: ADE-71
+branch: fix/ade-71-contain-webhook-store-paths
+created: '2026-10-07'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+pr: null
