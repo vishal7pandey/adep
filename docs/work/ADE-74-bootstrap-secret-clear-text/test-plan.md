@@ -28,4 +28,4 @@ AC1: `src/tests/test_auth.py::TestBootstrap::test_bootstrap_secret_not_sent_thro
 
 Full suite `uv run python -m pytest src/tests -q -m "not integration"` in the shared main-checkout venv: 12 failed, 2024 passed on the branch; the same 12 fail on unmodified master in this venv (the 2 known ADE-23/ADE-24 plus 10 environment failures: 6 e2e, 3 paddleocr contract, 1 stabilization, all deselected in CI), so no regression. `ruff format --check` clean on the two touched files.
 
-AC2: pending, scanner re-query after merge.
+AC2: NOT met (2026-10-07): after the master CodeQL run alert 46 is `fixed`, but CodeQL raised a successor alert 52 (py/clear-text-logging-sensitive-data, src/api/auth.py:375, the `sys.stdout.write` of the one-time banner); the PR CodeQL check had been green, so the PR check does not catch a relocated alert. ADE-74 stays open; a dismissal proposal (won't fix, intended one-time console display) is on the Jira issue for the owner. The status below stays `planned`.

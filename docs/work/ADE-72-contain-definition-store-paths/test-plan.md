@@ -8,7 +8,7 @@ Baseline in the shared venv: 12 failures on unmodified master (2 known ADE-23/AD
 | AC | Level | Test (name/path) | Happy | Boundary | Negative | Status |
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | unit/integration | `src/tests/test_definition_store_containment.py` (TestEveryOperationRejectsABadId, TestEntityTypeIsContained, TestSymlinksCannotLeaveTheStore, TestLegitimateIdsKeepWorking, TestRoutesAnswerAnInvalidIdWithA4xx) | full CRUD cycle for valid ids, built-in definitions/skills/templates resolve, runs and `list_all`, legitimate routes still 200/201/404/204 | `a.b`, `.hidden`, empty id, 80-char id, `a b`; entity dir pointing at a sibling sharing the store name prefix | `../x`, `..\x`, `/abs`, `C:\abs`, `a/b`, `x/../y` on create/read/update/delete/exists and the typed wrappers; unknown or traversing entity type; symlinked file or directory leaving the store; invalid ids on 4 route families and POST body id | verified |
-| AC2 | manual | n/a (scanner re-query) | alerts 11 to 23 `fixed` on master; PR CodeQL check green | n/a: single state reads | any still `open`: ticket stays open, dismissal proposal, never dismiss | planned |
+| AC2 | manual | n/a (scanner re-query) | alerts 11 to 23 `fixed` on master; PR CodeQL check green | n/a: single state reads | any still `open`: ticket stays open, dismissal proposal, never dismiss | verified |
 
 ## Regression risk
 
@@ -40,4 +40,4 @@ Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 12 faile
 master in this venv (2 known ADE-23/ADE-24 plus 10 environment failures, deselected in CI), so no regression. `ruff format --check` clean on
 the touched Python files.
 
-AC2: pending, scanner re-query after merge.
+AC2: verified 2026-10-07: after the master CodeQL run on the PR #42 merge the code-scanning API shows alerts 11 to 23 `fixed`; the PR CodeQL check was green; Sonar API for pullRequest=42: 0 open issues.

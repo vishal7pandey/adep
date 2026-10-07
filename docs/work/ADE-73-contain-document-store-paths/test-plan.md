@@ -8,7 +8,7 @@ Baseline in the shared venv: 12 failures on unmodified master (2 known ADE-23/AD
 | AC | Level | Test (name/path) | Happy | Boundary | Negative | Status |
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | unit/integration | `src/tests/test_document_store_containment.py` (TestStoreOperations, TestDocumentRoutes, TestEngineCallers, TestRunCreationDocumentRoots) | `test_legitimate_id_still_works`, `test_legitimate_document_routes_still_serve`, `test_list_documents_still_lists` | `a.b`, `.hidden`, empty id; `.adep-evil` and `sample-data-evil` siblings; missing page | `../x`, `/abs`, `a/b`, encoded traversal ids on 4 routes, symlinked dir or page leaving the store, thumbnail outside the store, auto-route with a file path | verified |
-| AC2 | manual | n/a (scanner re-query) | alerts 7, 10, 24-27 `fixed` on master; PR CodeQL check green | n/a: single state reads | any still `open`: ticket stays open, dismissal proposal, never dismiss | planned |
+| AC2 | manual | n/a (scanner re-query) | alerts 7, 10, 24-27 `fixed` on master; PR CodeQL check green | n/a: single state reads | any still `open`: ticket stays open, dismissal proposal, never dismiss | verified |
 
 ## Regression risk
 
@@ -40,4 +40,4 @@ Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 12 faile
 master in this venv (2 known ADE-23/ADE-24 plus 10 environment failures, deselected in CI). `ruff format --check` clean on the six touched
 Python files.
 
-AC2: pending, scanner re-query after merge.
+AC2: verified 2026-10-07: after the master CodeQL run 37575323940 the code-scanning API shows alerts 7, 10, 24, 25, 26, 27 `fixed` (fixed_at 2026-10-07T05:15:28Z); the PR CodeQL check was green; Sonar API for pullRequest=41: 0 open issues.
