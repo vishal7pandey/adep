@@ -1,0 +1,19 @@
+id: ADE-58
+type: bug
+title: Rewriter LLM call and verifier slice (Sonar)
+slug: rewriter-llm-call-and-verifier-slice
+status: implementing
+risk: low
+jira: ADE-58
+branch: fix/ade-58-rewriter-llm-call-and-verifier-slice
+created: '2026-10-07'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+pr: null
