@@ -160,3 +160,21 @@ class TestImagePathContainment:
     def test_jpeg_mime_is_kept_for_non_png(self, roots):
         pic = _image(roots.work / "page.jpg")
         assert vlm_azure._encode_image(str(pic)).startswith("data:image/jpeg;base64,")
+
+
+class TestImagePathSiblingPrefix:
+    """ADE-69: each root is checked as `root + os.sep`, so `<root>-evil/` is not inside `<root>`."""
+
+    def test_sibling_of_the_working_dir_is_refused(self, roots, fake_client):
+        sibling = _image(roots.base / "work-evil" / "x.png")
+        assert str(sibling).startswith(str(roots.work))  # same string prefix, different directory
+        with pytest.raises(ValueError):
+            vlm_azure._encode_image(str(sibling))
+        fake_client.chat.completions.create.assert_not_called()
+
+    def test_sibling_of_the_temp_dir_is_refused(self, roots, fake_client):
+        sibling = _image(roots.base / "systmp-evil" / "x.png")
+        assert str(sibling).startswith(str(roots.systmp))
+        with pytest.raises(ValueError):
+            vlm_azure._encode_image(str(sibling))
+        fake_client.chat.completions.create.assert_not_called()
