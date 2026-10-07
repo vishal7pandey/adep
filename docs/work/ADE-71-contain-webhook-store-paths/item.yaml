@@ -2,7 +2,7 @@ id: ADE-71
 type: bug
 title: Contain webhook store paths
 slug: contain-webhook-store-paths
-status: in-review
+status: merged
 risk: high
 jira: ADE-71
 branch: fix/ade-71-contain-webhook-store-paths

@@ -2,7 +2,7 @@ id: ADE-74
 type: bug
 title: Bootstrap secret clear-text
 slug: bootstrap-secret-clear-text
-status: in-review
+status: merged
 risk: high
 jira: ADE-74
 branch: fix/ade-74-bootstrap-secret-clear-text

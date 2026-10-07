@@ -2,7 +2,7 @@ id: ADE-73
 type: bug
 title: Contain document store paths
 slug: contain-document-store-paths
-status: in-review
+status: merged
 risk: high
 jira: ADE-73
 branch: fix/ade-73-contain-document-store-paths
