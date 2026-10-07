@@ -1,0 +1,11 @@
+{
+  "note": "Summary read by the charter metric for criterion C1 (docs/PROJECT.md). Baseline as reported for the head-to-head run of 2026-10-05 (ADE-31). Raw results stay in the gitignored .adep/eval/. Replace this file with the numbers of a new run of 'python -m src.eval.pid_compare' when ADE-76 delivers one. No key, no drawing content.",
+  "ticket": "ADE-76",
+  "engine": "new",
+  "date": "2026-10-05",
+  "tool": "python -m src.eval.pid_compare",
+  "drawings": 3,
+  "mean_count_recall": 0.46,
+  "stdev": 0.11,
+  "agreed_bar": 0.8
+}
