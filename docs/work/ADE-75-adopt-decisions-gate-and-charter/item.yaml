@@ -2,7 +2,7 @@ id: ADE-75
 type: feature
 title: Adopt decisions gate and charter
 slug: adopt-decisions-gate-and-charter
-status: in-review
+status: merged
 risk: low
 jira: ADE-75
 branch: wt/ade-gate

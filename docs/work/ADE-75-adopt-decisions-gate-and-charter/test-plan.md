@@ -55,4 +55,8 @@ Checks run on 2026-10-07 (no test code exists for this change; the checks are th
   (`test_compact_run_not_in_executor_returns_false` ADE-24, `test_seeded_definitions_exist` ADE-23) plus seven e2e tests that fail
   only because no LLM provider is configured (`RuntimeError: No LLM provider configured`), which also shows in a checkout without `.env`.
   No test touches code changed here (none changed); no Python file was edited, so `ruff format` has nothing to check.
-- AC8: filled in with the PR checks below.
+- AC8: PR #45 at head 464f21e: verify, backend (2m50s), frontend, docker-build, CodeQL and the three Analyze jobs passed. `sonarcloud`
+  failed on its first run (31 s) with `AttributeError: partially initialized module 'cv2' ... gapi_wip_gst_GStreamerPipeline` at test
+  collection, the same install step and lockfile as `backend`, which passed; no file in this PR touches that path. The re-run of the
+  failed job passed (3m25s). A final docs-only commit (this audit and `status: merged`, as the factory's convention puts it last on the
+  branch) re-ran the checks before the merge; see the PR.
