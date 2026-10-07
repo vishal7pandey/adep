@@ -24,4 +24,16 @@ AC2: `https://sonarcloud.io/api/issues/search?issues=AaEUi-pJNs-rcCYFSaoq&compon
 
 ## Audit (after implementation)
 
-<!-- filled after implementation -->
+AC1, `src/tests/test_sonar_path_containment.py` (16 tests: 15 passed, 1 skipped because symlinks are not permitted on this account).
+The two new sibling-prefix tests pass before and after the restructure (the behaviour was already correct), so the evidence that
+they bite is mutation:
+
+- Mutation 1, the guard replaced by `if True:`: 6 failed (all refusal tests). Restored.
+- Mutation 2, `startswith(root)` without `os.sep`: `test_sibling_dir_sharing_the_working_dir_name_prefix_is_refused`,
+  `TestImagePathSiblingPrefix::test_sibling_of_the_working_dir_is_refused` and `::test_sibling_of_the_temp_dir_is_refused` failed (3). Restored.
+- Mutation 3, the temp root dropped from the loop: `test_image_in_the_system_temp_dir_is_still_read` failed (1). Restored.
+
+Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 1999 passed, 2 skipped, 19 deselected, 2 failed, the known
+baseline (ADE-23, ADE-24). `ruff format --check` and `ruff check` clean on the two touched files.
+
+AC2: pending, read after the PR scan, the merge and the push scan.
