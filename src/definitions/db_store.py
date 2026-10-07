@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from src.definitions.base import AgentDefinition
+from src.definitions.base import AgentDefinition, InvalidEntityIdError
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class DatabaseDefinitionStore:
 
     def _validate_id(self, entity_id: str) -> None:
         if not _ENTITY_ID_PATTERN.match(entity_id):
-            raise ValueError(
+            raise InvalidEntityIdError(
                 f"Invalid entity ID '{entity_id}': must match {_ENTITY_ID_PATTERN.pattern}"
             )
 

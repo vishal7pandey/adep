@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from src.config import settings
+from src.definitions.base import InvalidEntityIdError
 from src.observability.context import set_context, request_id_var
 from src.observability.logging import configure_logging
 
@@ -62,6 +63,11 @@ def create_app() -> FastAPI:
             500: {"model": HTTPError, "description": "Internal server error"},
         },
     )
+
+    # An entity id that is invalid or would leave the store directory is a client error (ADE-72)
+    @app.exception_handler(InvalidEntityIdError)
+    async def invalid_entity_id_handler(request: Request, exc: InvalidEntityIdError):
+        return JSONResponse(status_code=400, content={"detail": str(exc)})
 
     # CORS — allow frontend dev server [§9]
     app.add_middleware(

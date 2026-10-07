@@ -10,6 +10,13 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class InvalidEntityIdError(ValueError):
+    """An entity id (or entity type) that is not valid or would leave the store directory.
+
+    A ``ValueError`` so existing callers keep working; the API turns it into a 400.
+    """
+
+
 class AgentConfig(BaseModel):
     """Runtime configuration for an agent definition.
 
