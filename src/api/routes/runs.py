@@ -122,8 +122,8 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
             doc_meta = doc_store.get_document(doc_path)
             page_paths = doc_meta.get("page_paths")
             first_page = page_paths[0] if page_paths else doc_path
-        except FileNotFoundError:
-            # Treat as a file path
+        except (FileNotFoundError, ValueError):
+            # Not a (valid) document id: treat as a file path
             first_page = _validate_local_image_path_for_autoroute(doc_path)
 
         try:
@@ -151,9 +151,12 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
         )
 
     # BLK-241: Validate document_path against allowed document roots
-    doc_path_resolved = Path(req.document_path).resolve()
-    allowed_roots = [r.resolve() for r in [Path.cwd() / ".adep", Path.cwd() / "sample-data"]]
-    if not any(doc_path_resolved.is_relative_to(root) for root in allowed_roots):
+    # os.path.realpath plus inline startswith guards (one literal root each) is the containment
+    # pattern CodeQL recognises; Path.resolve() / is_relative_to are not modelled as one.
+    doc_real = os.path.realpath(req.document_path)
+    adep_root = os.path.realpath(Path.cwd() / ".adep")
+    sample_root = os.path.realpath(Path.cwd() / "sample-data")
+    if not (doc_real.startswith(adep_root + os.sep) or doc_real.startswith(sample_root + os.sep)):
         logger.warning(
             "Run creation denied — document_path outside allowed roots: %s", req.document_path
         )

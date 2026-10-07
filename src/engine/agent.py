@@ -173,7 +173,7 @@ def build_agent(model: Model | None = None) -> Agent:
         ctx.deps.budget.record_tool("list_document_pages")
         try:
             return get_document_store().get_document(document_id)
-        except FileNotFoundError as exc:
+        except (FileNotFoundError, ValueError) as exc:
             return {"error": str(exc)}
 
     @agent.tool
