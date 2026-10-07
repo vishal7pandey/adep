@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import logging
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -36,19 +37,25 @@ def _validate_local_image_path_for_autoroute(path_value: str) -> str:
     - system temporary directory
     """
     allowed_suffixes = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
-    candidate = Path(path_value).expanduser().resolve(strict=False)
-    roots = (Path.cwd().resolve(), Path(tempfile.gettempdir()).resolve())
+    # os.path.realpath plus an inline startswith guard is the containment pattern CodeQL
+    # recognises; Path.resolve() and `root in candidate.parents` are not modelled as one.
+    real_path = os.path.realpath(os.path.expanduser(path_value))
+    working_root = os.path.realpath(os.getcwd())
+    temp_root = os.path.realpath(tempfile.gettempdir())
 
-    if candidate.suffix.lower() not in allowed_suffixes:
+    if os.path.splitext(real_path)[1].lower() not in allowed_suffixes:
         raise HTTPException(status_code=400, detail="document_url must be a supported image path")
 
-    if not any(candidate != root and root in candidate.parents for root in roots):
-        raise HTTPException(status_code=400, detail="document_url path is outside allowed directories")
+    root = temp_root if real_path.startswith(temp_root + os.sep) else working_root
+    if not real_path.startswith(root + os.sep):
+        raise HTTPException(
+            status_code=400, detail="document_url path is outside allowed directories"
+        )
 
-    if not candidate.exists() or not candidate.is_file():
+    if not os.path.isfile(real_path):
         raise HTTPException(status_code=400, detail="document_url image file not found")
 
-    return str(candidate)
+    return real_path
 
 
 def _get_run_or_404(run_id: str) -> dict[str, Any]:
