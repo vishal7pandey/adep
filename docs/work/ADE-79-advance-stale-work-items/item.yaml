@@ -2,7 +2,7 @@ id: ADE-79
 type: feature
 title: Advance stale work items
 slug: advance-stale-work-items
-status: implementing
+status: merged
 risk: low
 jira: ADE-79
 branch: feature/ade-79-advance-stale-work-items
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-07'
     delegated: true
-pr: null
+pr: '47'
