@@ -2,7 +2,7 @@ id: ADE-64
 type: bug
 title: Update source-map-js to 1.2.2
 slug: update-source-map-js-to-1-2-2
-status: in-review
+status: merged
 risk: low
 jira: ADE-64
 branch: fix/ade-64-update-source-map-js-to-1-2-2
