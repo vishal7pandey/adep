@@ -25,6 +25,10 @@ from src.providers.llm import invoke_llm
 
 logger = logging.getLogger(__name__)
 
+# Upper bound for `co_evolve_skill(max_iterations=...)`; same number as the API request model
+# (`CoEvolveSkillRequest`). Each iteration makes paid model calls, so a larger request is clamped.
+MAX_CO_EVOLUTION_ITERATIONS = 10
+
 
 # ---------------------------------------------------------------------------
 # System prompt — instructs the LLM to produce a skill definition as JSON
@@ -524,7 +528,8 @@ def co_evolve_skill(
         gap_report: GapReport from the sample run.
         extraction: Extracted field values from the sample run.
         sample_fields: Optional field names from the template schema.
-        max_iterations: Maximum number of co-evolution iterations.
+        max_iterations: Maximum number of co-evolution iterations (clamped to
+            MAX_CO_EVOLUTION_ITERATIONS, 10).
 
     Returns:
         CoEvolutionResult with the final skill and iteration history.
@@ -542,6 +547,14 @@ def co_evolve_skill(
     result.token_usage["input_tokens"] += tu.get("input_tokens", 0)
     result.token_usage["output_tokens"] += tu.get("output_tokens", 0)
     result.token_usage["total_tokens"] += tu.get("total_tokens", 0)
+
+    if max_iterations > MAX_CO_EVOLUTION_ITERATIONS:
+        logger.warning(
+            "Co-evolution: max_iterations=%d exceeds the limit, clamped to %d",
+            max_iterations,
+            MAX_CO_EVOLUTION_ITERATIONS,
+        )
+    max_iterations = min(max_iterations, MAX_CO_EVOLUTION_ITERATIONS)
 
     for i in range(max_iterations):
         # Step 2: Verify the skill with the Surrogate Verifier

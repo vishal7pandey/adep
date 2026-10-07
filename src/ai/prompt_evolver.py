@@ -34,6 +34,10 @@ from src.providers.llm import invoke_llm
 
 logger = logging.getLogger(__name__)
 
+# Upper bound for `optimize_skill(max_iterations=...)`; same number as the API request model
+# (`OptimizeSkillRequest`). Each iteration makes paid model calls, so a larger request is clamped.
+MAX_GEPA_ITERATIONS = 50
+
 
 # ---------------------------------------------------------------------------
 # System prompts for reflection and mutation
@@ -700,7 +704,7 @@ def optimize_skill(
         traces: List of execution traces (one per sample document).
         gap_reports: List of gap reports (one per sample).
         extractions: List of extraction dicts (one per sample).
-        max_iterations: Maximum number of GEPA iterations.
+        max_iterations: Maximum GEPA iterations (clamped to MAX_GEPA_ITERATIONS, 50).
         population_size: Maximum number of candidates to maintain.
         merge_probability: Probability of attempting a merge instead of mutation.
         convergence_threshold: If fitness improvement is below this for 3 consecutive iterations, stop.
@@ -748,6 +752,14 @@ def optimize_skill(
     # Track convergence
     best_fitness_history: list[float] = [seed_candidate.fitness()]
     candidate_counter = 0
+
+    if max_iterations > MAX_GEPA_ITERATIONS:
+        logger.warning(
+            "GEPA: max_iterations=%d exceeds the limit, clamped to %d",
+            max_iterations,
+            MAX_GEPA_ITERATIONS,
+        )
+    max_iterations = min(max_iterations, MAX_GEPA_ITERATIONS)
 
     for iteration in range(1, max_iterations + 1):
         logger.info(

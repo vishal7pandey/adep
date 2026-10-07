@@ -27,4 +27,19 @@ for `AaESHmBojNIvKL1jZh97`, `AaESHmBOjNIvKL1jZh9u`, `AaESHmBxjNIvKL1jZh-B`; read
 
 ## Audit (after implementation)
 
-<!-- filled after implementation -->
+AC1 and AC2, `src/tests/test_iteration_limits.py` (15 tests, 15 passed after the fix). Evidence the tests fail when the behaviour breaks:
+
+- Before the fix (commit "test(ADE-60): failing iteration-limit tests ..."): 9 failed, 6 passed. The loop tests for limit+1 and 10**9 hit the
+  counting stub's `_Runaway` (the loop ran past its limit); the three drift guards failed with `AttributeError` (no constant yet).
+- Mutation 1, GEPA clamp replaced by `pass`: `test_loop_never_runs_past_the_limit[51]` and `[1000000000]` (GEPA) failed (2). Restored.
+- Mutation 2, MCTS clamp removed: the same two cases for MCTS failed (2). Restored.
+- Mutation 3, co-evolution clamp removed: the same two cases for co-evolution failed (2). Restored.
+- Mutation 4, `MAX_GEPA_ITERATIONS = 49`: the GEPA cases `[50]`, `[51]`, `[1000000000]` and the API drift guard failed (4). Restored.
+- Mutation 5, MCTS clamp replaced by `max(max_iterations, 4)`: 2 failed. Restored.
+- The below-limit tests (4, 4 and 2 rounds) stayed green in every mutation, so they pin the behaviour the fix must preserve.
+
+Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 2012 passed, 2 skipped, 19 deselected, 2 failed, the known baseline
+(ADE-23, ADE-24). `ruff format --check` clean on the four touched files; `ruff check` on the three modules reports 53 findings before and
+after (ADE-20 baseline, none added; two over-long lines of mine were shortened).
+
+AC3: pending, read after the PR scan, the merge and the push scan.
