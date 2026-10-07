@@ -2,7 +2,7 @@ id: ADE-60
 type: bug
 title: Cap skill optimiser iterations (Sonar S6680)
 slug: cap-skill-optimiser-iterations-sonar
-status: implementing
+status: in-review
 risk: medium
 jira: ADE-60
 branch: fix/ade-60-cap-skill-optimiser-iterations-sonar
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-07'
     delegated: true
-pr: null
+pr: '33'
