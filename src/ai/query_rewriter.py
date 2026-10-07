@@ -290,9 +290,9 @@ def decompose_skill(
         response = invoke_llm(
             system_prompt=_DECOMPOSE_SYSTEM_PROMPT,
             user_prompt=user_prompt,
-            temperature=0.3,
             max_tokens=4000,
         )
+        response_text = response.content
     except Exception as e:
         logger.error("LLM decomposition failed: %s", e)
         return RewriteResult(
@@ -302,10 +302,10 @@ def decompose_skill(
         )
 
     try:
-        result = json.loads(response)
+        result = json.loads(response_text)
     except json.JSONDecodeError:
         # Try to extract JSON from response
-        match = re.search(r"\{[\s\S]*\}", response)
+        match = re.search(r"\{[\s\S]*\}", response_text)
         if match:
             try:
                 result = json.loads(match.group())
