@@ -1,0 +1,19 @@
+id: ADE-72
+type: bug
+title: Contain definition store paths
+slug: contain-definition-store-paths
+status: in-review
+risk: high
+jira: ADE-72
+branch: fix/ade-72-contain-definition-store-paths
+created: '2026-10-07'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+pr: null

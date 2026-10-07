@@ -22,7 +22,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from src.definitions.base import AgentDefinition
+from src.definitions.base import AgentDefinition, InvalidEntityIdError
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +37,16 @@ _PREBUILT_ENTITY_TYPES = ("definitions", "skills", "templates")
 _ENTITY_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
 
 
-def _atomic_write(path: Path, content: str) -> None:
+def _atomic_write(path: str | os.PathLike[str], content: str) -> None:
     """Write content to a file atomically [BLK-155].
 
     Writes to a temp file in the same directory, then os.replace() into place.
     This prevents partial writes from corrupting JSON on crash/kill.
     """
+    target = os.fspath(path)
     tmp_fd, tmp_path = tempfile.mkstemp(
-        dir=str(path.parent),
-        prefix=path.stem + ".",
+        dir=os.path.dirname(target),
+        prefix=os.path.splitext(os.path.basename(target))[0] + ".",
         suffix=".tmp",
     )
     try:
@@ -53,7 +54,7 @@ def _atomic_write(path: Path, content: str) -> None:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
-        os.replace(tmp_path, str(path))
+        os.replace(tmp_path, target)
     except Exception:
         try:
             os.unlink(tmp_path)
@@ -62,12 +63,13 @@ def _atomic_write(path: Path, content: str) -> None:
         raise
 
 
-def _atomic_create(path: Path, content: str) -> None:
+def _atomic_create(path: str | os.PathLike[str], content: str) -> None:
     """Atomically create a file, failing if it already exists [BLK-155].
 
     Uses O_CREAT | O_EXCL to prevent TOCTOU race between exists() and write().
     """
-    fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    target = os.fspath(path)
+    fd = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(content)
@@ -75,7 +77,7 @@ def _atomic_create(path: Path, content: str) -> None:
             os.fsync(f.fileno())
     except Exception:
         try:
-            os.unlink(str(path))
+            os.unlink(target)
         except OSError:
             pass
         raise
@@ -102,20 +104,28 @@ class DefinitionStore:
         for entity_type in _ENTITY_TYPES:
             (self.base_dir / entity_type).mkdir(parents=True, exist_ok=True)
 
-    def _path_for(self, entity_type: str, entity_id: str) -> Path:
-        """Get the file path for an entity.
+    @staticmethod
+    def _check_ids(entity_type: str, entity_id: str) -> None:
+        """Validate an entity type and id before any path is built from them.
 
         Raises:
-            ValueError: If entity_id contains path traversal characters.
+            InvalidEntityIdError: If the type is not a known entity type or the id contains
+                path traversal characters (a ``ValueError``).
         """
+        if entity_type not in _ENTITY_TYPES:
+            raise InvalidEntityIdError(f"Invalid entity type '{entity_type}'")
         if not _ENTITY_ID_PATTERN.match(entity_id):
-            raise ValueError(
+            raise InvalidEntityIdError(
                 f"Invalid entity ID '{entity_id}': must match {_ENTITY_ID_PATTERN.pattern}"
             )
-        return self.base_dir / entity_type / f"{entity_id}.json"
 
     # ------------------------------------------------------------------
     # Generic CRUD
+    #
+    # entity_id comes from the request URL or body. Each operation validates the type and id,
+    # resolves the target with os.path.realpath and touches it only inside the true branch of an
+    # inline ``startswith(root + os.sep)`` guard on the store root (CodeQL py/path-injection,
+    # ADE-72). A symlinked file or directory that leaves the store fails the guard.
     # ------------------------------------------------------------------
 
     def create(self, entity_type: str, entity_id: str, data: dict[str, Any]) -> dict[str, Any]:
@@ -132,14 +142,18 @@ class DefinitionStore:
         Raises:
             FileExistsError: If the entity already exists.
         """
-        path = self._path_for(entity_type, entity_id)
-        content = json.dumps(data, indent=2, default=str)
-        try:
-            _atomic_create(path, content)
-        except FileExistsError:
-            raise FileExistsError(f"{entity_type}/{entity_id} already exists")
-        logger.info("Created %s/%s", entity_type, entity_id)
-        return data
+        self._check_ids(entity_type, entity_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, entity_type, f"{entity_id}.json"))
+        if real.startswith(root + os.sep):
+            content = json.dumps(data, indent=2, default=str)
+            try:
+                _atomic_create(real, content)
+            except FileExistsError:
+                raise FileExistsError(f"{entity_type}/{entity_id} already exists")
+            logger.info("Created %s/%s", entity_type, entity_id)
+            return data
+        raise InvalidEntityIdError(f"Invalid entity ID '{entity_id}': outside the store")
 
     def read(self, entity_type: str, entity_id: str) -> dict[str, Any]:
         """Read an entity by ID.
@@ -147,10 +161,15 @@ class DefinitionStore:
         Raises:
             FileNotFoundError: If the entity doesn't exist.
         """
-        path = self._path_for(entity_type, entity_id)
-        if not path.exists():
-            raise FileNotFoundError(f"{entity_type}/{entity_id} not found")
-        return json.loads(path.read_text(encoding="utf-8"))
+        self._check_ids(entity_type, entity_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, entity_type, f"{entity_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"{entity_type}/{entity_id} not found")
+            with open(real, encoding="utf-8") as f:
+                return json.load(f)
+        raise InvalidEntityIdError(f"Invalid entity ID '{entity_id}': outside the store")
 
     def update(self, entity_type: str, entity_id: str, data: dict[str, Any]) -> dict[str, Any]:
         """Update an existing entity. Fails if it doesn't exist.
@@ -158,12 +177,16 @@ class DefinitionStore:
         Raises:
             FileNotFoundError: If the entity doesn't exist.
         """
-        path = self._path_for(entity_type, entity_id)
-        if not path.exists():
-            raise FileNotFoundError(f"{entity_type}/{entity_id} not found")
-        _atomic_write(path, json.dumps(data, indent=2, default=str))
-        logger.info("Updated %s/%s", entity_type, entity_id)
-        return data
+        self._check_ids(entity_type, entity_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, entity_type, f"{entity_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"{entity_type}/{entity_id} not found")
+            _atomic_write(real, json.dumps(data, indent=2, default=str))
+            logger.info("Updated %s/%s", entity_type, entity_id)
+            return data
+        raise InvalidEntityIdError(f"Invalid entity ID '{entity_id}': outside the store")
 
     def delete(self, entity_type: str, entity_id: str) -> None:
         """Delete an entity by ID.
@@ -171,11 +194,16 @@ class DefinitionStore:
         Raises:
             FileNotFoundError: If the entity doesn't exist.
         """
-        path = self._path_for(entity_type, entity_id)
-        if not path.exists():
-            raise FileNotFoundError(f"{entity_type}/{entity_id} not found")
-        path.unlink()
-        logger.info("Deleted %s/%s", entity_type, entity_id)
+        self._check_ids(entity_type, entity_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, entity_type, f"{entity_id}.json"))
+        if real.startswith(root + os.sep):
+            if not os.path.exists(real):
+                raise FileNotFoundError(f"{entity_type}/{entity_id} not found")
+            os.unlink(real)
+            logger.info("Deleted %s/%s", entity_type, entity_id)
+            return
+        raise InvalidEntityIdError(f"Invalid entity ID '{entity_id}': outside the store")
 
     def list_all(self, entity_type: str) -> list[dict[str, Any]]:
         """List all entities of a given type.
@@ -193,7 +221,12 @@ class DefinitionStore:
 
     def exists(self, entity_type: str, entity_id: str) -> bool:
         """Check if an entity exists."""
-        return self._path_for(entity_type, entity_id).exists()
+        self._check_ids(entity_type, entity_id)
+        root = os.path.realpath(self.base_dir)
+        real = os.path.realpath(os.path.join(root, entity_type, f"{entity_id}.json"))
+        if real.startswith(root + os.sep):
+            return os.path.exists(real)
+        raise InvalidEntityIdError(f"Invalid entity ID '{entity_id}': outside the store")
 
     # ------------------------------------------------------------------
     # Prebuilt content merging [BLK-159]
