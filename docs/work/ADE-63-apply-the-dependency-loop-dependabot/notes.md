@@ -54,3 +54,23 @@ Dependabot configuration problem. Filed ADE-65; the alert set remains open until
 retirement permits compatible upgrades.
 
 No dependency constraints were broadened and no alerts were dismissed as part of ADE-63.
+
+## After the merge (2026-10-07)
+
+PR #25 merged the sync and `dependabot.yml`. Dependabot then opened version-update PRs, which a human
+reviewed and merged on 2026-10-06; none was merged by an agent:
+
+| PR | Change | Files | Kind | Under `dependencies.md` |
+|---|---|---|---|---|
+| #26 | minor-and-patch group, 6 updates (uv) | `pyproject.toml`, `uv.lock` | minor/patch | would qualify (scheduled, manifest and lockfile only) |
+| #27 | minor-and-patch group, 13 updates (`/frontend`) | `package.json`, `pnpm-lock.yaml` | minor/patch | would qualify |
+| #28 | `paddleocr` 2.10.0 to 3.7.0 | `pyproject.toml`, `uv.lock` | major | not eligible; regression found, ADE-70 |
+| #29 | `@types/node` 20.19.43 to 26.6.4 | `package.json`, `pnpm-lock.yaml` | major | not eligible; assessed in ADE-66, no regression |
+| #30 | `typescript` 5.9.3 to 6.0.3 | `package.json`, `pnpm-lock.yaml` | major | not eligible; frontend build and tests green, assessed with ADE-66 |
+
+At this writing no Dependabot PR is open. `factory status` on master: Dependabot alerts 22 open (7 high,
+12 medium, 3 low; was 29), code scanning 39 open, secret scanning 0, Dependabot PRs 0 open, 28 failed
+`Dependabot Updates` runs in 7 days (the ADE-64 and ADE-65 causes remain), needs attention yes.
+Merging the majors is the owner's call and the policy does not restrict it; the review of the three
+found one real regression (ADE-70: the paddleocr 3.x constructor rejects `show_log`; the unit tests mock
+the engine, so green CI did not show it).
