@@ -474,6 +474,28 @@ class TestBootstrap:
         captured = capsys.readouterr()
         assert secret in captured.out
 
+    def test_bootstrap_secret_not_sent_through_print(
+        self,
+        key_store: ApiKeyStore,
+        capsys: pytest.CaptureFixture,
+        monkeypatch: pytest.MonkeyPatch,
+    ):
+        """The one-time banner is a console write, not a print/log-shaped call (ADE-74)."""
+        import builtins
+
+        printed: list[str] = []
+        real_print = builtins.print
+
+        def recording_print(*args, **kwargs):
+            printed.append(" ".join(str(a) for a in args))
+            real_print(*args, **kwargs)
+
+        monkeypatch.setattr(builtins, "print", recording_print)
+        secret = bootstrap_admin_key(key_store)
+        captured = capsys.readouterr()
+        assert captured.out.count(secret) == 1
+        assert not any(secret in text for text in printed)
+
 
 # ---------------------------------------------------------------------------
 # Auth middleware tests
