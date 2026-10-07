@@ -1,0 +1,19 @@
+id: ADE-74
+type: bug
+title: Bootstrap secret clear-text
+slug: bootstrap-secret-clear-text
+status: in-review
+risk: high
+jira: ADE-74
+branch: fix/ade-74-bootstrap-secret-clear-text
+created: '2026-10-07'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-07'
+    delegated: true
+pr: '40'

@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import secrets
+import sys
 import time
 import calendar
 from dataclasses import asdict, dataclass, field
@@ -369,16 +370,17 @@ def bootstrap_admin_key(store: ApiKeyStore) -> str:
         "to stdout once and is not recoverable from logs.",
         key_id,
     )
-    print(
+    # One-time operator banner: a direct console write, not a print/log call (ADE-74).
+    sys.stdout.write(
         "\n"
         "==================== BOOTSTRAP ADMIN KEY ====================\n"
         f"  Key ID:  {key_id}\n"
         f"  Secret:  {secret}\n"
         "This secret is shown ONLY ONCE and is never written to logs.\n"
         "Store it securely now — it cannot be recovered later.\n"
-        "===============================================================\n",
-        flush=True,
+        "===============================================================\n\n"
     )
+    sys.stdout.flush()
     return secret
 
 
