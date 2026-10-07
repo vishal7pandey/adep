@@ -2,7 +2,7 @@ id: ADE-63
 type: feature
 title: 'Apply the dependency loop: dependabot config, triage, failing runs'
 slug: apply-the-dependency-loop-dependabot
-status: in-review
+status: merged
 risk: low
 jira: ADE-63
 branch: feature/ade-63-apply-the-dependency-loop-dependabot
