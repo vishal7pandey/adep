@@ -9,7 +9,7 @@ Test framework and conventions found: vitest 4 with jsdom, tests in `frontend/te
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | unit | `frontend/tests/source-map-js-patched-version.test.ts` (4 tests: comparator, lockfile entries, lockfile parent references, installed package) | lockfile has only 1.2.2 entries, parents use 1.2.2, installed 1.2.2 | comparator: `1.2.2` and `1.10.0` ok (numeric compare) | comparator rejects `1.2.1` and `1.0.9`; on the old lockfile 3 of 4 fail | verified |
 | AC2 | integration | `pnpm install --frozen-lockfile`, `pnpm test`, `pnpm build` | install ok, 12 files / 112 tests pass, build exits 0 | diff is the lockfile only (3 insertions, 9 deletions) | n/a: no new behaviour | verified |
-| AC3 | manual | n/a (scanner re-query) | `gh api repos/vishal7pandey/adep/dependabot/alerts/47 --jq .state` reads `fixed` | n/a: single state read | still `open`: ticket stays open, investigate, never dismiss | planned (after merge) |
+| AC3 | manual | n/a (scanner re-query) | `gh api repos/vishal7pandey/adep/dependabot/alerts/47 --jq .state` reads `fixed` | n/a: single state read | still `open`: ticket stays open, investigate, never dismiss | verified |
 
 ## Regression risk
 
@@ -35,4 +35,5 @@ AC1, `frontend/tests/source-map-js-patched-version.test.ts`:
 AC2: `pnpm install --frozen-lockfile` ok; `pnpm test`: 12 files, 112 tests passed; `pnpm build` exit 0. `git diff --stat`:
 `frontend/pnpm-lock.yaml | 12 +++---------`, nothing else outside the new test and this work item.
 
-AC3: pending, read after the merge and the push scan.
+AC3: after the merge (PR #38, merge ced2f20) and the push scan, `gh api repos/vishal7pandey/adep/dependabot/alerts/47` read
+`state: fixed`, `fixed_at` 2026-10-07T04:48:46Z.
