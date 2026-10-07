@@ -2,7 +2,7 @@ id: ADE-69
 type: bug
 title: Image read inside the path guard (Sonar)
 slug: image-read-inside-the-path-guard-sonar
-status: in-review
+status: merged
 risk: high
 jira: ADE-69
 branch: fix/ade-69-image-read-inside-the-path-guard-sonar

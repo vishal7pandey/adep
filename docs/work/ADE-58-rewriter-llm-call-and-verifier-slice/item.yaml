@@ -2,7 +2,7 @@ id: ADE-58
 type: bug
 title: Rewriter LLM call and verifier slice (Sonar)
 slug: rewriter-llm-call-and-verifier-slice
-status: in-review
+status: merged
 risk: low
 jira: ADE-58
 branch: fix/ade-58-rewriter-llm-call-and-verifier-slice
