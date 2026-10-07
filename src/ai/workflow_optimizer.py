@@ -36,6 +36,10 @@ from src.providers.llm import invoke_llm
 
 logger = logging.getLogger(__name__)
 
+# Upper bound for `optimize_workflow(max_iterations=...)`; same number as the API request model
+# (`OptimizeWorkflowRequest`). Each iteration makes a paid model call, so a larger value is clamped.
+MAX_MCTS_ITERATIONS = 100
+
 
 # ---------------------------------------------------------------------------
 # Workflow topology definition
@@ -619,7 +623,7 @@ def optimize_workflow(
         evaluate_fn: A callable that takes a WorkflowTopology and returns a dict of scores
                      (field_coverage, avg_confidence, token_efficiency, gap_severity, speed_score).
                      If None, a default heuristic evaluator is used.
-        max_iterations: Maximum number of MCTS iterations.
+        max_iterations: Maximum MCTS iterations (clamped to MAX_MCTS_ITERATIONS, 100).
         convergence_threshold: If best score improvement is below this for 3 consecutive iterations, stop.
         rng_seed: Optional random seed for reproducibility.
 
@@ -654,6 +658,14 @@ def optimize_workflow(
     best_score = root_score
     best_workflow = seed_workflow
     best_score_history: list[float] = [root_score]
+
+    if max_iterations > MAX_MCTS_ITERATIONS:
+        logger.warning(
+            "MCTS: max_iterations=%d exceeds the limit, clamped to %d",
+            max_iterations,
+            MAX_MCTS_ITERATIONS,
+        )
+    max_iterations = min(max_iterations, MAX_MCTS_ITERATIONS)
 
     for iteration in range(1, max_iterations + 1):
         logger.info(
