@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock
 
+from src.agent.token_tracking import LLMResponse
 from src.ai.query_rewriter import (
     analyze_failures,
     decompose_skill,
@@ -243,7 +244,9 @@ class TestLLMDecompose:
             ]
         }"""
 
-        with patch("src.ai.query_rewriter.invoke_llm", return_value=mock_response):
+        with patch(
+            "src.ai.query_rewriter.invoke_llm", return_value=LLMResponse(content=mock_response)
+        ):
             result = decompose_skill(
                 skill, pattern, template_fields=["invoice_number", "vendor", "total"]
             )
@@ -284,7 +287,9 @@ class TestLLMDecompose:
         )
         skill = _make_skill()
 
-        with patch("src.ai.query_rewriter.invoke_llm", return_value="not json at all"):
+        with patch(
+            "src.ai.query_rewriter.invoke_llm", return_value=LLMResponse(content="not json at all")
+        ):
             result = decompose_skill(skill, pattern, template_fields=["invoice_number"])
 
         assert len(result.sub_skills) == 0
@@ -302,7 +307,9 @@ class TestRewriteFailingSkill:
     def test_rewrite_triggers_on_high_failure(self, failing_runs):
         skill = _make_skill()
         with patch("src.ai.query_rewriter.invoke_llm") as mock_llm:
-            mock_llm.return_value = '{"rationale": "test", "estimated_improvement": 0.1, "sub_skills": [{"name": "s1", "description": "d", "system_prompt": "p", "field_subset": ["a"], "probe_order": [], "validation_criteria": []}]}'
+            mock_llm.return_value = LLMResponse(
+                content='{"rationale": "test", "estimated_improvement": 0.1, "sub_skills": [{"name": "s1", "description": "d", "system_prompt": "p", "field_subset": ["a"], "probe_order": [], "validation_criteria": []}]}'
+            )
             result = rewrite_failing_skill("def-invoice", failing_runs, skill, use_llm=True)
 
         assert result is not None

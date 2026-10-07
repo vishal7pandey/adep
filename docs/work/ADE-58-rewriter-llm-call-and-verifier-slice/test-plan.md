@@ -28,4 +28,20 @@ for the two keys; read `status` and `resolution`.
 
 ## Audit (after implementation)
 
-<!-- filled after implementation -->
+AC1 and AC2, `src/tests/test_sonar_bug_fixes.py` (11 tests, 11 passed after the fix) and the updated `src/tests/test_query_rewriter.py`.
+Evidence the tests fail when the behaviour breaks:
+
+- Before the fix (commit "test(ADE-58): failing tests ..."): 6 failed, 5 passed. The four rewriter tests got
+  `LLM decomposition failed: ... unexpected keyword argument 'temperature'` (and `_call_llm` called 0 times); the two verifier tests got
+  `TypeError: 'NoneType' object is not subscriptable` at `surrogate_verifier.py:91`.
+- Mutation 1, `temperature=0.3` put back: the 4 rewriter tests failed (4). Restored.
+- Mutation 2, `response_text = response` (parse the `LLMResponse` as a string): the 4 rewriter tests and 3 tests in `test_query_rewriter.py`
+  failed (7). Restored.
+- Mutation 3, the `or []` coalescing removed from `gaps`: both `gaps: None` tests failed (2). Restored.
+- Mutation 4, slice widened to `gaps[:9]`: `test_at_most_eight_gaps_are_diagnosed` failed (1). Restored.
+- The behaviour-pinning tests (no report, empty report, empty lists, exact high-severity diagnosis) stayed green in every mutation.
+
+Full suite `uv run python -m pytest src/tests -q -m "not integration"`: 2010 passed, 2 skipped, 19 deselected, 2 failed, the known baseline
+(ADE-23, ADE-24). `ruff format --check` clean; `ruff check` on the four touched files reports 24 findings before and after (ADE-20, none added).
+
+AC3: pending, read after the PR scan, the merge and the push scan.

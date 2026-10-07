@@ -74,8 +74,9 @@ def _heuristic_verify(
         "system_prompt_suggestions": "",
     }
 
-    gaps = _value_from(gap_report, "gaps", []) if gap_report is not None else []
-    satisfied = _value_from(gap_report, "satisfied", []) if gap_report is not None else []
+    # A missing report, or a report whose `gaps` / `satisfied` is None, counts as empty.
+    gaps = _value_from(gap_report, "gaps", None) or []
+    satisfied = _value_from(gap_report, "satisfied", None) or []
     trace_len = len(trace or [])
 
     if trace_len <= 1:
