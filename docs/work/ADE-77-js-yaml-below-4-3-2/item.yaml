@@ -2,7 +2,7 @@ id: ADE-77
 type: bug
 title: js-yaml below 4.3.2
 slug: js-yaml-below-4-3-2
-status: implementing
+status: in-review
 risk: low
 jira: ADE-77
 branch: fix/ade-77-js-yaml-below-4-3-2
@@ -16,4 +16,4 @@ approvals:
     by: Vishal Pandey (delegated to agent)
     at: '2026-10-07'
     delegated: true
-pr: null
+pr: '46'
