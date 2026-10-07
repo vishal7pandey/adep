@@ -1,0 +1,19 @@
+id: ADE-56
+type: bug
+title: Contain batch and VLM image paths (Sonar S2083 ADE-56, ADE-57)
+slug: contain-batch-and-vlm-image-paths-sonar
+status: in-review
+risk: high
+jira: ADE-56
+branch: fix/ade-56-contain-batch-and-vlm-image-paths-sonar
+created: '2026-10-06'
+approvals:
+  spec:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+  plan:
+    by: Vishal Pandey (delegated to agent)
+    at: '2026-10-06'
+    delegated: true
+pr: '24'

@@ -7,6 +7,8 @@ import csv
 import io
 import json
 import logging
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,35 @@ from src.definitions.store import get_store
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["runs"])
+
+
+def _validate_local_image_path_for_autoroute(path_value: str) -> str:
+    """Validate request-supplied image path for auto-routing.
+
+    Allowed roots:
+    - current working directory
+    - system temporary directory
+    """
+    allowed_suffixes = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff"}
+    # os.path.realpath plus an inline startswith guard is the containment pattern CodeQL
+    # recognises; Path.resolve() and `root in candidate.parents` are not modelled as one.
+    real_path = os.path.realpath(os.path.expanduser(path_value))
+    working_root = os.path.realpath(os.getcwd())
+    temp_root = os.path.realpath(tempfile.gettempdir())
+
+    if os.path.splitext(real_path)[1].lower() not in allowed_suffixes:
+        raise HTTPException(status_code=400, detail="document_url must be a supported image path")
+
+    root = temp_root if real_path.startswith(temp_root + os.sep) else working_root
+    if not real_path.startswith(root + os.sep):
+        raise HTTPException(
+            status_code=400, detail="document_url path is outside allowed directories"
+        )
+
+    if not os.path.isfile(real_path):
+        raise HTTPException(status_code=400, detail="document_url image file not found")
+
+    return real_path
 
 
 def _get_run_or_404(run_id: str) -> dict[str, Any]:
@@ -93,7 +124,7 @@ async def start_run(req: StartRunRequest, response: Response) -> dict[str, Any]:
             first_page = page_paths[0] if page_paths else doc_path
         except FileNotFoundError:
             # Treat as a file path
-            first_page = doc_path
+            first_page = _validate_local_image_path_for_autoroute(doc_path)
 
         try:
             route_result = auto_route(
