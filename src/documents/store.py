@@ -307,27 +307,49 @@ class DocumentStore:
         thumb.save(str(thumb_path), "JPEG", quality=85)
         return str(thumb_path)
 
+    # doc_id comes from the request URL (or an LLM tool argument). Each read below validates the id,
+    # resolves the target with os.path.realpath and only touches it inside the true branch of an
+    # inline ``startswith(base + os.sep)`` guard (CodeQL py/path-injection, ADE-73). A symlink that
+    # leaves ``documents/`` fails the guard. An id that is invalid or escapes raises ValueError.
+
     def get_document(self, doc_id: str) -> dict[str, Any]:
-        """Get document metadata by ID."""
-        meta_path = self.get_doc_dir(doc_id) / "meta.json"
-        if not meta_path.exists():
-            raise FileNotFoundError(f"Document '{doc_id}' not found")
-        return json.loads(meta_path.read_text(encoding="utf-8"))
+        """Get document metadata by ID.
+
+        Raises:
+            ValueError: If doc_id is invalid or resolves outside the document store.
+            FileNotFoundError: If the document does not exist.
+        """
+        self.get_doc_dir(doc_id)  # validates the id
+        base = os.path.realpath(self.docs_dir)
+        meta_file = os.path.realpath(os.path.join(base, doc_id, "meta.json"))
+        if meta_file.startswith(base + os.sep):
+            if not os.path.exists(meta_file):
+                raise FileNotFoundError(f"Document '{doc_id}' not found")
+            with open(meta_file, encoding="utf-8") as f:
+                return json.load(f)
+        raise ValueError(f"Invalid document ID '{doc_id}': outside the document store")
 
     def get_page_path(self, doc_id: str, page_number: int) -> Path:
         """Get the path to a specific page image (1-indexed)."""
-        doc_dir = self.get_doc_dir(doc_id)
-        page_file = doc_dir / f"page_{page_number:03d}.png"
-        if not page_file.exists():
-            raise FileNotFoundError(f"Page {page_number} not found for document '{doc_id}'")
-        return page_file
+        self.get_doc_dir(doc_id)  # validates the id
+        base = os.path.realpath(self.docs_dir)
+        page_file = os.path.realpath(os.path.join(base, doc_id, f"page_{page_number:03d}.png"))
+        if page_file.startswith(base + os.sep):
+            if not os.path.exists(page_file):
+                raise FileNotFoundError(f"Page {page_number} not found for document '{doc_id}'")
+            return Path(page_file)
+        raise ValueError(f"Invalid document ID '{doc_id}': outside the document store")
 
     def get_thumbnail_path(self, doc_id: str) -> Path:
         """Get the path to a document's thumbnail."""
-        thumb_path = self.get_doc_dir(doc_id) / "thumbnail.jpg"
-        if not thumb_path.exists():
-            raise FileNotFoundError(f"Thumbnail not found for document '{doc_id}'")
-        return thumb_path
+        self.get_doc_dir(doc_id)  # validates the id
+        base = os.path.realpath(self.docs_dir)
+        thumb_file = os.path.realpath(os.path.join(base, doc_id, "thumbnail.jpg"))
+        if thumb_file.startswith(base + os.sep):
+            if not os.path.exists(thumb_file):
+                raise FileNotFoundError(f"Thumbnail not found for document '{doc_id}'")
+            return Path(thumb_file)
+        raise ValueError(f"Invalid document ID '{doc_id}': outside the document store")
 
     def list_documents(self) -> list[dict[str, Any]]:
         """List all imported documents."""

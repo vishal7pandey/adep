@@ -87,7 +87,7 @@ def _get_page_image_path(document_id: str, page_num: int):
     """Resolve a page's image path, or None if the document/page doesn't exist."""
     try:
         return get_document_store().get_page_path(document_id, page_num)
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, ValueError) as exc:
         logger.debug("Page resolution failed: %s", exc)
         return None
 

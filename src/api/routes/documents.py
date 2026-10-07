@@ -99,7 +99,8 @@ async def get_document(document_id: str) -> dict[str, Any]:
     """Get document metadata by ID [BLK-059]."""
     try:
         return get_document_store().get_document(document_id)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
+        # ValueError: the document id is not a valid id (never a document).
         raise HTTPException(status_code=404, detail=f"Document '{document_id}' not found")
 
 
@@ -125,22 +126,31 @@ async def get_page(document_id: str, page_number: int) -> FileResponse:
     # store before it is served (CodeQL py/path-injection).
     docs_root = os.path.realpath(store.docs_dir)
     page_file = os.path.realpath(page_path)
-    if not page_file.startswith(docs_root + os.sep):
-        raise not_found
-    return FileResponse(page_file, media_type="image/png")
+    if page_file.startswith(docs_root + os.sep):
+        return FileResponse(page_file, media_type="image/png")
+    raise not_found
 
 
 @router.get("/documents/{document_id}/thumbnail")
 async def get_thumbnail(document_id: str) -> FileResponse:
     """Get document thumbnail [BLK-059]."""
+    not_found = HTTPException(
+        status_code=404,
+        detail=f"Thumbnail not found for document '{document_id}'",
+    )
+    store = get_document_store()
     try:
-        thumb_path = get_document_store().get_thumbnail_path(document_id)
-        return FileResponse(str(thumb_path), media_type="image/jpeg")
-    except FileNotFoundError:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Thumbnail not found for document '{document_id}'",
-        )
+        thumb_path = store.get_thumbnail_path(document_id)
+    except (FileNotFoundError, ValueError):
+        # ValueError: the document id is not a valid id (never a document).
+        raise not_found
+    # The path derives from the request: resolve it and serve it only inside the true branch of
+    # the containment guard (CodeQL py/path-injection).
+    docs_root = os.path.realpath(store.docs_dir)
+    thumb_file = os.path.realpath(thumb_path)
+    if thumb_file.startswith(docs_root + os.sep):
+        return FileResponse(thumb_file, media_type="image/jpeg")
+    raise not_found
 
 
 @router.post("/documents/{document_id}/suggest-agent")
@@ -157,7 +167,7 @@ async def suggest_agent(document_id: str) -> dict[str, Any]:
     store = get_document_store()
     try:
         meta = store.get_document(document_id)
-    except FileNotFoundError:
+    except (FileNotFoundError, ValueError):
         raise HTTPException(
             status_code=404,
             detail=f"Document '{document_id}' not found",
