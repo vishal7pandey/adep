@@ -2,7 +2,7 @@ id: ADE-55
 type: feature
 title: Enable SonarCloud
 slug: enable-sonarcloud
-status: in-review
+status: merged
 risk: low
 jira: ADE-55
 branch: feature/ade-55-enable-sonarcloud

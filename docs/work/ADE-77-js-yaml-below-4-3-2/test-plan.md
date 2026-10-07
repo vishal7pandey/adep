@@ -9,7 +9,7 @@ Test framework and conventions found: vitest with jsdom, tests in `frontend/test
 |----|-------|------------------|-------|----------|----------|--------|
 | AC1 | unit | `frontend/tests/js-yaml-patched-version.test.ts` (3 tests: comparator, lockfile entries, lockfile parent references) | lockfile has only 4.3.2 entries and parents use 4.3.2 | comparator: `4.3.2` and `4.10.0` ok (numeric compare) | comparator rejects `4.3.1` and `4.0.0`; on the old lockfile 2 of 3 fail | verified |
 | AC2 | integration | `CI=true pnpm install --frozen-lockfile`, `pnpm test`, `pnpm build` | install ok, 13 files / 115 tests pass, build exits 0 | diff is the lockfile only plus the new test | n/a: no new behaviour | verified |
-| AC3 | manual | n/a (scanner re-query) | `gh api repos/vishal7pandey/adep/dependabot/alerts/8 --jq .state` reads `fixed` | n/a: single state read | still `open`: ticket stays open, investigate, never dismiss | planned |
+| AC3 | manual | n/a (scanner re-query) | `gh api repos/vishal7pandey/adep/dependabot/alerts/8 --jq .state` reads `fixed` | n/a: single state read | still `open`: ticket stays open, investigate, never dismiss | verified |
 
 ## Regression risk
 
@@ -38,4 +38,8 @@ AC1, `frontend/tests/js-yaml-patched-version.test.ts`:
 
 AC2: `CI=true pnpm install --frozen-lockfile` ok; `pnpm test`: 13 files, 115 tests passed; `pnpm build` ok (all routes
 prerendered). `git diff --stat`: only `frontend/pnpm-lock.yaml` (11 insertions, 17 deletions) outside the new test and this
-work item.
+work item. Backend `-m "not integration"` in a clean worktree without `.env`: 9 failed (the 2 known, ADE-23 and ADE-24, plus
+the 7 CI-deselected e2e tests), 2230 passed, unchanged by this lockfile-only change.
+
+AC3: after the merge (PR #46, merge 60d4d98) `gh api repos/vishal7pandey/adep/dependabot/alerts/8` read `state: fixed`,
+`fixed_at` 2026-10-07T12:57:57Z, `dismissed_at` null.

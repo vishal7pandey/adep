@@ -2,7 +2,7 @@ id: ADE-26
 type: feature
 title: Sync the factory kit
 slug: sync-the-factory-kit
-status: in-review
+status: merged
 risk: low
 jira: ADE-26
 branch: feature/ade-26-sync-the-factory-kit
