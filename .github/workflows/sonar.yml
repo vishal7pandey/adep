@@ -47,7 +47,7 @@ jobs:
       # The install and test steps below mirror the `backend` job in ci.yml (ADE-55): same Python (3.11),
       # same dependencies, same marker filter and deselects, so Sonar sees the same tests and coverage as CI.
       # Keep the --deselect list in step with ci.yml (ADE-23, ADE-24); remove a line there and here together.
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         if: steps.guard.outputs.enabled == 'true'
       - name: Set up Python
         if: steps.guard.outputs.enabled == 'true'
